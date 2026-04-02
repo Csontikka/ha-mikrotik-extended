@@ -35,6 +35,20 @@ from .helper import format_attribute
 
 _LOGGER = getLogger(__name__)
 
+_FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Routing Rules"}
+_IFACE_TYPE_CATEGORY = {
+    "ether": "port",
+    "vlan": "vlan",
+    "wlan": "wifi",
+    "bridge": "bridge",
+    "pppoe-out": "ppp",
+    "ppp": "ppp",
+    "l2tp-out": "vpn",
+    "sstp-out": "vpn",
+    "ovpn-out": "vpn",
+    "wireguard": "vpn",
+}
+
 
 def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
     # Sensors
@@ -270,7 +284,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return DeviceInfo(
                 connections={(dev_connection, f"{dev_connection_value}")},
                 identifiers={(dev_connection, f"{dev_connection_value}")},
-                name=f"{self._inst} {dev_group}",
+                name=f"{self._inst} router",
                 model=f"{self.coordinator.data['resource']['board-name']}",
                 manufacturer=f"{self.coordinator.data['resource']['platform']}",
                 sw_version=f"{self.coordinator.data['resource']['version']}",
@@ -297,9 +311,18 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
                 ),
             )
         else:
+            orig_ha_group = self.entity_description.ha_group
+            if orig_ha_group.startswith("data__"):
+                iface_type = self._data.get("type", "")
+                category = _IFACE_TYPE_CATEGORY.get(iface_type, "port")
+                dev_display_name = f"{self._inst} router {category} {dev_group}"
+            elif orig_ha_group in _FIREWALL_GROUPS:
+                dev_display_name = f"{self._inst} router firewall {dev_group}"
+            else:
+                dev_display_name = f"{self._inst} router {dev_group}"
             return DeviceInfo(
                 connections={(dev_connection, f"{dev_connection_value}")},
-                default_name=f"{self._inst} {dev_group}",
+                default_name=dev_display_name,
                 default_model=f"{self.coordinator.data['resource']['board-name']}",
                 default_manufacturer=f"{self.coordinator.data['resource']['platform']}",
                 via_device=(
