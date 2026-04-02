@@ -2592,6 +2592,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     and self.ds["arp"][uid].get("address", "unknown") not in ["unknown", ""]
                 ):
                     self.ds["host"][uid]["available"] = True
+                    self.ds["host"][uid]["last-seen"] = utcnow()
 
         # Process hosts
         self.ds["resource"]["clients_wired"] = 0
