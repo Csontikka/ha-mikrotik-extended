@@ -60,13 +60,13 @@ def from_entry_bool(entry, param, default=False, reverse=False) -> bool:
             if isinstance(entry, dict) and tmp_param in entry:
                 entry = entry[tmp_param]
             else:
-                return default
+                return not default if reverse else default
 
         ret = entry
     elif param in entry:
         ret = entry[param]
     else:
-        return default
+        return not default if reverse else default
 
     if isinstance(ret, str):
         if ret.lower() in ("on", "yes", "up"):

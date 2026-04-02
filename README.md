@@ -168,7 +168,7 @@ Minimum requirements:
 
 ## Setup integration
 1. Create user for homeassistant on your mikrotik router with following permissions:
-   * read, write, api, reboot, policy, test
+   * read, write, api, reboot, policy, test, sensitive
 2. Setup this integration in Home Assistant via `Configuration -> Integrations -> Add -> Mikrotik Router`.
 
 # Support & Feature Requests
