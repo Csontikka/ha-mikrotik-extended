@@ -10,11 +10,65 @@
           "port": "Port",
           "username": "Username",
           "password": "Password",
-          "ssl": "Use SSL",
-          "verify_ssl": "Verify SSL"
+          "ssl_mode": "Connection security"
+        }
+      },
+      "basic_options": {
+        "title": "Mikrotik Router setup (2/3)",
+        "description": "Configure integration",
+        "data": {
+          "scan_interval": "Scan interval (seconds)",
+          "track_iface_clients": "Show client MAC and IP on interfaces",
+          "track_network_hosts_timeout": "Track network devices timeout (seconds)",
+          "zone": "Zone for device tracker"
         },
         "data_description": {
-          "verify_ssl": "Enable certificate and hostname validation. Only enable if your MikroTik has a valid SSL certificate with a matching hostname. Leave disabled for self-signed certificates (default)."
+          "scan_interval": "How often to poll the router for updates. Minimum: 10 seconds. Default: 30s. Lower values increase RouterOS API load.",
+          "track_iface_clients": "Show the MAC address and IP of connected clients as attributes on interface sensors.",
+          "track_network_hosts_timeout": "Time in seconds after which a wired device is considered offline if not seen in the ARP table. Default: 180s.",
+          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+        }
+      },
+      "sensor_select": {
+        "title": "Mikrotik Router setup (3/3)",
+        "description": "Enable sensors and switches",
+        "data": {
+          "track_network_hosts": "Track network devices",
+          "sensor_port_tracker": "Port tracker sensors",
+          "sensor_netwatch_tracker": "Netwatch tracker sensors",
+          "sensor_port_traffic": "Port traffic sensors",
+          "sensor_client_traffic": "Client traffic sensors",
+          "sensor_client_captive": "Captive portal data",
+          "sensor_simple_queues": "Simple queues switches",
+          "sensor_nat": "NAT switches",
+          "sensor_scripts": "Script switches",
+          "sensor_environment": "Environment variable sensors",
+          "sensor_kidcontrol": "Kid control",
+          "sensor_mangle": "Mangle switches",
+          "sensor_routing_rules": "Routing Rules switches",
+          "sensor_wireguard": "WireGuard peer sensors",
+          "sensor_containers": "Container sensors",
+          "sensor_ppp": "PPP users",
+          "sensor_filter": "Filter switches"
+        },
+        "data_description": {
+          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
+          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
+          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
+          "sensor_port_traffic": "6 sensors per interface (TX/RX bytes, packets, speed). Warning: creates 6 entities per interface — disable if traffic graphs are not needed.",
+          "sensor_client_traffic": "6 sensors per tracked client (TX/RX bytes, packets, speed). Warning: creates 6 entities per device — on large networks this can generate thousands of entities.",
+          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
+          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
+          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
+          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
+          "sensor_environment": "Sensors for RouterOS environment variables.",
+          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
+          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
+          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
+          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint).",
+          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
+          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
+          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule."
         }
       }
     },
@@ -36,6 +90,12 @@
           "unit_of_measurement": "Unit of measurement",
           "track_network_hosts_timeout": "Track network devices timeout (seconds)",
           "zone": "Zone for device tracker"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll the router for updates. Minimum: 10 seconds. Default: 30s. Lower values increase RouterOS API load. Requires HA restart to take effect.",
+          "track_iface_clients": "Show the MAC address and IP of connected clients as attributes on interface sensors.",
+          "track_network_hosts_timeout": "Time in seconds after which a wired device is considered offline if not seen in the ARP table. Default: 180s.",
+          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
         },
         "title": "Mikrotik Router options (1/2)",
         "description": "Configure integration"
@@ -60,8 +120,36 @@
           "sensor_client_captive": "Captive portal data",
           "sensor_netwatch_tracker": "Netwatch tracker sensors"
         },
+        "data_description": {
+          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
+          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
+          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
+          "sensor_port_traffic": "6 sensors per interface (TX/RX bytes, packets, speed). Warning: creates 6 entities per interface — disable if traffic graphs are not needed.",
+          "sensor_client_traffic": "6 sensors per tracked client (TX/RX bytes, packets, speed). Warning: creates 6 entities per device — on large networks this can generate thousands of entities.",
+          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
+          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
+          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
+          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
+          "sensor_environment": "Sensors for RouterOS environment variables.",
+          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
+          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
+          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
+          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint).",
+          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
+          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
+          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule."
+        },
         "title": "Mikrotik Router options (2/2)",
         "description": "Enable sensors and switches"
+      }
+    }
+  },
+  "selector": {
+    "ssl_mode": {
+      "options": {
+        "none": "No SSL — unencrypted connection (default, port 8728)",
+        "ssl": "SSL — encrypted, accepts self-signed certificates (port 8729)",
+        "ssl_verify": "SSL with verification — requires a valid CA-signed certificate"
       }
     }
   }
