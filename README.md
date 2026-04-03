@@ -22,6 +22,8 @@ Per-interface monitoring: link status (binary sensor), enable/disable (switch), 
 
 ![Interface Traffic](docs/assets/images/screenshots/interface_tx.png)
 
+![Interface RX Graph](docs/assets/images/screenshots/interface_rx_graph.png)
+
 ### Firewall & Routing Rules
 
 Monitor and control individual rules — each gets a switch entity:
@@ -34,6 +36,10 @@ Monitor and control individual rules — each gets a switch entity:
 More information: [MikroTik Firewall documentation](https://help.mikrotik.com/docs/display/ROS/Firewall)
 
 ![Firewall Filter Switch](docs/assets/images/screenshots/firewall_filter.png)
+
+Detailed rule information available per entity (chain, action, protocol, addresses, ports, connection state):
+
+![Firewall Filter Details](docs/assets/images/screenshots/firewall_filter_attributes.png)
 
 ### Device Tracking
 
@@ -67,6 +73,8 @@ Enable via integration options -> Container sensors.
 
 ![Container Status](docs/assets/images/screenshots/container_status.png)
 
+![Container Attributes](docs/assets/images/screenshots/container_attributes.png)
+
 ### Client Traffic
 
 Per-device bandwidth monitoring. 2 sensors per tracked device (total TX/RX).
@@ -92,6 +100,7 @@ Without the required backend, sensors show "unavailable" instead of 0.
 - **Environment Variables** — read RouterOS script environment variable values
 - **IP Cloud** — public IP address sensor via MikroTik cloud service
 - **Device Mode & Packages** — diagnostic sensors showing enabled features and installed packages
+  ![Packages Details](docs/assets/images/screenshots/packages_attributes.png)
 - **CAPsMAN** (v6) / **WiFi** (v7) — wireless client detection (auto-detected)
 
 ### Firmware Updates
