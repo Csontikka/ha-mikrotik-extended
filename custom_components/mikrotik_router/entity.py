@@ -293,7 +293,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return DeviceInfo(
                 connections={(dev_connection, f"{dev_connection_value}")},
                 identifiers={(dev_connection, f"{dev_connection_value}")},
-                name=f"{self._inst} router",
+                name=f"{self._inst} router Core",
                 model=f"{self.coordinator.data['resource']['board-name']}",
                 manufacturer=f"{self.coordinator.data['resource']['platform']}",
                 sw_version=f"{self.coordinator.data['resource']['version']}",
