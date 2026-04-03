@@ -257,7 +257,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_sensor_mode(self, user_input=None):
         """Handle sensor mode selection step during initial setup."""
         if user_input is not None:
-            mode = user_input.get("sensor_mode", "recommended")
+            mode = user_input.get("sensor_preset", "recommended")
             if mode == "custom":
                 return await self.async_step_sensor_select()
             self._options.update(_SENSOR_PRESETS[mode])
@@ -272,7 +272,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             last_step=False,
             data_schema=vol.Schema(
                 {
-                    vol.Optional("sensor_mode", default="recommended"): SelectSelector(
+                    vol.Optional("sensor_preset", default="recommended"): SelectSelector(
                         SelectSelectorConfig(
                             options=[
                                 SelectOptionDict(value="minimal", label="Minimal — port tracker only"),
