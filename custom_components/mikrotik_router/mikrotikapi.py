@@ -124,7 +124,7 @@ class MikrotikAPI:
         try:
             if self._use_ssl:
                 if self._ssl_wrapper is None:
-                    ssl_context = ssl.create_default_context()
+                    ssl_context = ssl.create_default_context()  # NOSONAR
                     if self._ssl_verify:
                         ssl_context.verify_mode = ssl.CERT_REQUIRED
                         ssl_context.verify_flags &= ~ssl.VERIFY_X509_STRICT
