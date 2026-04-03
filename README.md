@@ -1,242 +1,209 @@
-# Mikrotik Router
+# Mikrotik Router — Home Assistant Integration
+
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/Csontikka/ha-mikrotik-router?style=plastic)
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=plastic)](https://github.com/hacs/integration)
-![Project Stage](https://img.shields.io/badge/project%20stage-Beta-orange.svg?style=plastic)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=plastic)](https://github.com/hacs/integration)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-router&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-router)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-router&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-router)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-router&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-router)
 
-![Mikrotik Logo](https://raw.githubusercontent.com/tomaae/homeassistant-mikrotik_router/master/docs/assets/images/ui/header.png)
+Full-featured Home Assistant integration for MikroTik routers. Monitor system resources, control firewall rules, track network devices, manage WireGuard peers, containers, and more — all from your HA dashboard. Supports multiple routers simultaneously with both RouterOS 6 and 7.
 
-Monitor and control your Mikrotik device from Home Assistant.
- * Interfaces:
-   * Enable/disable interfaces
-   * SFP status and information
-   * POE status, control and information
-   * Monitor RX/TX traffic per interface
-   * Monitor device presence per interface
-   * IP, MAC, Link information per an interface for connected devices
-   * **IP address sensor per interface** *(added in this fork)*
- * **WireGuard peer sensors and switches** *(added in this fork)*
- * **Container sensors and switches** *(added in this fork)*
- * Enable/disable NAT rule switches
- * Enable/disable Simple Queue switches
- * Enable/disable Mangle switches
- * Enable/disable Filter switches
- * Monitor and control PPP users
- * Monitor UPS
- * Monitor GPS coordinates
- * Captive Portal
- * Kid Control
- * Client Traffic RX/TX WAN/LAN monitoring
- * Device tracker for hosts in network
- * System sensors (CPU, Memory, HDD, Temperature)
- * **Public IP address via IP Cloud** *(added in this fork)*
- * **Device Mode and Packages diagnostic sensors** *(added in this fork)*
- * Check and update RouterOS and RouterBOARD firmware
- * Execute scripts
- * View environment variables
- * Configurable update interval
- * Configurable traffic unit (bps, Kbps, Mbps, B/s, KB/s, MB/s)
- * Supports monitoring of multiple mikrotik devices simultaneously
+## Features
 
-# Additional Features (this fork)
+### System Monitoring
 
-## Interface IP Address Sensors
-Each router interface gets an **IP Address** sensor showing the assigned IP.
+CPU load, memory/HDD usage, uptime, temperatures (CPU, board, PHY, switch), voltage, power consumption, PSU metrics (current/voltage for PSU1/PSU2), fan speeds (fan1-fan4), UPS status, GPS coordinates. Each router also gets a reboot button entity.
 
-- **State**: IP address without mask (e.g. `172.21.11.1`)
-- **Attributes**: full address with mask, network, comment, disabled status
-- Sensor is grouped under the corresponding interface device in HA
-- Multiple IPs on the same interface each get their own sensor entity
-- Bridge and virtual interfaces without a network connection are excluded
+<!-- SCREENSHOT_PLACEHOLDER: System sensors overview — show CPU, memory, uptime, temperature entities for a router device -->
 
-## IP Cloud — Public Address Sensor
-A diagnostic sensor on the System device showing the router's public IP address via the MikroTik IP Cloud service.
+### Network Interfaces
 
-- **State**: public IP address (e.g. `80.95.65.203`)
-- **Attributes**: `ddns_enabled`, `ddns_hostname`, `ddns_status`, `back_to_home_vpn`
-- Fault-tolerant: becomes unavailable if cloud service is disabled
+Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE status/control/consumption, connected device MAC/IP info per interface.
 
-## Wake-on-LAN Service
-Send a Wake-on-LAN magic packet through the MikroTik router to wake up any device on the network.
+<!-- SCREENSHOT_PLACEHOLDER: Interface entities — show port binary sensor, traffic sensors, IP address sensor, and port switch for one interface -->
 
-- HA service: `mikrotik_router.send_magic_packet`
-- Parameters: `mac` (required), `interface` (optional)
-- Works across all configured MikroTik routers simultaneously
+### Firewall & Routing Rules
 
-## API Test Service
-Diagnostic service for querying the RouterOS API directly or inspecting processed coordinator data.
+Monitor and control individual rules — each gets a switch entity:
 
-- HA service: `mikrotik_router.api_test`
-- **Returns response data** (use in Developer Tools → Services with "Return response" enabled)
-- Parameters:
-  - `path` (required): RouterOS API path (e.g. `/interface`, `/ip/address`, `/system/resource`)
-  - `limit` (optional, default 10): Max items to return (1-500)
-  - `host` (optional): Filter to a specific router host
-  - `coordinator_data` (optional, default false): Read processed integration data instead of raw API
-- Queries all configured routers unless `host` is specified
+- NAT rules
+- Mangle rules
+- Filter rules
+- Routing rules
 
-## Reboot Button
-Each router device gets a **Reboot** button entity in Home Assistant.
+More information: [MikroTik Firewall documentation](https://help.mikrotik.com/docs/display/ROS/Firewall)
 
-- Press to reboot the MikroTik device directly from HA
-- Requires `reboot` permission on the API user
+<!-- SCREENSHOT_PLACEHOLDER: Firewall switches — show a few NAT/filter/mangle switch entities -->
 
-## WireGuard Peer Sensors
-Each WireGuard peer gets its own device with sensors and a switch (RouterOS 7+).
+### Device Tracking
+
+ARP-based network host presence tracking. Configurable timeout (default 180s). Shows MAC address, IP, and connected interface as attributes.
+
+<!-- SCREENSHOT_PLACEHOLDER: Device tracker entity — show a tracked device with its attributes -->
+
+### WireGuard (RouterOS 7+)
+
+Each WireGuard peer gets its own device with:
 
 - **Switch**: enable/disable peer
-- **Binary sensor**: connected/disconnected (based on last handshake < 3 minutes)
-- **Sensors**: RX bytes, TX bytes, Last Handshake (seconds)
-- Peer display name: `name` field → `comment` → first 8 chars of public key
-- Enable via integration options → **WireGuard peer sensors**
+- **Binary sensor**: connected status (based on last handshake < 3 minutes)
+- **Sensors**: RX bytes, TX bytes, last handshake
 
-## Container Sensors
-Each MikroTik container gets its own device with a switch and a status sensor (RouterOS 7+ with container package).
+Peer display name: `name` field, then `comment`, then first 8 chars of public key.
+
+Enable via integration options -> WireGuard peer sensors.
+
+<!-- SCREENSHOT_PLACEHOLDER: WireGuard peer device — show the peer device with its switch, binary sensor, and traffic sensors -->
+
+### Containers (RouterOS 7+)
+
+Each container gets its own device with:
 
 - **Switch**: start/stop container
-- **Sensor**: status (`running` / `stopped` / `pulling` / `building` / `error`)
-- **Attributes**: tag, OS, arch, interface, memory usage, CPU usage
-- Enable via integration options → **Container sensors**
+- **Sensor**: status (running/stopped/pulling/building/error)
+- **Attributes**: tag, OS, arch, interface, memory/CPU usage
 
-## Device Mode & Packages Sensors
-Two diagnostic sensors on the System device showing router capabilities.
+Enable via integration options -> Container sensors.
 
-- **Device Mode**: current mode + all feature flags (container, zerotier, ipsec, hotspot, etc.) as attributes
-- **Packages**: count of installed packages + version per package (or `false` if not installed)
+<!-- SCREENSHOT_PLACEHOLDER: Container device — show container switch and status sensor -->
 
-## Bugfixes
+### Client Traffic
 
-- Fixed duplicate `system_poe_out_consumption` sensor key that could cause entity registration issues
-- Fixed disconnect on routers without container support (graceful handling of unsupported API paths)
+Per-device bandwidth monitoring.
 
-# Features
-## Interfaces
-Monitor and control status on each Mikrotik interface, both lan and wlan. Both physical and virtual.
+**RouterOS 6**: 6 sensors per device (LAN TX/RX, WAN TX/RX, total TX/RX). Requires IP Accounting:
 
-![Interface Info](https://raw.githubusercontent.com/tomaae/homeassistant-mikrotik_router/master/docs/assets/images/ui/interface.png)
-![Interface Switch](https://raw.githubusercontent.com/tomaae/homeassistant-mikrotik_router/master/docs/assets/images/ui/interface_switch.png)
-![Interface Sensor](https://raw.githubusercontent.com/tomaae/homeassistant-mikrotik_router/master/docs/assets/images/ui/interface_sensor.png)
-
-## NAT
-Monitor and control individual NAT rules.
-
-More information about NAT rules can be found on [Mikrotik support page](https://help.mikrotik.com/docs/display/ROS/NAT).
-
-## Mangle
-Monitor and control individual Mangle rules.
-
-More information about Mangle rules can be found on [Mikrotik support page](https://help.mikrotik.com/docs/display/ROS/Mangle).
-
-## Simple Queue
-Control simple queues.
-
-NOTE: FastTracked packets are not processed by Simple Queues.
-
-## PPP
-Control and monitor PPP users.
-
-## Host Tracking
-Track availability of all network devices.
-
-## Netwatch Tracking
-Track netwatch status.
-
-## Scripts
-Execute Mikrotik Router scripts.
-
-## Kid Control
-Monitor and control Kid Control.
-
-## Client Traffic
-
-Monitor per-device bandwidth usage. The number of sensors and the backend mechanism differ by RouterOS version.
-
-**Without the required backend feature enabled, client traffic sensors will show as "unavailable" instead of 0.**
-
-### Client Traffic for RouterOS v6
-
-6 sensors per tracked device: LAN TX, LAN RX, WAN TX, WAN RX, total TX, total RX.
-
-Requires **IP Accounting** enabled on the router:
 ```
 /ip/accounting/set enabled=yes
 ```
 
-### Client Traffic for RouterOS v7+
+**RouterOS 7+**: 2 sensors per device (total TX/RX). Uses Kid Control backend. Auto-creates `ha-monitoring` profile (unrestricted). If the API user lacks write permission, a warning is logged with the manual command:
 
-2 sensors per tracked device: total TX, total RX.
-
-IP Accounting is deprecated in RouterOS 7. The integration uses **Kid Control** instead.
-
-**Auto-setup:** When `sensor_client_traffic` is enabled, the integration automatically creates a `ha-monitoring` Kid Control profile on the router (unrestricted, all-day access). This profile acts as a trigger — RouterOS 7 dynamically tracks all devices once any Kid Control profile exists. When the option is disabled, the `ha-monitoring` profile is removed automatically.
-
-No manual device profiles are needed. RouterOS 7 tracks all devices dynamically as long as at least one Kid Control profile exists.
-
-**If the API user lacks write permission**, the profile cannot be created automatically. A warning will be logged with the manual command to run on the router:
 ```
 /ip/kid-control/add name=ha-monitoring mon=0s-1d tue=0s-1d wed=0s-1d thu=0s-1d fri=0s-1d sat=0s-1d sun=0s-1d
 ```
 
-Sensors only appear for devices that are actively tracked by Kid Control.
+Without the required backend, sensors show "unavailable" instead of 0.
 
-## Port Traffic
+<!-- SCREENSHOT_PLACEHOLDER: Client traffic sensors — show TX/RX sensors for a tracked client device -->
 
-4 sensors per interface: TX bytes, RX bytes, TX total, RX total. Enable via integration options.
+### Additional Features
 
-## UPS sensor
-Monitor your UPS.
+- **Kid Control** — enable/disable/pause rules per child profile
+- **PPP Users** — monitor and control PPP secrets and active connections (v7+)
+- **Simple Queues** — enable/disable queue rules (note: FastTracked packets bypass queues)
+- **Captive Portal** — track hotspot/guest portal authorized clients
+- **Scripts** — execute RouterOS scripts via button entities
+- **Netwatch** — monitor host reachability (binary sensor per watched host)
+- **Environment Variables** — read RouterOS script environment variable values
+- **IP Cloud** — public IP address sensor via MikroTik cloud service
+- **Device Mode & Packages** — diagnostic sensors showing enabled features and installed packages
+- **CAPsMAN** (v6) / **WiFi** (v7) — wireless client detection (auto-detected)
 
-## GPS sensors
-Monitor your GPS coordinates.
+### Firmware Updates
 
-## Update sensor
-Update Mikrotik OS and firmware directly from Home Assistant.
+Update RouterOS and RouterBoard firmware directly from Home Assistant.
 
-# Install integration
-This integration is distributed using [HACS](https://hacs.xyz/) as a custom repository.
+- RouterOS update entity with changelog
+- RouterBoard firmware update entity
 
-Add this repository to HACS:
-1. HACS → 3 dots menu → **Custom repositories**
+<!-- SCREENSHOT_PLACEHOLDER: Update entities — show RouterOS and RouterBoard update entities -->
+
+### Services
+
+- **Wake-on-LAN** (`mikrotik_router.send_magic_packet`): send WoL magic packet through the router. Parameters: `mac` (required), `interface` (optional).
+- **API Test** (`mikrotik_router.api_test`): diagnostic service for raw RouterOS API queries or coordinator data inspection. Use in Developer Tools -> Services with "Return response" enabled. Parameters: `path` (required), `limit` (optional, default 10), `host` (optional), `coordinator_data` (optional).
+
+## Feature Availability
+
+| Feature | RouterOS 6 | RouterOS 7+ | Optional |
+|---------|:---:|:---:|:---:|
+| System monitoring (CPU, memory, temps, fans, PSU, uptime) | ✓ | ✓ | No |
+| Network interfaces (status, traffic, IP address) | ✓ | ✓ | Traffic: Yes |
+| Firewall rules (NAT, mangle, filter) | ✓ | ✓ | Yes |
+| Routing rules | ✓ | ✓ | Yes |
+| Device tracking (ARP) | ✓ | ✓ | Yes |
+| WireGuard peers | — | ✓ | Yes |
+| Containers | — | ✓ | Yes |
+| Client traffic | ✓ (IP Accounting) | ✓ (Kid Control) | Yes |
+| Kid Control | ✓ | ✓ | Yes |
+| PPP users | — | ✓ | Yes |
+| Simple queues | ✓ | ✓ | Yes |
+| Captive portal | ✓ | ✓ | Yes |
+| Scripts | ✓ | ✓ | Yes |
+| Netwatch | ✓ | ✓ | Yes |
+| Environment variables | ✓ | ✓ | Yes |
+| CAPsMAN (wireless controller) | ✓ | — | Auto |
+| WiFi (wifiwave2/wifi-qcom) | — | ✓ | Auto |
+| UPS monitoring | ✓ | ✓ | Package |
+| GPS coordinates | ✓ | ✓ | Package |
+| IP Cloud (public IP) | ✓ | ✓ | No |
+| Device mode & packages | — | ✓ | No |
+| Firmware updates | ✓ | ✓ | No |
+| Wake-on-LAN service | ✓ | ✓ | No |
+| API Test service | ✓ | ✓ | No |
+| Reboot button | ✓ | ✓ | No |
+| Multi-router support | ✓ | ✓ | No |
+
+## Installation
+
+This integration is distributed via [HACS](https://hacs.xyz/) as a custom repository.
+
+1. Open HACS -> three-dot menu -> **Custom repositories**
 2. URL: `https://github.com/Csontikka/ha-mikrotik-router`
 3. Category: **Integration**
-4. Find and install "Mikrotik Router"
+4. Search and install **Mikrotik Router**
 
-Minimum requirements:
-* RouterOS v6.43/v7.1
-* Home Assistant 2024.3.0
+### Requirements
 
-## Setup integration
-1. Create user for homeassistant on your mikrotik router with following permissions:
-   * read, write, api, reboot, policy, test, sensitive
-2. Setup this integration in Home Assistant via `Configuration -> Integrations -> Add -> Mikrotik Router`.
+- Home Assistant 2024.3.0 or later
+- RouterOS v7 recommended (v6 supported with limited features)
+- API user with permissions: `read, write, api, reboot, policy, test, sensitive`
 
-# Support & Feature Requests
+## Configuration
 
-Have an idea for a new feature or found a bug? Don't hesitate to [open an issue](https://github.com/Csontikka/ha-mikrotik-router/issues) — feedback and feature requests are always welcome!
+### Initial Setup
 
-## Reporting a bug
+1. Create a user on your MikroTik router with the required permissions (see above)
+2. In Home Assistant: **Settings -> Devices & Services -> Add Integration -> Mikrotik Router**
+3. Enter connection details (host, username, password)
 
-When opening an issue, please attach the **diagnostics file** — it contains the integration state and the last 1000 debug log lines, which makes it much easier to diagnose problems.
+### Connection Options
 
-**How to download diagnostics:**
-1. **Settings → Devices & Services**
-2. Find **Mikrotik Router** → click on it
-3. Click the **3-dot menu** next to the integration entry
-4. Select **Download diagnostics**
-5. Attach the downloaded `.json` file to your GitHub issue
+| Option | Default | Description |
+|--------|---------|-------------|
+| Port | 0 (auto) | API port (0 = auto-detect: 8728 or 8729 for SSL) |
+| SSL Mode | None | `none` (port 8728), `ssl` (8729, self-signed OK), `ssl_verify` (8729, CA required) |
+| Scan interval | 30s | Update frequency (minimum 10s) |
+| Host tracking timeout | 180s | Seconds before marking a host as away |
 
-> The diagnostics file automatically redacts sensitive data (passwords, IP addresses, MAC addresses) before download.
+### Sensor Presets
 
-# Development
+During setup, choose a sensor preset:
 
-## Debug logs in diagnostics
+- **Minimal** — port tracking only
+- **Recommended** — ports, NAT, mangle, filter, scripts, netwatch
+- **Full** — all sensors enabled (can generate hundreds of entities on large networks)
+- **Custom** — manually select each sensor category
 
-Debug logs are **always captured automatically in the background** (last 1000 entries) and included in the diagnostics download — no configuration needed.
+### Configurable Traffic Units
 
-## Showing debug logs in home-assistant.log
+Traffic sensors support multiple units: bps, Kbps, Mbps, B/s, KB/s, MB/s — configurable per integration entry.
 
-If you also want debug messages to appear in the main HA log file, add this to `configuration.yaml`:
+## Troubleshooting
+
+### Diagnostics Export
+
+Download the integration diagnostics file for bug reports — it includes integration state and the last 1000 debug log entries. Sensitive data (passwords, IPs, MACs) is automatically redacted.
+
+1. **Settings -> Devices & Services**
+2. Find **Mikrotik Router** -> click the integration
+3. Click the **three-dot menu** -> **Download diagnostics**
+4. Attach the `.json` file to your [GitHub issue](https://github.com/Csontikka/ha-mikrotik-router/issues)
+
+### Debug Logs
+
+Debug logs are captured automatically in diagnostics. To also see them in the HA log viewer, add to `configuration.yaml`:
 
 ```yaml
 logger:
@@ -245,9 +212,10 @@ logger:
     custom_components.mikrotik_router: debug
 ```
 
-This is **not required** for diagnostics — only needed if you want to watch logs live via the HA log viewer.
+## Support
 
+Found a bug or have an idea? [Open an issue](https://github.com/Csontikka/ha-mikrotik-router/issues) — feedback and feature requests are welcome!
 
-# Credits
+## Credits
 
-Based on [tomaae/homeassistant-mikrotik_router](https://github.com/tomaae/homeassistant-mikrotik_router) by [@tomaae](https://github.com/tomaae), licensed under MIT.
+Originally based on [homeassistant-mikrotik_router](https://github.com/tomaae/homeassistant-mikrotik_router) by [@tomaae](https://github.com/tomaae), licensed under MIT.
