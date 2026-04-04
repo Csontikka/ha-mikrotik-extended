@@ -77,6 +77,7 @@ from .const import (
     CONF_SENSOR_NETWATCH_TRACKER,
 )
 from .mikrotikapi import MikrotikAPI
+from .mndp import MndpDevice, async_scan_mndp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -165,6 +166,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Initialize MikrotikControllerConfigFlow."""
         self._user_input = {}
         self._options = {}
+        self._discovered: list[MndpDevice] = []
 
     @staticmethod
     @callback
@@ -222,6 +224,48 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_pick_device(self, user_input=None):
+        """Handle device selection from MNDP scan results."""
+        if user_input is not None:
+            host = user_input["device"]
+            prefill = {
+                CONF_NAME: DEFAULT_DEVICE_NAME,
+                CONF_HOST: DEFAULT_HOST,
+                CONF_USERNAME: DEFAULT_USERNAME,
+                CONF_PASSWORD: "",
+                CONF_PORT: DEFAULT_PORT,
+                CONF_SSL: DEFAULT_SSL,
+                CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
+            }
+            if host != "manual":
+                prefill[CONF_HOST] = host
+                for dev in self._discovered:
+                    if dev.ip == host:
+                        if dev.identity:
+                            prefill[CONF_NAME] = dev.identity
+                        break
+            return self._show_config_form(user_input=prefill)
+
+        options = [
+            SelectOptionDict(value=dev.ip, label=dev.label())
+            for dev in self._discovered
+        ]
+        options.append(SelectOptionDict(value="manual", label="Enter manually"))
+
+        return self.async_show_form(
+            step_id="pick_device",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("device", default=self._discovered[0].ip): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    ),
+                }
+            ),
+        )
+
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         errors = {}
@@ -251,6 +295,15 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_basic_options()
 
             return self._show_config_form(user_input=user_input, errors=errors)
+
+        # Run MNDP scan to discover routers on the local network
+        try:
+            self._discovered = await async_scan_mndp(timeout=2.0)
+        except Exception:  # noqa: BLE001
+            self._discovered = []
+
+        if self._discovered:
+            return await self.async_step_pick_device()
 
         return self._show_config_form(
             user_input={
