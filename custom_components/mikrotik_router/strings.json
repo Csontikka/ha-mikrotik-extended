@@ -1,6 +1,13 @@
 {
   "config": {
     "step": {
+      "pick_device": {
+        "title": "Mikrotik Router found",
+        "description": "Select the router to configure, or choose manual entry.",
+        "data": {
+          "device": "Discovered routers"
+        }
+      },
       "user": {
         "title": "Set up Mikrotik Router",
         "description": "Set up Mikrotik Router integration.",

@@ -194,9 +194,12 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
                     if key not in self.coordinator.ds["host"][uid]:
                         self.coordinator.ds["host"][uid][key] = default
 
-            # Check host availability
+            # Check host availability — skip on first refresh to avoid blocking
+            # initial setup when there are many tracked hosts (each arp_ping takes
+            # ~300 ms; sequentially over 100 hosts exceeds HA's 30-second limit).
             if (
-                self.coordinator.ds["host"][uid]["source"]
+                self.coordinator.host_tracking_initialized
+                and self.coordinator.ds["host"][uid]["source"]
                 not in ["capsman", "wireless"]
                 and self.coordinator.ds["host"][uid]["address"] not in ["unknown", ""]
                 and self.coordinator.ds["host"][uid]["interface"] not in ["unknown", ""]
