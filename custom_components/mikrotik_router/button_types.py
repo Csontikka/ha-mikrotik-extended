@@ -53,6 +53,7 @@ SENSOR_TYPES: tuple[MikrotikButtonEntityDescription, ...] = (
         icon="mdi:script-text-outline",
         device_class=None,
         entity_category=None,
+        entity_registry_enabled_default=False,
         ha_group="Script",
         ha_connection=DOMAIN,
         ha_connection_value="Script",
