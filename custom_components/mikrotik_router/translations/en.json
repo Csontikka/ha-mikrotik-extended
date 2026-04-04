@@ -1,6 +1,13 @@
 {
   "config": {
     "step": {
+      "discovery": {
+        "title": "Add MikroTik Router",
+        "description": "Scan your local network for MikroTik routers, or enter the address manually.",
+        "data": {
+          "scan": "Scan network for MikroTik routers"
+        }
+      },
       "user": {
         "title": "Set up Mikrotik Router",
         "description": "Set up Mikrotik Router integration.",
@@ -31,10 +38,10 @@
         }
       },
       "pick_device": {
-        "title": "Mikrotik Router found",
-        "description": "Select the router to configure, or choose manual entry.",
+        "title": "MikroTik routers found",
+        "description": "Select a router to configure, or choose manual entry.",
         "data": {
-          "device": "Discovered routers"
+          "router": "Select router"
         }
       },
       "sensor_mode": {
@@ -104,7 +111,8 @@
       "ssl_handshake_failure": "SSL handshake failure",
       "connection_timeout": "Mikrotik connection timeout.",
       "wrong_login": "Invalid user name or password.",
-      "ssl_verify_failure": "Certificate verify failed"
+      "ssl_verify_failure": "Certificate verify failed",
+      "no_devices_found": "No MikroTik routers were found on this network. Enter the router address manually."
     },
     "abort": {
       "already_configured": "Device is already configured.",

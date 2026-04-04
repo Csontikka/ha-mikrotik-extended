@@ -227,7 +227,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_pick_device(self, user_input=None):
         """Handle device selection from MNDP scan results."""
         if user_input is not None:
-            host = user_input["device"]
+            host = user_input["router"]
             prefill = {
                 CONF_NAME: DEFAULT_DEVICE_NAME,
                 CONF_HOST: DEFAULT_HOST,
@@ -256,12 +256,57 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="pick_device",
             data_schema=vol.Schema(
                 {
-                    vol.Required("device", default=self._discovered[0].ip): SelectSelector(
+                    vol.Required("router", default=self._discovered[0].ip): SelectSelector(
                         SelectSelectorConfig(
                             options=options,
                             mode=SelectSelectorMode.LIST,
                         )
                     ),
+                }
+            ),
+        )
+
+    async def async_step_discovery(self, user_input=None):
+        """Ask the user whether to scan for MikroTik routers."""
+        if user_input is not None:
+            if user_input.get("scan", True):
+                try:
+                    self._discovered = await async_scan_mndp(timeout=2.0)
+                except Exception:  # noqa: BLE001
+                    self._discovered = []
+                if self._discovered:
+                    return await self.async_step_pick_device()
+                # Scan ran but found nothing
+                return self._show_config_form(
+                    user_input={
+                        CONF_NAME: DEFAULT_DEVICE_NAME,
+                        CONF_HOST: DEFAULT_HOST,
+                        CONF_USERNAME: DEFAULT_USERNAME,
+                        CONF_PASSWORD: "",
+                        CONF_PORT: DEFAULT_PORT,
+                        CONF_SSL: DEFAULT_SSL,
+                        CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
+                    },
+                    errors={"base": "no_devices_found"},
+                )
+            # User chose to skip scan
+            return self._show_config_form(
+                user_input={
+                    CONF_NAME: DEFAULT_DEVICE_NAME,
+                    CONF_HOST: DEFAULT_HOST,
+                    CONF_USERNAME: DEFAULT_USERNAME,
+                    CONF_PASSWORD: "",
+                    CONF_PORT: DEFAULT_PORT,
+                    CONF_SSL: DEFAULT_SSL,
+                    CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="discovery",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("scan", default=True): bool,
                 }
             ),
         )
@@ -296,27 +341,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             return self._show_config_form(user_input=user_input, errors=errors)
 
-        # Run MNDP scan to discover routers on the local network
-        try:
-            self._discovered = await async_scan_mndp(timeout=2.0)
-        except Exception:  # noqa: BLE001
-            self._discovered = []
-
-        if self._discovered:
-            return await self.async_step_pick_device()
-
-        return self._show_config_form(
-            user_input={
-                CONF_NAME: DEFAULT_DEVICE_NAME,
-                CONF_HOST: DEFAULT_HOST,
-                CONF_USERNAME: DEFAULT_USERNAME,
-                CONF_PASSWORD: DEFAULT_USERNAME,
-                CONF_PORT: DEFAULT_PORT,
-                CONF_SSL: DEFAULT_SSL,
-                CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
-            },
-            errors=errors,
-        )
+        return await self.async_step_discovery()
 
     # ---------------------------
     #   async_step_basic_options
