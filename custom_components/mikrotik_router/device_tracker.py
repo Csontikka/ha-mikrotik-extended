@@ -96,7 +96,7 @@ async def async_add_entities(
                         await async_check_exist(obj, coordinator, uid)
 
     await async_update_controller(
-        hass.data[DOMAIN][config_entry.entry_id].tracker_coordinator
+        config_entry.runtime_data.tracker_coordinator
     )
 
     # Remove orphaned entities that are no longer provided by this platform
@@ -110,7 +110,7 @@ async def async_add_entities(
     async def async_update_controller_wrapper(coordinator):
         """Dispatcher fires with MikrotikCoordinator, but device trackers need tracker_coordinator."""
         await async_update_controller(
-            hass.data[DOMAIN][config_entry.entry_id].tracker_coordinator
+            config_entry.runtime_data.tracker_coordinator
         )
 
     unsub = async_dispatcher_connect(hass, f"update_sensors_{config_entry.entry_id}", async_update_controller_wrapper)

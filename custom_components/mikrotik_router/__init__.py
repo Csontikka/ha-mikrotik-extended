@@ -76,7 +76,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         """Send a WoL magic packet via all connected MikroTik routers."""
         mac = call.data["mac"]
         interface = call.data.get("interface")
-        for entry_data in hass.data.get(DOMAIN, {}).values():
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if not hasattr(entry, "runtime_data"):
+                continue
+            entry_data = entry.runtime_data
             success = await hass.async_add_executor_job(
                 entry_data.data_coordinator.api.wol, mac, interface
             )
@@ -102,7 +105,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         use_coordinator_data = call.data.get("coordinator_data", False)
 
         results = {}
-        for entry_data in hass.data.get(DOMAIN, {}).values():
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if not hasattr(entry, "runtime_data"):
+                continue
+            entry_data = entry.runtime_data
             coordinator = entry_data.data_coordinator
             router_host = coordinator.config_entry.data.get("host", "unknown")
             if host_filter and router_host != host_filter:
@@ -160,7 +166,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await coordinator.async_config_entry_first_refresh()
     coordinatorTracker = MikrotikTrackerCoordinator(hass, config_entry, coordinator)
     await coordinatorTracker.async_config_entry_first_refresh()
-    hass.data.setdefault(DOMAIN, {})[config_entry.entry_id] = MikrotikData(
+    config_entry.runtime_data = MikrotikData(
         data_coordinator=coordinator,
         tracker_coordinator=coordinatorTracker,
     )
@@ -186,11 +192,9 @@ async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
-    if unload_ok := await hass.config_entries.async_unload_platforms(
+    unload_ok = await hass.config_entries.async_unload_platforms(
         config_entry, PLATFORMS
-    ):
-        hass.data[DOMAIN].pop(config_entry.entry_id)
-
+    )
     return unload_ok
 
 
