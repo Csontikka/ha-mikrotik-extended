@@ -11,6 +11,10 @@ __pycache__/
 # Scripts
 create_icon.py
 
+# QA test artifacts
+qa_*.py
+qa_screenshots/
+
 # OS
 .DS_Store
 Thumbs.db

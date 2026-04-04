@@ -219,8 +219,11 @@ This integration is distributed via [HACS](https://hacs.xyz/) as a custom reposi
 
 1. Create a user on your MikroTik router with the required permissions (see above)
 2. In Home Assistant: **Settings -> Devices & Services -> Add Integration -> Mikrotik Router**
-3. Fill in the connection details (see parameters below)
-4. Choose a sensor preset and finish setup
+3. Choose whether to **scan the network** for MikroTik routers automatically:
+   - **Scan** — the integration probes the local network (ARP table + default gateway). If routers are found, a list appears — select one or choose *Enter manually*. If nothing is found, the manual entry form opens with an info message.
+   - **Skip** — go directly to manual entry
+4. Fill in the connection details (see parameters below)
+5. Choose a sensor preset and finish setup
 
 ### Installation Parameters
 
