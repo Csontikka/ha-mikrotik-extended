@@ -13,8 +13,11 @@ from homeassistant.config_entries import ConfigEntry
 
 from homeassistant.const import CONF_VERIFY_SSL
 
+from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD, CONF_PORT, CONF_SSL
+
 from .const import PLATFORMS, DOMAIN, DEFAULT_VERIFY_SSL
 from .coordinator import MikrotikData, MikrotikCoordinator, MikrotikTrackerCoordinator
+from .mikrotikapi import MikrotikAPI
 
 SCRIPT_SCHEMA = vol.Schema(
     {vol.Required("router"): cv.string, vol.Required("script"): cv.string}
@@ -187,6 +190,43 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         hass.data[DOMAIN].pop(config_entry.entry_id)
 
     return unload_ok
+
+
+# ---------------------------
+#   async_remove_entry
+# ---------------------------
+async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    """Clean up router-side resources when the integration is removed."""
+    api = MikrotikAPI(
+        config_entry.data[CONF_HOST],
+        config_entry.data[CONF_USERNAME],
+        config_entry.data[CONF_PASSWORD],
+        config_entry.data[CONF_PORT],
+        config_entry.data[CONF_SSL],
+        config_entry.data[CONF_VERIFY_SSL],
+    )
+
+    connected = await hass.async_add_executor_job(api.connect)
+    if not connected:
+        _LOGGER.warning(
+            "Mikrotik %s: Could not connect during removal — skipping cleanup",
+            config_entry.data.get(CONF_HOST),
+        )
+        return
+
+    def _cleanup():
+        try:
+            existing = api.query("/ip/kid-control") or []
+            if any(p.get("name") == "ha-monitoring" for p in existing):
+                api.execute("/ip/kid-control", "remove", "name", "ha-monitoring")
+                _LOGGER.info(
+                    "Mikrotik %s: Removed ha-monitoring kid-control profile",
+                    config_entry.data.get(CONF_HOST),
+                )
+        finally:
+            api.disconnect()
+
+    await hass.async_add_executor_job(_cleanup)
 
 
 # ---------------------------

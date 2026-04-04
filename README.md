@@ -243,6 +243,20 @@ During setup, choose a sensor preset:
 
 Traffic sensors support multiple units: bps, Kbps, Mbps, B/s, KB/s, MB/s — configurable per integration entry.
 
+## Removal
+
+1. **Settings -> Devices & Services**
+2. Find **Mikrotik Router** -> click the three-dot menu -> **Delete**
+3. Confirm removal
+
+When removed, the integration automatically cleans up the `ha-monitoring` Kid Control profile from the router (if it was created for Client Traffic monitoring). No manual cleanup needed on the router side.
+
+If the integration cannot connect to the router during removal, the cleanup is skipped — in that case you can remove the profile manually:
+
+```
+/ip/kid-control/remove [find name=ha-monitoring]
+```
+
 ## Troubleshooting
 
 ### Diagnostics Export
