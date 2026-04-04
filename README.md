@@ -222,6 +222,7 @@ This integration is distributed via [HACS](https://hacs.xyz/) as a custom reposi
 3. Choose whether to **scan the network** for MikroTik routers automatically:
    - **Scan** — the integration probes the local network (ARP table + default gateway). If routers are found, a list appears — select one or choose *Enter manually*. If nothing is found, the manual entry form opens with an info message.
    - **Skip** — go directly to manual entry
+   > **Tip:** Router names appear in the list if MNDP or SNMP is enabled on the router. For SNMP, enable it on the router with community string `public` (`/snmp set enabled=yes`). For MNDP, ensure neighbor discovery is active on the interface facing HA.
 4. Fill in the connection details (see parameters below)
 5. Choose a sensor preset and finish setup
 
