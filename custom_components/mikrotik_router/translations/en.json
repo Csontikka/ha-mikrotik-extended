@@ -88,8 +88,7 @@
           "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
           "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
         }
-      }
-    },
+      },
       "reauth_confirm": {
         "title": "Re-authenticate Mikrotik Router",
         "description": "Enter new credentials for {host}.",
