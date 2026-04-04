@@ -651,6 +651,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 await self.hass.async_add_executor_job(self.get_dns)
 
             if not self.api.connected():
+                if self.api.error == "wrong_login":
+                    self.config_entry.async_start_reauth(self.hass)
                 raise UpdateFailed("Mikrotik Disconnected")
 
             if self.api.connected():

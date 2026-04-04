@@ -176,6 +176,52 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Occurs when a previously entry setup fails and is re-initiated."""
         return await self.async_step_user(user_input)
 
+    async def async_step_reauth(self, entry_data):
+        """Handle re-authentication triggered by an auth failure."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Handle re-authentication confirmation form."""
+        errors = {}
+        reauth_entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            api = MikrotikAPI(
+                host=reauth_entry.data[CONF_HOST],
+                username=user_input[CONF_USERNAME],
+                password=user_input[CONF_PASSWORD],
+                port=reauth_entry.data[CONF_PORT],
+                use_ssl=reauth_entry.data.get(CONF_SSL, False),
+                ssl_verify=reauth_entry.data.get(CONF_VERIFY_SSL, False),
+            )
+            if not api.connect():
+                errors[CONF_PASSWORD] = api.error
+            else:
+                self.hass.config_entries.async_update_entry(
+                    reauth_entry,
+                    data={
+                        **reauth_entry.data,
+                        CONF_USERNAME: user_input[CONF_USERNAME],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    },
+                )
+                return self.async_abort(reason="reauth_successful")
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_USERNAME,
+                        default=reauth_entry.data.get(CONF_USERNAME, ""),
+                    ): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
+            description_placeholders={"host": reauth_entry.data[CONF_HOST]},
+            errors=errors,
+        )
+
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         errors = {}

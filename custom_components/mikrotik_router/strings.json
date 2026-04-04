@@ -83,6 +83,16 @@
         }
       }
     },
+    "step": {
+      "reauth_confirm": {
+        "title": "Re-authenticate Mikrotik Router",
+        "description": "Enter new credentials for {host}.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
     "error": {
       "name_exists": "Name already exists.",
       "cannot_connect": "Cannot connect to Mikrotik.",
@@ -90,6 +100,10 @@
       "ssl_verify_failure": "Certificate verify failed",
       "connection_timeout": "Mikrotik connection timeout.",
       "wrong_login": "Invalid user name or password."
+    },
+    "abort": {
+      "already_configured": "Device is already configured.",
+      "reauth_successful": "Re-authentication was successful."
     }
   },
   "options": {
