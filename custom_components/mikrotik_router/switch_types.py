@@ -220,6 +220,7 @@ SENSOR_TYPES: tuple[MikrotikSwitchEntityDescription, ...] = (
     MikrotikSwitchEntityDescription(
         key="interface-port",
         name="Port",
+        translation_key="interface_port",
         icon_enabled="mdi:lan-connect",
         icon_disabled="mdi:lan-pending",
         entity_category=EntityCategory.CONFIG,
@@ -313,6 +314,7 @@ SENSOR_TYPES: tuple[MikrotikSwitchEntityDescription, ...] = (
     MikrotikSwitchEntityDescription(
         key="ppp_secret",
         name="PPP Secret",
+        translation_key="ppp_secret",
         icon_enabled="mdi:account-outline",
         icon_disabled="mdi:account-off-outline",
         entity_category=EntityCategory.CONFIG,
@@ -365,6 +367,7 @@ SENSOR_TYPES: tuple[MikrotikSwitchEntityDescription, ...] = (
     MikrotikSwitchEntityDescription(
         key="kidcontrol_paused",
         name="paused",
+        translation_key="kidcontrol_paused",
         icon_enabled="mdi:account-outline",
         icon_disabled="mdi:account-off-outline",
         entity_category=EntityCategory.CONFIG,

@@ -153,6 +153,7 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
     MikrotikBinarySensorEntityDescription(
         key="system_ups",
         name="UPS",
+        translation_key="system_ups",
         icon_enabled="",
         icon_disabled="",
         device_class=BinarySensorDeviceClass.POWER,
@@ -168,6 +169,7 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
     MikrotikBinarySensorEntityDescription(
         key="ppp_tracker",
         name="PPP",
+        translation_key="ppp_tracker",
         icon_enabled="mdi:account-network-outline",
         icon_disabled="mdi:account-off-outline",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -186,6 +188,7 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
     MikrotikBinarySensorEntityDescription(
         key="interface-connection",
         name="Connection",
+        translation_key="interface_connection",
         icon_enabled="mdi:lan-connect",
         icon_disabled="mdi:lan-pending",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -203,6 +206,7 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
     MikrotikBinarySensorEntityDescription(
         key="netwatch",
         name="Netwatch",
+        translation_key="netwatch",
         icon_enabled="mdi:lan-connect",
         icon_disabled="mdi:lan-pending",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -221,6 +225,7 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
     MikrotikBinarySensorEntityDescription(
         key="wireguard_peer",
         name="Connected",
+        translation_key="wireguard_peer",
         icon_enabled="mdi:vpn",
         icon_disabled="mdi:vpn",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,

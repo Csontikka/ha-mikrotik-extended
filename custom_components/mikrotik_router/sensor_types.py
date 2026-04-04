@@ -194,6 +194,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_temperature",
         name="Temperature",
+        translation_key="system_temperature",
         icon="mdi:thermometer",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -211,6 +212,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_voltage",
         name="Voltage",
+        translation_key="system_voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         suggested_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -228,6 +230,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_cpu-temperature",
         name="CPU temperature",
+        translation_key="system_cpu_temperature",
         icon="mdi:thermometer",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -245,6 +248,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_switch-temperature",
         name="Switch temperature",
+        translation_key="system_switch_temperature",
         icon="mdi:thermometer",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -262,6 +266,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_board-temperature1",
         name="Board temperature",
+        translation_key="system_board_temperature1",
         icon="mdi:thermometer",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -279,6 +284,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_phy-temperature",
         name="PHY temperature",
+        translation_key="system_phy_temperature",
         icon="mdi:thermometer",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         suggested_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -296,6 +302,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_power-consumption",
         name="Power consumption",
+        translation_key="system_power_consumption",
         icon="mdi:transmission-tower",
         native_unit_of_measurement=UnitOfPower.WATT,
         suggested_unit_of_measurement=UnitOfPower.WATT,
@@ -313,6 +320,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_poe_out_consumption",
         name="PoE out power consumption",
+        translation_key="system_poe_out_consumption",
         icon="mdi:flash",
         native_unit_of_measurement=UnitOfPower.WATT,
         suggested_unit_of_measurement=UnitOfPower.WATT,
@@ -330,6 +338,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_fan1-speed",
         name="Fan1 speed",
+        translation_key="system_fan1_speed",
         icon="mdi:fan",
         native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
         device_class=None,
@@ -346,6 +355,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_fan2-speed",
         name="Fan2 speed",
+        translation_key="system_fan2_speed",
         icon="mdi:fan",
         native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
         device_class=None,
@@ -362,6 +372,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_fan3-speed",
         name="Fan3 speed",
+        translation_key="system_fan3_speed",
         icon="mdi:fan",
         native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
         device_class=None,
@@ -378,6 +389,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_fan4-speed",
         name="Fan4 speed",
+        translation_key="system_fan4_speed",
         icon="mdi:fan",
         native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
         device_class=None,
@@ -394,6 +406,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_psu1_current",
         name="PSU 1 power consumption",
+        translation_key="system_psu1_current",
         icon="mdi:lightning-bolt-circle",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         suggested_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
@@ -412,6 +425,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_psu1_voltage",
         name="PSU 1 Voltage",
+        translation_key="system_psu1_voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         suggested_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -430,6 +444,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_psu2_current",
         name="PSU 2 power consumption",
+        translation_key="system_psu2_current",
         icon="mdi:lightning-bolt-circle",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         suggested_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
@@ -448,6 +463,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_psu2_voltage",
         name="PSU 2 Voltage",
+        translation_key="system_psu2_voltage",
         icon="mdi:lightning-bolt",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         suggested_unit_of_measurement=UnitOfElectricPotential.VOLT,
@@ -466,6 +482,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_uptime",
         name="Uptime",
+        translation_key="system_uptime",
         icon=None,
         native_unit_of_measurement=None,
         device_class=SensorDeviceClass.TIMESTAMP,
@@ -481,6 +498,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_cpu-load",
         name="CPU load",
+        translation_key="system_cpu_load",
         icon="mdi:speedometer",
         native_unit_of_measurement=PERCENTAGE,
         device_class=None,
@@ -496,6 +514,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_memory-usage",
         name="Memory usage",
+        translation_key="system_memory_usage",
         icon="mdi:memory",
         native_unit_of_measurement=PERCENTAGE,
         device_class=None,
@@ -511,6 +530,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_hdd-usage",
         name="HDD usage",
+        translation_key="system_hdd_usage",
         icon="mdi:harddisk",
         native_unit_of_measurement=PERCENTAGE,
         device_class=None,
@@ -526,6 +546,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_clients-wired",
         name="Wired clients",
+        translation_key="system_clients_wired",
         icon="mdi:lan",
         native_unit_of_measurement=None,
         device_class=None,
@@ -541,6 +562,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_clients-wireless",
         name="Wireless clients",
+        translation_key="system_clients_wireless",
         icon="mdi:wifi",
         native_unit_of_measurement=None,
         device_class=None,
@@ -556,6 +578,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_captive-authorized",
         name="Captive portal clients",
+        translation_key="system_captive_authorized",
         icon="mdi:key-wireless",
         native_unit_of_measurement=None,
         device_class=None,
@@ -571,6 +594,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_gps-latitude",
         name="Latitude",
+        translation_key="system_gps_latitude",
         icon="mdi:latitude",
         native_unit_of_measurement=None,
         device_class=None,
@@ -588,6 +612,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_gps-longitude",
         name="Longitude",
+        translation_key="system_gps_longitude",
         icon="mdi:longitude",
         native_unit_of_measurement=None,
         device_class=None,
@@ -605,6 +630,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="traffic_tx",
         name="TX",
+        translation_key="traffic_tx",
         icon="mdi:upload-network-outline",
         native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
@@ -627,6 +653,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="traffic_rx",
         name="RX",
+        translation_key="traffic_rx",
         icon="mdi:download-network-outline",
         native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
@@ -649,6 +676,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="tx-total",
         name="TX total",
+        translation_key="tx_total",
         icon="mdi:upload-network",
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
@@ -671,6 +699,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="rx-total",
         name="RX total",
+        translation_key="rx_total",
         icon="mdi:download-network",
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
@@ -693,6 +722,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="client_traffic_tx",
         name="TX",
+        translation_key="client_traffic_tx",
         icon="mdi:upload-network",
         native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
@@ -715,6 +745,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="client_traffic_rx",
         name="RX",
+        translation_key="client_traffic_rx",
         icon="mdi:download-network",
         native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
@@ -755,6 +786,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="ip_address",
         name="IP Address",
+        translation_key="ip_address",
         icon="mdi:ip",
         entity_category=EntityCategory.DIAGNOSTIC,
         ha_group="data__interface",
@@ -771,6 +803,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="cloud_public_address",
         name="Public Address",
+        translation_key="cloud_public_address",
         icon="mdi:ip-network-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -783,6 +816,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="wireguard_peer_rx",
         name="RX",
+        translation_key="wireguard_peer_rx",
         icon="mdi:download-network-outline",
         native_unit_of_measurement=UnitOfInformation.BYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
@@ -804,6 +838,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="wireguard_peer_tx",
         name="TX",
+        translation_key="wireguard_peer_tx",
         icon="mdi:upload-network-outline",
         native_unit_of_measurement=UnitOfInformation.BYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
@@ -825,6 +860,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="wireguard_peer_handshake",
         name="Last Handshake",
+        translation_key="wireguard_peer_handshake",
         icon="mdi:handshake-outline",
         native_unit_of_measurement="s",
         device_class=SensorDeviceClass.DURATION,
@@ -846,6 +882,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_device_mode",
         name="Device Mode",
+        translation_key="system_device_mode",
         icon="mdi:cog-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -863,6 +900,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="system_packages",
         name="Packages",
+        translation_key="system_packages",
         icon="mdi:package-variant",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
@@ -880,6 +918,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
     MikrotikSensorEntityDescription(
         key="container_status",
         name="Status",
+        translation_key="container_status",
         icon="mdi:docker",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,

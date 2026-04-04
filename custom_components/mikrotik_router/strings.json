@@ -210,5 +210,63 @@
     "invalid_mac": {
       "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
     }
+  },
+  "entity": {
+    "sensor": {
+      "system_temperature": { "name": "Temperature" },
+      "system_voltage": { "name": "Voltage" },
+      "system_cpu_temperature": { "name": "CPU temperature" },
+      "system_switch_temperature": { "name": "Switch temperature" },
+      "system_board_temperature1": { "name": "Board temperature" },
+      "system_phy_temperature": { "name": "PHY temperature" },
+      "system_power_consumption": { "name": "Power consumption" },
+      "system_poe_out_consumption": { "name": "PoE out power consumption" },
+      "system_fan1_speed": { "name": "Fan1 speed" },
+      "system_fan2_speed": { "name": "Fan2 speed" },
+      "system_fan3_speed": { "name": "Fan3 speed" },
+      "system_fan4_speed": { "name": "Fan4 speed" },
+      "system_psu1_current": { "name": "PSU 1 current" },
+      "system_psu1_voltage": { "name": "PSU 1 voltage" },
+      "system_psu2_current": { "name": "PSU 2 current" },
+      "system_psu2_voltage": { "name": "PSU 2 voltage" },
+      "system_uptime": { "name": "Uptime" },
+      "system_cpu_load": { "name": "CPU load" },
+      "system_memory_usage": { "name": "Memory usage" },
+      "system_hdd_usage": { "name": "HDD usage" },
+      "system_clients_wired": { "name": "Wired clients" },
+      "system_clients_wireless": { "name": "Wireless clients" },
+      "system_captive_authorized": { "name": "Captive portal clients" },
+      "system_gps_latitude": { "name": "Latitude" },
+      "system_gps_longitude": { "name": "Longitude" },
+      "traffic_tx": { "name": "TX" },
+      "traffic_rx": { "name": "RX" },
+      "tx_total": { "name": "TX total" },
+      "rx_total": { "name": "RX total" },
+      "client_traffic_tx": { "name": "TX" },
+      "client_traffic_rx": { "name": "RX" },
+      "ip_address": { "name": "IP address" },
+      "cloud_public_address": { "name": "Public address" },
+      "wireguard_peer_rx": { "name": "RX" },
+      "wireguard_peer_tx": { "name": "TX" },
+      "wireguard_peer_handshake": { "name": "Last handshake" },
+      "system_device_mode": { "name": "Device mode" },
+      "system_packages": { "name": "Packages" },
+      "container_status": { "name": "Status" }
+    },
+    "binary_sensor": {
+      "system_ups": { "name": "UPS" },
+      "ppp_tracker": { "name": "PPP" },
+      "interface_connection": { "name": "Connection" },
+      "netwatch": { "name": "Netwatch" },
+      "wireguard_peer": { "name": "Connected" }
+    },
+    "switch": {
+      "interface_port": { "name": "Port" },
+      "ppp_secret": { "name": "PPP secret" },
+      "kidcontrol_paused": { "name": "Paused" }
+    },
+    "button": {
+      "reboot": { "name": "Reboot" }
+    }
   }
 }

@@ -39,6 +39,7 @@ SENSOR_TYPES: tuple[MikrotikButtonEntityDescription, ...] = (
     MikrotikButtonEntityDescription(
         key="reboot",
         name="Reboot",
+        translation_key="reboot",
         icon="mdi:restart",
         device_class=None,
         entity_category=EntityCategory.CONFIG,
