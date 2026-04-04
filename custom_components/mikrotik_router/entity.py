@@ -165,7 +165,7 @@ async def async_add_entities(
                         await async_check_exist(obj, coordinator, uid)
 
     await async_update_controller(
-        hass.data[DOMAIN][config_entry.entry_id].data_coordinator
+        config_entry.runtime_data.data_coordinator
     )
 
     # Remove orphaned entities that are no longer provided by this platform
