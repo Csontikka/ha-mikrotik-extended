@@ -258,10 +258,11 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
     @property
     def unique_id(self) -> str:
         """Return a unique id for this entity"""
+        entry_id = self._config_entry.entry_id
         if self._uid:
-            return f"{self._inst.lower()}-{self.entity_description.key}-{slugify(str(self._data[self.entity_description.data_reference]).lower())}"
+            return f"{entry_id}-{self.entity_description.key}-{slugify(str(self._data[self.entity_description.data_reference]).lower())}"
         else:
-            return f"{self._inst.lower()}-{self.entity_description.key}"
+            return f"{entry_id}-{self.entity_description.key}"
 
     # @property
     # def available(self) -> bool:

@@ -324,7 +324,8 @@ class TestUniqueId:
         desc = _make_entity_description(key="cpu_load", data_path="resource")
         coord = _make_coordinator(hass, data={"resource": {"cpu-load": 0}})
         entity = _make_entity(coord, desc, uid=None)
-        assert entity.unique_id == "testrouter-cpu_load"
+        entry_id = coord.config_entry.entry_id
+        assert entity.unique_id == f"{entry_id}-cpu_load"
 
     def test_unique_id_with_uid_uses_data_reference(self, hass):
         desc = _make_entity_description(
@@ -338,4 +339,15 @@ class TestUniqueId:
             data={"interface": {"ether1": {"name": "ether1", "type": "ether"}}},
         )
         entity = _make_entity(coord, desc, uid="ether1")
-        assert entity.unique_id == "testrouter-iface_status-ether1"
+        entry_id = coord.config_entry.entry_id
+        assert entity.unique_id == f"{entry_id}-iface_status-ether1"
+
+    def test_unique_id_does_not_contain_inst_name(self, hass):
+        """unique_id should use entry_id, not the config entry name."""
+        desc = _make_entity_description(key="cpu_load", data_path="resource")
+        coord = _make_coordinator(hass, data={"resource": {"cpu-load": 0}})
+        entity = _make_entity(coord, desc, uid=None)
+        # unique_id must NOT contain the instance name
+        assert "testrouter" not in entity.unique_id
+        # unique_id must contain the entry_id
+        assert coord.config_entry.entry_id in entity.unique_id
