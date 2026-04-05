@@ -14,7 +14,23 @@ from mac_vendor_lookup import AsyncMacLookup
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.components.repairs import IssueSeverity, async_create_issue, async_delete_issue
+try:
+    from homeassistant.components.repairs import (
+        IssueSeverity,
+        async_create_issue,
+        async_delete_issue,
+    )
+except ImportError:
+    try:
+        from homeassistant.components.repairs import (
+            async_create_issue,
+            async_delete_issue,
+        )
+        from homeassistant.helpers.issue_registry import IssueSeverity
+    except ImportError:
+        async_create_issue = None
+        async_delete_issue = None
+        IssueSeverity = None
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -663,33 +679,36 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 await self.hass.async_add_executor_job(self.get_dns)
 
             if not self.api.connected():
+                if async_create_issue is not None:
+                    if self.api.error == "wrong_login":
+                        async_create_issue(
+                            self.hass,
+                            DOMAIN,
+                            "wrong_credentials",
+                            is_fixable=False,
+                            severity=IssueSeverity.ERROR,
+                            translation_key="wrong_credentials",
+                            translation_placeholders={"host": self.host},
+                        )
+                    elif self.api.error in ("ssl_handshake_failure", "ssl_verify_failure"):
+                        async_create_issue(
+                            self.hass,
+                            DOMAIN,
+                            "ssl_error",
+                            is_fixable=False,
+                            severity=IssueSeverity.ERROR,
+                            translation_key="ssl_error",
+                            translation_placeholders={"host": self.host},
+                        )
                 if self.api.error == "wrong_login":
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        "wrong_credentials",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="wrong_credentials",
-                        translation_placeholders={"host": self.host},
-                    )
                     self.config_entry.async_start_reauth(self.hass)
-                elif self.api.error in ("ssl_handshake_failure", "ssl_verify_failure"):
-                    async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        "ssl_error",
-                        is_fixable=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key="ssl_error",
-                        translation_placeholders={"host": self.host},
-                    )
                 raise UpdateFailed("Mikrotik Disconnected")
 
             if self.api.connected():
                 self.last_hwinfo_update = datetime.now().replace(microsecond=0)
-                async_delete_issue(self.hass, DOMAIN, "wrong_credentials")
-                async_delete_issue(self.hass, DOMAIN, "ssl_error")
+                if async_delete_issue is not None:
+                    async_delete_issue(self.hass, DOMAIN, "wrong_credentials")
+                    async_delete_issue(self.hass, DOMAIN, "ssl_error")
 
         await self.hass.async_add_executor_job(self.get_system_resource)
 
