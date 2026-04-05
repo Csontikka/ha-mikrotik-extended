@@ -246,9 +246,13 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                         break
             return self._show_config_form(user_input=prefill)
 
+        sorted_devices = sorted(
+            self._discovered,
+            key=lambda d: tuple(int(p) for p in d.ip.split(".") if p.isdigit()),
+        )
         options = [
             SelectOptionDict(value=dev.ip, label=dev.label())
-            for dev in self._discovered
+            for dev in sorted_devices
         ]
         options.append(SelectOptionDict(value="manual", label="Enter manually"))
 
@@ -256,7 +260,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="pick_device",
             data_schema=vol.Schema(
                 {
-                    vol.Required("router", default=self._discovered[0].ip): SelectSelector(
+                    vol.Required("router", default=sorted_devices[0].ip): SelectSelector(
                         SelectSelectorConfig(
                             options=options,
                             mode=SelectSelectorMode.LIST,
