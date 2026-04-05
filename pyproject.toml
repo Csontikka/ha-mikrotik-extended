@@ -1,0 +1,50 @@
+[project]
+name = "ha-mikrotik-router"
+version = "0.2.3"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 220
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by line-length)
+    "B008",   # do not perform function calls in argument defaults
+    "SIM108", # use ternary operator
+    "RUF012", # mutable class attributes
+    "UP007",  # use X | Y for union types (not all HA versions support it)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.mikrotik_router"]
+
+[tool.coverage.run]
+source = ["custom_components/mikrotik_router"]
+omit = [
+    "tests/*",
+    "custom_components/mikrotik_router/__pycache__/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 50
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+]
