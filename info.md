@@ -1,6 +1,7 @@
 Monitor and control your Mikrotik device from Home Assistant.
 
-![Mikrotik Logo](https://raw.githubusercontent.com/tomaae/homeassistant-mikrotik_router/master/docs/assets/images/ui/header.png)
+<!-- TODO: replace with project banner image -->
+![Mikrotik Router](https://via.placeholder.com/800x200?text=MikroTik+Router+for+Home+Assistant)
  * Interfaces:
    * Enable/disable interfaces
    * SFP status and information

@@ -303,6 +303,3 @@ logger:
 
 Found a bug or have an idea? [Open an issue](https://github.com/Csontikka/ha-mikrotik-router/issues) — feedback and feature requests are welcome!
 
-## Credits
-
-Originally based on [homeassistant-mikrotik_router](https://github.com/tomaae/homeassistant-mikrotik_router) by [@tomaae](https://github.com/tomaae), licensed under MIT.
