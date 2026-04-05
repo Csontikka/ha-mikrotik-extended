@@ -27,7 +27,9 @@ ENTRY_DATA = {
     CONF_NAME: "Mikrotik",
 }
 
+# User step schema requires: name, host, username, password, port, ssl_mode
 USER_INPUT = {
+    CONF_NAME: "Mikrotik",
     CONF_HOST: "192.168.88.1",
     CONF_USERNAME: "admin",
     CONF_PASSWORD: "test",
@@ -42,6 +44,26 @@ BASIC_OPTIONS_INPUT = {
 }
 
 
+async def _init_and_skip_discovery(hass):
+    """Init flow, pass through discovery step (scan=False), return flow result on 'user' step."""
+    with patch(
+        "custom_components.mikrotik_router.config_flow.async_scan_mndp",
+        return_value=[],
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "discovery"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"scan": False}
+        )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "user"
+    return result
+
+
 async def test_successful_setup_recommended(hass):
     """Test full config flow with recommended preset — entry is created."""
     with patch(
@@ -52,27 +74,23 @@ async def test_successful_setup_recommended(hass):
         mock_api.error = None
         mock_api_cls.return_value = mock_api
 
-        # Step 1: user — host/credentials
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["step_id"] == "user"
+        result = await _init_and_skip_discovery(hass)
 
+        # Step: user — credentials
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], USER_INPUT
         )
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "basic_options"
 
-        # Step 2: basic_options
+        # Step: basic_options
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], BASIC_OPTIONS_INPUT
         )
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "sensor_mode"
 
-        # Step 3: sensor_mode — choose recommended preset
+        # Step: sensor_mode — choose recommended preset
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"sensor_preset": "recommended"}
         )
@@ -93,9 +111,7 @@ async def test_duplicate_entry_aborted(hass):
         mock_api_cls.return_value = mock_api
 
         # First entry — full flow
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
+        result = await _init_and_skip_discovery(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], USER_INPUT
         )
@@ -108,9 +124,7 @@ async def test_duplicate_entry_aborted(hass):
         assert result["type"] == FlowResultType.CREATE_ENTRY
 
         # Second attempt with the same host — should abort
-        result2 = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
+        result2 = await _init_and_skip_discovery(hass)
         result2 = await hass.config_entries.flow.async_configure(
             result2["flow_id"], USER_INPUT
         )
@@ -128,9 +142,7 @@ async def test_connection_failure(hass):
         mock_api.error = "cannot_connect"
         mock_api_cls.return_value = mock_api
 
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
+        result = await _init_and_skip_discovery(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], USER_INPUT
         )
