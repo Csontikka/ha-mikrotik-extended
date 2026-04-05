@@ -166,7 +166,7 @@ def get_uid(entry, key, key_secondary, key_search, keymap) -> Optional[str]:
     uid = None
     if not key_search:
         key_primary_found = key in entry
-        if key_primary_found and key not in entry and not entry[key]:
+        if key_primary_found and not entry[key]:
             return None
 
         if key_primary_found:
