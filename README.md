@@ -222,9 +222,9 @@ This integration is distributed via [HACS](https://hacs.xyz/) as a custom reposi
 1. Create a user on your MikroTik router with the required permissions (see above)
 2. In Home Assistant: **Settings -> Devices & Services -> Add Integration -> Mikrotik Router**
 3. Choose whether to **scan the network** for MikroTik routers automatically:
-   - **Scan** — the integration probes the local network (ARP table + default gateway). If routers are found, a list appears — select one or choose *Enter manually*. If nothing is found, the manual entry form opens with an info message.
+   - **Scan** — the integration scans the local /24 subnet, checks the ARP table for MikroTik devices (by MAC OUI), and listens for MNDP broadcast announcements. Found routers are listed sorted by IP address — select one or choose *Enter manually*. If nothing is found, the manual entry form opens with an info message.
    - **Skip** — go directly to manual entry
-   > **Tip:** Router names appear in the list if MNDP or SNMP is enabled on the router. For SNMP, enable it on the router with community string `public` (`/snmp set enabled=yes`). For MNDP, ensure neighbor discovery is active on the interface facing HA.
+   > **Tip:** Router names appear in the list if SNMP or MNDP is enabled on the router. For SNMP, enable it with community string `public` (`/snmp set enabled=yes`). For MNDP, ensure neighbor discovery is active on the interface facing HA (`/ip neighbor discovery-settings set discover-interface-list=all`).
 4. Fill in the connection details (see parameters below)
 5. Choose a sensor preset and finish setup
 
