@@ -144,10 +144,8 @@ class MikrotikRouterBoardFWUpdate(MikrotikEntity, UpdateEntity):
     @property
     def is_on(self) -> bool:
         """Return true if device is on."""
-        return (
-            self.data["routerboard"]["current-firmware"]
-            != self.data["routerboard"]["upgrade-firmware"]
-        )
+        rb = self.coordinator.data.get("routerboard", {})
+        return rb.get("current-firmware", "") != rb.get("upgrade-firmware", "")
 
     @property
     def installed_version(self) -> str:
@@ -186,10 +184,12 @@ def generate_version_list(start_version: str, end_version: str) -> list:
     """Generate a list of version strings from start_version to end_version in reverse order."""
     start = Version(start_version)
     end = Version(end_version)
+    if start > end:
+        return [str(end)]
     versions = []
 
     current = end
-    while current >= start:
+    while current >= start and len(versions) < 50:
         versions.append(str(current))
         current = decrement_version(current, start)
 
