@@ -166,9 +166,12 @@ async def async_add_entities(
                         await async_check_exist(obj, coordinator, uid)
 
         # Remove orphaned entities that are no longer provided by this platform
+        # Skip disabled entities — they are not loaded into platform.entities
         entity_registry = er.async_get(hass)
         for entry in er.async_entries_for_config_entry(entity_registry, config_entry.entry_id):
             if entry.domain == platform.domain and entry.entity_id not in platform.entities:
+                if entry.disabled:
+                    continue
                 _LOGGER.debug("Removing orphaned entity %s", entry.entity_id)
                 entity_registry.async_remove(entry.entity_id)
 
@@ -295,10 +298,11 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
                 dev_connection_value = dev_connection_value[6:]
                 dev_connection_value = self._data[dev_connection_value]
 
+        entry_id = self._config_entry.entry_id
         if self.entity_description.ha_group == "System":
             return DeviceInfo(
-                connections={(dev_connection, f"{dev_connection_value}")},
-                identifiers={(dev_connection, f"{dev_connection_value}")},
+                connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
+                identifiers={(dev_connection, f"{entry_id}-{dev_connection_value}")},
                 name=f"{self._inst} router Core",
                 model=f"{self.coordinator.data['resource']['board-name']}",
                 manufacturer=f"{self.coordinator.data['resource']['platform']}",
@@ -322,7 +326,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
                 default_manufacturer=f"{dev_manufacturer}",
                 via_device=(
                     DOMAIN,
-                    f"{self.coordinator.data['routerboard']['serial-number']}",
+                    f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
                 ),
             )
         else:
@@ -336,13 +340,13 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             else:
                 dev_display_name = f"{self._inst} router {dev_group}"
             return DeviceInfo(
-                connections={(dev_connection, f"{dev_connection_value}")},
+                connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
                 default_name=dev_display_name,
                 default_model=f"{self.coordinator.data['resource']['board-name']}",
                 default_manufacturer=f"{self.coordinator.data['resource']['platform']}",
                 via_device=(
                     DOMAIN,
-                    f"{self.coordinator.data['routerboard']['serial-number']}",
+                    f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
                 ),
             )
 
