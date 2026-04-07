@@ -541,7 +541,7 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
         """Manage the basic options options."""
         if user_input is not None:
             self.options.update(user_input)
-            return await self.async_step_sensor_select()
+            return await self.async_step_sensor_mode()
 
         return self.async_show_form(
             step_id="basic_options",
@@ -564,6 +564,35 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                         CONF_ZONE,
                         default=self._config_entry.options.get(CONF_ZONE, STATE_HOME),
                     ): str,
+                }
+            ),
+        )
+
+    async def async_step_sensor_mode(self, user_input=None):
+        """Handle sensor mode/preset selection in options flow."""
+        if user_input is not None:
+            mode = user_input.get("sensor_preset", "custom")
+            if mode == "custom":
+                return await self.async_step_sensor_select()
+            self.options.update(_SENSOR_PRESETS[mode])
+            return self.async_create_entry(title="", data=self.options)
+
+        return self.async_show_form(
+            step_id="sensor_mode",
+            last_step=False,
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("sensor_preset", default="custom"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(value="minimal", label="Minimal — port tracker only"),
+                                SelectOptionDict(value="recommended", label="Recommended — port tracker, NAT, mangle, filter, scripts, netwatch"),
+                                SelectOptionDict(value="full", label="Full — all sensors enabled (warning: can generate hundreds of entities on large networks)"),
+                                SelectOptionDict(value="custom", label="Custom — manually select sensors"),
+                            ],
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    ),
                 }
             ),
         )

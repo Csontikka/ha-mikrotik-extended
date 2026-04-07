@@ -37,8 +37,18 @@
           "track_network_hosts_timeout": "Hálózati eszközök követésének időtúllépése (másodperc)",
           "zone": "Zóna az eszközkövető számára"
         },
-        "title": "Mikrotik Router opciók (1/2)",
+        "title": "Mikrotik Router opciók (1/3)",
         "description": "Az integráció konfigurálása"
+      },
+      "sensor_mode": {
+        "data": {
+          "sensor_preset": "Szenzor preset"
+        },
+        "data_description": {
+          "sensor_preset": "Válassz egy presetet a szenzorok és kapcsolók gyors konfigurálásához, vagy válaszd az Egyéni opciót az egyenkénti beállításhoz."
+        },
+        "title": "Mikrotik Router opciók (2/3)",
+        "description": "Szenzor preset kiválasztása"
       },
       "sensor_select": {
         "data": {
@@ -60,7 +70,7 @@
           "track_network_hosts": "Hálózati eszközök követése",
           "sensor_wireguard": "WireGuard peer szenzorok"
         },
-        "title": "Mikrotik Router opciók (2/2)",
+        "title": "Mikrotik Router opciók (3/3)",
         "description": "Érzékelők és kapcsolók engedélyezése"
       }
     }
