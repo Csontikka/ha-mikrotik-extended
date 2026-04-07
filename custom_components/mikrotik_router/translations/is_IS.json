@@ -27,7 +27,7 @@
           "ssl_mode": "Öryggistengingar"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "RouterOS API-gátt. Skildu eftir 0 til að nota sjálfgefið: 8728 (án SSL) eða 8729 (með SSL)."
         }
       },
       "basic_options": {
@@ -39,9 +39,9 @@
           "zone": "Svæði fyrir tækjarakningu"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "Lágmark: 10s. Sjálfgefið: 30s. Lægri gildi auka RouterOS API-álag.",
+          "track_network_hosts_timeout": "Aðeins þráðtengdar tæki. Sekúndur áður en tæki telst vera offline ef það sést ekki í ARP. Sjálfgefið: 180s.",
+          "zone": "Heiti Home Assistant svæðis til að nota þegar rakið tæki tengist. Sjálfgefið: home."
         }
       },
       "sensor_mode": {
@@ -51,7 +51,7 @@
           "sensor_preset": "Forstilling skynjara"
         },
         "data_description": {
-          "sensor_preset": "Recommended enables the most useful sensors with minimal entity count. Full enables everything — use with caution on large networks."
+          "sensor_preset": "Mælt með virkjar gagnlegustu skynjara með lágmarks fjölda eininga. Full virkjar allt — notaðu með varúð á stórum netum."
         }
       },
       "sensor_select": {
@@ -77,23 +77,23 @@
           "sensor_wireguard": "WireGuard peer skynjarar"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "Bætir við heimildarstöðu hotspot á raktar tæki. Aðeins gagnlegt ef captive portal (hotspot) er stilltur.",
+          "sensor_client_traffic": "2 skynjarar á hvert rakið tæki (TX/RX hraði). Krefst RouterOS 7 með Kid Control — samþættingin býr sjálfkrafa til 'ha-monitoring' notandasnið á beininum þegar virkjað. Skynjarar birtast aðeins fyrir tæki sem Kid Control rekur virkt. Athugið: RouterOS 6 er ekki studdur.",
+          "sensor_containers": "Skynjari og rofi fyrir hvern gám til að fylgjast með og ræsa/stöðva Docker-líka gáma.",
+          "sensor_environment": "Skynjarar fyrir RouterOS umhverfisbreytur.",
+          "sensor_filter": "Rofi fyrir hverja Filter-reglu til að virkja/slökkva á eldveggssíureglum frá HA. Viðvörun: býr til eina einingu fyrir hverja síureglu.",
+          "sensor_kidcontrol": "Rofar fyrir tækjasnið Kid Control (gera hlé á/halda áfram netaðgangi).",
+          "sensor_mangle": "Rofi fyrir hverja Mangle-reglu til að virkja/slökkva á pakkamerkingareglum frá HA. Viðvörun: býr til eina einingu fyrir hverja Mangle-reglu.",
+          "sensor_nat": "Rofi fyrir hverja NAT-reglu til að virkja/slökkva á reglum frá HA. Viðvörun: býr til eina einingu fyrir hverja NAT-reglu.",
+          "sensor_netwatch_tracker": "Tvíundarskynjari fyrir hverja Netwatch-færslu sem sýnir aðgengileika.",
+          "sensor_port_tracker": "Tvíundarkynjari fyrir hvern port sem sýnir tengistöðu (tengd/ótengd).",
+          "sensor_port_traffic": "4 skynjarar fyrir hvert viðmót (TX/RX bæti og samtölur). Viðvörun: býr til 4 einingar fyrir hvert viðmót — slökktu á ef umferðargröf eru ekki þörf.",
+          "sensor_ppp": "Rofi fyrir hverja PPP secret (notanda) til að virkja/slökkva á VPN/PPPoE reikningum frá HA.",
+          "sensor_routing_rules": "Rofi fyrir hverja Routing Rule til að virkja/slökkva á stefnuleið reglum frá HA. Viðvörun: býr til eina einingu fyrir hverja leiðarreglu.",
+          "sensor_scripts": "Hnappur fyrir hvert script til að keyra RouterOS script frá HA.",
+          "sensor_simple_queues": "Rofi fyrir hverja Simple Queue-færslu til að virkja/slökkva á bandbreiddarhámarkum frá HA. Viðvörun: býr til eina einingu fyrir hverja biðraðarreglu.",
+          "track_network_hosts": "Býr til tækjarakningareiningu fyrir hvert tæki sem sést í ARP/DHCP/þráðlausum töflum. Hvert rakið tæki býr til sérstakt HA-tæki. Viðvörun: á stórum netum getur þetta myndað hundruð tækja og eininga.",
+          "sensor_wireguard": "Skynjarar fyrir hvern WireGuard peer (síðasta handaband, flutningur, endapunktur)."
         }
       },
       "reauth_confirm": {
@@ -116,7 +116,7 @@
           "ssl_mode": "Öryggistengingar"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "RouterOS API-gátt. Skildu eftir 0 til að nota sjálfgefið: 8728 (án SSL) eða 8729 (með SSL)."
         }
       }
     },
@@ -146,9 +146,9 @@
           "zone": "Svæði fyrir tækjarakningu"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "Lágmark: 10s. Sjálfgefið: 30s. Lægri gildi auka RouterOS API-álag.",
+          "track_network_hosts_timeout": "Aðeins þráðtengdar tæki. Sekúndur áður en tæki telst vera offline ef það sést ekki í ARP. Sjálfgefið: 180s.",
+          "zone": "Heiti Home Assistant svæðis til að nota þegar rakið tæki tengist. Sjálfgefið: home."
         },
         "title": "Mikrotik Router valkostir (1/3)",
         "description": "Stilla samþættingu"
@@ -158,7 +158,7 @@
           "sensor_preset": "Forstilling skynjara"
         },
         "data_description": {
-          "sensor_preset": "Select a preset to quickly configure which sensors and switches are enabled, or choose Custom to configure individually."
+          "sensor_preset": "Veldu forstillingu til að stilla fljótt hvaða skynjarar og rofar eru virkir, eða veldu Sérsniðið til að stilla hvert og eitt."
         },
         "title": "Mikrotik Router valkostir (2/3)",
         "description": "Velja forstillingu skynjara"
@@ -184,23 +184,23 @@
           "sensor_wireguard": "WireGuard peer skynjarar"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "Bætir við heimildarstöðu hotspot á raktar tæki. Aðeins gagnlegt ef captive portal (hotspot) er stilltur.",
+          "sensor_client_traffic": "2 skynjarar á hvert rakið tæki (TX/RX hraði). Krefst RouterOS 7 með Kid Control — samþættingin býr sjálfkrafa til 'ha-monitoring' notandasnið á beininum þegar virkjað. Skynjarar birtast aðeins fyrir tæki sem Kid Control rekur virkt. Athugið: RouterOS 6 er ekki studdur.",
+          "sensor_containers": "Skynjari og rofi fyrir hvern gám til að fylgjast með og ræsa/stöðva Docker-líka gáma.",
+          "sensor_environment": "Skynjarar fyrir RouterOS umhverfisbreytur.",
+          "sensor_filter": "Rofi fyrir hverja Filter-reglu til að virkja/slökkva á eldveggssíureglum frá HA. Viðvörun: býr til eina einingu fyrir hverja síureglu.",
+          "sensor_kidcontrol": "Rofar fyrir tækjasnið Kid Control (gera hlé á/halda áfram netaðgangi).",
+          "sensor_mangle": "Rofi fyrir hverja Mangle-reglu til að virkja/slökkva á pakkamerkingareglum frá HA. Viðvörun: býr til eina einingu fyrir hverja Mangle-reglu.",
+          "sensor_nat": "Rofi fyrir hverja NAT-reglu til að virkja/slökkva á reglum frá HA. Viðvörun: býr til eina einingu fyrir hverja NAT-reglu.",
+          "sensor_netwatch_tracker": "Tvíundarskynjari fyrir hverja Netwatch-færslu sem sýnir aðgengileika.",
+          "sensor_port_tracker": "Tvíundarkynjari fyrir hvern port sem sýnir tengistöðu (tengd/ótengd).",
+          "sensor_port_traffic": "4 skynjarar fyrir hvert viðmót (TX/RX bæti og samtölur). Viðvörun: býr til 4 einingar fyrir hvert viðmót — slökktu á ef umferðargröf eru ekki þörf.",
+          "sensor_ppp": "Rofi fyrir hverja PPP secret (notanda) til að virkja/slökkva á VPN/PPPoE reikningum frá HA.",
+          "sensor_routing_rules": "Rofi fyrir hverja Routing Rule til að virkja/slökkva á stefnuleið reglum frá HA. Viðvörun: býr til eina einingu fyrir hverja leiðarreglu.",
+          "sensor_scripts": "Hnappur fyrir hvert script til að keyra RouterOS script frá HA.",
+          "sensor_simple_queues": "Rofi fyrir hverja Simple Queue-færslu til að virkja/slökkva á bandbreiddarhámarkum frá HA. Viðvörun: býr til eina einingu fyrir hverja biðraðarreglu.",
+          "track_network_hosts": "Býr til tækjarakningareiningu fyrir hvert tæki sem sést í ARP/DHCP/þráðlausum töflum. Hvert rakið tæki býr til sérstakt HA-tæki. Viðvörun: á stórum netum getur þetta myndað hundruð tækja og eininga.",
+          "sensor_wireguard": "Skynjarar fyrir hvern WireGuard peer (síðasta handaband, flutningur, endapunktur)."
         },
         "title": "Mikrotik Router valkostir (3/3)",
         "description": "Virkja skynjara og rofa"
@@ -223,7 +223,7 @@
   },
   "exceptions": {
     "invalid_mac": {
-      "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
+      "message": "Ógilt MAC-vistfang snið: {mac}. Vænt snið: AA:BB:CC:DD:EE:FF"
     }
   },
   "selector": {

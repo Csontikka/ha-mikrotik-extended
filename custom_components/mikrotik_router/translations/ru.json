@@ -27,7 +27,7 @@
           "ssl_mode": "Безопасность соединения"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "Порт API RouterOS. Оставьте 0 для использования по умолчанию: 8728 (без SSL) или 8729 (SSL)."
         }
       },
       "basic_options": {
@@ -39,9 +39,9 @@
           "zone": "Зона для отслеживания устройств"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "Минимум: 10s. По умолчанию: 30s. Меньшие значения увеличивают нагрузку на API RouterOS.",
+          "track_network_hosts_timeout": "Только проводные устройства. Количество секунд, после которых устройство считается офлайн, если не обнаружено в ARP. По умолчанию: 180s.",
+          "zone": "Название зоны Home Assistant, используемой при подключении отслеживаемого устройства. По умолчанию: home."
         }
       },
       "sensor_mode": {
@@ -51,7 +51,7 @@
           "sensor_preset": "Пресет сенсоров"
         },
         "data_description": {
-          "sensor_preset": "Recommended enables the most useful sensors with minimal entity count. Full enables everything — use with caution on large networks."
+          "sensor_preset": "Рекомендуемый включает наиболее полезные сенсоры с минимальным количеством сущностей. Полный включает всё — используйте с осторожностью в больших сетях."
         }
       },
       "sensor_select": {
@@ -77,23 +77,23 @@
           "sensor_wireguard": "Сенсоры WireGuard peer"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "Добавляет статус авторизации хотспота к отслеживаемым устройствам. Полезно только если настроен captive портал (хотспот).",
+          "sensor_client_traffic": "2 сенсора на отслеживаемое устройство (скорость TX/RX). Требуется RouterOS 7 с Kid Control — интеграция автоматически создаёт профиль 'ha-monitoring' на роутере при включении. Сенсоры отображаются только для устройств, активно отслеживаемых Kid Control. Примечание: RouterOS 6 не поддерживается.",
+          "sensor_containers": "Сенсор и переключатель на контейнер для мониторинга и запуска/остановки Docker-контейнеров.",
+          "sensor_environment": "Сенсоры переменных окружения RouterOS.",
+          "sensor_filter": "Переключатель на правило Filter для включения/отключения правил брандмауэра из HA. Внимание: создаёт одну сущность на каждое правило фильтра.",
+          "sensor_kidcontrol": "Переключатели для профилей устройств Kid Control (приостановка/возобновление доступа в интернет).",
+          "sensor_mangle": "Переключатель на правило Mangle для включения/отключения правил маркировки пакетов из HA. Внимание: создаёт одну сущность на каждое правило Mangle.",
+          "sensor_nat": "Переключатель на правило NAT для включения/отключения правил из HA. Внимание: создаёт одну сущность на каждое правило NAT.",
+          "sensor_netwatch_tracker": "Бинарный сенсор на запись Netwatch, показывающий статус доступности.",
+          "sensor_port_tracker": "Бинарный сенсор на порт, показывающий состояние линка (поднят/опущен).",
+          "sensor_port_traffic": "4 сенсора на интерфейс (байты TX/RX и итоги). Внимание: создаёт 4 сущности на интерфейс — отключите если графики трафика не нужны.",
+          "sensor_ppp": "Переключатель на PPP secret (пользователя) для включения/отключения VPN/PPPoE аккаунтов из HA.",
+          "sensor_routing_rules": "Переключатель на правило маршрутизации для включения/отключения правил policy routing из HA. Внимание: создаёт одну сущность на каждое правило маршрутизации.",
+          "sensor_scripts": "Кнопка на скрипт для запуска скриптов RouterOS из HA.",
+          "sensor_simple_queues": "Переключатель на запись Simple Queue для включения/отключения ограничений полосы пропускания из HA. Внимание: создаёт одну сущность на каждое правило очереди.",
+          "track_network_hosts": "Создаёт сущность трекера устройства для каждого устройства, видимого в таблицах ARP/DHCP/wireless. Каждое отслеживаемое устройство создаёт отдельное устройство HA. Внимание: в больших сетях может быть создано сотни устройств и сущностей.",
+          "sensor_wireguard": "Сенсоры на пир WireGuard (последний handshake, передача, endpoint)."
         }
       },
       "reauth_confirm": {
@@ -116,7 +116,7 @@
           "ssl_mode": "Безопасность соединения"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "Порт API RouterOS. Оставьте 0 для использования по умолчанию: 8728 (без SSL) или 8729 (SSL)."
         }
       }
     },
@@ -146,9 +146,9 @@
           "zone": "Зона для отслеживания устройств"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "Минимум: 10s. По умолчанию: 30s. Меньшие значения увеличивают нагрузку на API RouterOS.",
+          "track_network_hosts_timeout": "Только проводные устройства. Количество секунд, после которых устройство считается офлайн, если не обнаружено в ARP. По умолчанию: 180s.",
+          "zone": "Название зоны Home Assistant, используемой при подключении отслеживаемого устройства. По умолчанию: home."
         },
         "title": "Параметры Mikrotik Router (1/3)",
         "description": "Настроить интеграцию"
@@ -158,7 +158,7 @@
           "sensor_preset": "Пресет сенсоров"
         },
         "data_description": {
-          "sensor_preset": "Select a preset to quickly configure which sensors and switches are enabled, or choose Custom to configure individually."
+          "sensor_preset": "Выберите пресет для быстрой настройки, какие сенсоры и переключатели включены, или выберите Пользовательский для индивидуальной настройки."
         },
         "title": "Параметры Mikrotik Router (2/3)",
         "description": "Выбрать пресет сенсоров"
@@ -184,23 +184,23 @@
           "sensor_wireguard": "Сенсоры WireGuard peer"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "Добавляет статус авторизации хотспота к отслеживаемым устройствам. Полезно только если настроен captive портал (хотспот).",
+          "sensor_client_traffic": "2 сенсора на отслеживаемое устройство (скорость TX/RX). Требуется RouterOS 7 с Kid Control — интеграция автоматически создаёт профиль 'ha-monitoring' на роутере при включении. Сенсоры отображаются только для устройств, активно отслеживаемых Kid Control. Примечание: RouterOS 6 не поддерживается.",
+          "sensor_containers": "Сенсор и переключатель на контейнер для мониторинга и запуска/остановки Docker-контейнеров.",
+          "sensor_environment": "Сенсоры переменных окружения RouterOS.",
+          "sensor_filter": "Переключатель на правило Filter для включения/отключения правил брандмауэра из HA. Внимание: создаёт одну сущность на каждое правило фильтра.",
+          "sensor_kidcontrol": "Переключатели для профилей устройств Kid Control (приостановка/возобновление доступа в интернет).",
+          "sensor_mangle": "Переключатель на правило Mangle для включения/отключения правил маркировки пакетов из HA. Внимание: создаёт одну сущность на каждое правило Mangle.",
+          "sensor_nat": "Переключатель на правило NAT для включения/отключения правил из HA. Внимание: создаёт одну сущность на каждое правило NAT.",
+          "sensor_netwatch_tracker": "Бинарный сенсор на запись Netwatch, показывающий статус доступности.",
+          "sensor_port_tracker": "Бинарный сенсор на порт, показывающий состояние линка (поднят/опущен).",
+          "sensor_port_traffic": "4 сенсора на интерфейс (байты TX/RX и итоги). Внимание: создаёт 4 сущности на интерфейс — отключите если графики трафика не нужны.",
+          "sensor_ppp": "Переключатель на PPP secret (пользователя) для включения/отключения VPN/PPPoE аккаунтов из HA.",
+          "sensor_routing_rules": "Переключатель на правило маршрутизации для включения/отключения правил policy routing из HA. Внимание: создаёт одну сущность на каждое правило маршрутизации.",
+          "sensor_scripts": "Кнопка на скрипт для запуска скриптов RouterOS из HA.",
+          "sensor_simple_queues": "Переключатель на запись Simple Queue для включения/отключения ограничений полосы пропускания из HA. Внимание: создаёт одну сущность на каждое правило очереди.",
+          "track_network_hosts": "Создаёт сущность трекера устройства для каждого устройства, видимого в таблицах ARP/DHCP/wireless. Каждое отслеживаемое устройство создаёт отдельное устройство HA. Внимание: в больших сетях может быть создано сотни устройств и сущностей.",
+          "sensor_wireguard": "Сенсоры на пир WireGuard (последний handshake, передача, endpoint)."
         },
         "title": "Параметры Mikrotik Router (3/3)",
         "description": "Включить датчики и переключатели"
@@ -223,7 +223,7 @@
   },
   "exceptions": {
     "invalid_mac": {
-      "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
+      "message": "Неверный формат MAC-адреса: {mac}. Ожидаемый формат: AA:BB:CC:DD:EE:FF"
     }
   },
   "selector": {
