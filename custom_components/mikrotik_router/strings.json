@@ -150,8 +150,18 @@
           "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
           "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
         },
-        "title": "Mikrotik Router options (1/2)",
+        "title": "Mikrotik Router options (1/3)",
         "description": "Configure integration"
+      },
+      "sensor_mode": {
+        "data": {
+          "sensor_preset": "Sensor preset"
+        },
+        "data_description": {
+          "sensor_preset": "Select a preset to quickly configure which sensors and switches are enabled, or choose Custom to configure individually."
+        },
+        "title": "Mikrotik Router options (2/3)",
+        "description": "Select sensor preset"
       },
       "sensor_select": {
         "data": {
@@ -192,7 +202,7 @@
           "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
           "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
         },
-        "title": "Mikrotik Router options (2/2)",
+        "title": "Mikrotik Router options (3/3)",
         "description": "Enable sensors and switches"
       }
     }
