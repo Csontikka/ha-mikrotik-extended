@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Quyền API không đủ cho {host}",
-      "description": "Người dùng RouterOS **{username}** trên bộ định tuyến **{host}** thiếu các quyền sau: `{missing}`.\n\nMột số tính năng tích hợp sẽ không hoạt động (công tắc, nút khởi động lại, thiết lập tự động Kid Control). Để khắc phục, hãy thêm các chính sách còn thiếu vào nhóm người dùng trên bộ định tuyến:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "Người dùng RouterOS **{username}** trên bộ định tuyến **{host}** thiếu các quyền sau: **{missing}**.\n\nMột số tính năng tích hợp sẽ không hoạt động (công tắc, nút khởi động lại, thiết lập tự động Kid Control). Để khắc phục, hãy thêm các chính sách còn thiếu vào nhóm người dùng trên bộ định tuyến:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Nhiệt độ" },
-      "system_voltage": { "name": "Điện áp" },
-      "system_cpu_temperature": { "name": "Nhiệt độ CPU" },
-      "system_switch_temperature": { "name": "Nhiệt độ switch" },
-      "system_board_temperature1": { "name": "Nhiệt độ bo mạch" },
-      "system_phy_temperature": { "name": "Nhiệt độ PHY" },
-      "system_power_consumption": { "name": "Tiêu thụ điện năng" },
-      "system_poe_out_consumption": { "name": "Tiêu thụ PoE đầu ra" },
-      "system_fan1_speed": { "name": "Tốc độ quạt 1" },
-      "system_fan2_speed": { "name": "Tốc độ quạt 2" },
-      "system_fan3_speed": { "name": "Tốc độ quạt 3" },
-      "system_fan4_speed": { "name": "Tốc độ quạt 4" },
-      "system_psu1_current": { "name": "Nguồn 1 dòng điện" },
-      "system_psu1_voltage": { "name": "Nguồn 1 điện áp" },
-      "system_psu2_current": { "name": "Nguồn 2 dòng điện" },
-      "system_psu2_voltage": { "name": "Nguồn 2 điện áp" },
-      "system_uptime": { "name": "Thời gian hoạt động" },
-      "system_cpu_load": { "name": "Tải CPU" },
-      "system_memory_usage": { "name": "Sử dụng bộ nhớ" },
-      "system_hdd_usage": { "name": "Sử dụng ổ đĩa" },
-      "system_clients_wired": { "name": "Máy khách có dây" },
-      "system_clients_wireless": { "name": "Máy khách không dây" },
-      "system_captive_authorized": { "name": "Máy khách cổng captive" },
-      "system_gps_latitude": { "name": "Vĩ độ" },
-      "system_gps_longitude": { "name": "Kinh độ" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX tổng" },
-      "rx_total": { "name": "RX tổng" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "Địa chỉ IP" },
-      "cloud_public_address": { "name": "Địa chỉ công cộng" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Lần bắt tay cuối" },
-      "system_device_mode": { "name": "Chế độ thiết bị" },
-      "system_packages": { "name": "Gói" },
-      "container_status": { "name": "Trạng thái" }
+      "system_temperature": {
+        "name": "Nhiệt độ"
+      },
+      "system_voltage": {
+        "name": "Điện áp"
+      },
+      "system_cpu_temperature": {
+        "name": "Nhiệt độ CPU"
+      },
+      "system_switch_temperature": {
+        "name": "Nhiệt độ switch"
+      },
+      "system_board_temperature1": {
+        "name": "Nhiệt độ bo mạch"
+      },
+      "system_phy_temperature": {
+        "name": "Nhiệt độ PHY"
+      },
+      "system_power_consumption": {
+        "name": "Tiêu thụ điện năng"
+      },
+      "system_poe_out_consumption": {
+        "name": "Tiêu thụ PoE đầu ra"
+      },
+      "system_fan1_speed": {
+        "name": "Tốc độ quạt 1"
+      },
+      "system_fan2_speed": {
+        "name": "Tốc độ quạt 2"
+      },
+      "system_fan3_speed": {
+        "name": "Tốc độ quạt 3"
+      },
+      "system_fan4_speed": {
+        "name": "Tốc độ quạt 4"
+      },
+      "system_psu1_current": {
+        "name": "Nguồn 1 dòng điện"
+      },
+      "system_psu1_voltage": {
+        "name": "Nguồn 1 điện áp"
+      },
+      "system_psu2_current": {
+        "name": "Nguồn 2 dòng điện"
+      },
+      "system_psu2_voltage": {
+        "name": "Nguồn 2 điện áp"
+      },
+      "system_uptime": {
+        "name": "Thời gian hoạt động"
+      },
+      "system_cpu_load": {
+        "name": "Tải CPU"
+      },
+      "system_memory_usage": {
+        "name": "Sử dụng bộ nhớ"
+      },
+      "system_hdd_usage": {
+        "name": "Sử dụng ổ đĩa"
+      },
+      "system_clients_wired": {
+        "name": "Máy khách có dây"
+      },
+      "system_clients_wireless": {
+        "name": "Máy khách không dây"
+      },
+      "system_captive_authorized": {
+        "name": "Máy khách cổng captive"
+      },
+      "system_gps_latitude": {
+        "name": "Vĩ độ"
+      },
+      "system_gps_longitude": {
+        "name": "Kinh độ"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX tổng"
+      },
+      "rx_total": {
+        "name": "RX tổng"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "Địa chỉ IP"
+      },
+      "cloud_public_address": {
+        "name": "Địa chỉ công cộng"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Lần bắt tay cuối"
+      },
+      "system_device_mode": {
+        "name": "Chế độ thiết bị"
+      },
+      "system_packages": {
+        "name": "Gói"
+      },
+      "container_status": {
+        "name": "Trạng thái"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Kết nối" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Đã kết nối" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Kết nối"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Đã kết nối"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Cổng" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Tạm dừng" }
+      "interface_port": {
+        "name": "Cổng"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Tạm dừng"
+      }
     },
     "button": {
-      "reboot": { "name": "Khởi động lại" }
+      "reboot": {
+        "name": "Khởi động lại"
+      }
     }
   }
 }

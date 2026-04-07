@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "{host} 的 API 权限不足",
-      "description": "RouterOS 用户 **{username}** 在路由器 **{host}** 上缺少以下权限：`{missing}`。\n\n部分集成功能将无法使用（开关、重启按钮、Kid Control 自动设置）。要修复此问题，请在路由器上将缺少的策略添加到用户组：\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS 用户 **{username}** 在路由器 **{host}** 上缺少以下权限：**{missing}**。\n\n部分集成功能将无法使用（开关、重启按钮、Kid Control 自动设置）。要修复此问题，请在路由器上将缺少的策略添加到用户组：\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "温度" },
-      "system_voltage": { "name": "电压" },
-      "system_cpu_temperature": { "name": "CPU 温度" },
-      "system_switch_temperature": { "name": "交换机温度" },
-      "system_board_temperature1": { "name": "主板温度" },
-      "system_phy_temperature": { "name": "PHY 温度" },
-      "system_power_consumption": { "name": "功耗" },
-      "system_poe_out_consumption": { "name": "PoE 输出功耗" },
-      "system_fan1_speed": { "name": "风扇 1 转速" },
-      "system_fan2_speed": { "name": "风扇 2 转速" },
-      "system_fan3_speed": { "name": "风扇 3 转速" },
-      "system_fan4_speed": { "name": "风扇 4 转速" },
-      "system_psu1_current": { "name": "电源 1 电流" },
-      "system_psu1_voltage": { "name": "电源 1 电压" },
-      "system_psu2_current": { "name": "电源 2 电流" },
-      "system_psu2_voltage": { "name": "电源 2 电压" },
-      "system_uptime": { "name": "运行时间" },
-      "system_cpu_load": { "name": "CPU 负载" },
-      "system_memory_usage": { "name": "内存使用" },
-      "system_hdd_usage": { "name": "硬盘使用" },
-      "system_clients_wired": { "name": "有线客户端" },
-      "system_clients_wireless": { "name": "无线客户端" },
-      "system_captive_authorized": { "name": "强制门户客户端" },
-      "system_gps_latitude": { "name": "纬度" },
-      "system_gps_longitude": { "name": "经度" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX 总计" },
-      "rx_total": { "name": "RX 总计" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP 地址" },
-      "cloud_public_address": { "name": "公网地址" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "最后握手" },
-      "system_device_mode": { "name": "设备模式" },
-      "system_packages": { "name": "软件包" },
-      "container_status": { "name": "状态" }
+      "system_temperature": {
+        "name": "温度"
+      },
+      "system_voltage": {
+        "name": "电压"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU 温度"
+      },
+      "system_switch_temperature": {
+        "name": "交换机温度"
+      },
+      "system_board_temperature1": {
+        "name": "主板温度"
+      },
+      "system_phy_temperature": {
+        "name": "PHY 温度"
+      },
+      "system_power_consumption": {
+        "name": "功耗"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE 输出功耗"
+      },
+      "system_fan1_speed": {
+        "name": "风扇 1 转速"
+      },
+      "system_fan2_speed": {
+        "name": "风扇 2 转速"
+      },
+      "system_fan3_speed": {
+        "name": "风扇 3 转速"
+      },
+      "system_fan4_speed": {
+        "name": "风扇 4 转速"
+      },
+      "system_psu1_current": {
+        "name": "电源 1 电流"
+      },
+      "system_psu1_voltage": {
+        "name": "电源 1 电压"
+      },
+      "system_psu2_current": {
+        "name": "电源 2 电流"
+      },
+      "system_psu2_voltage": {
+        "name": "电源 2 电压"
+      },
+      "system_uptime": {
+        "name": "运行时间"
+      },
+      "system_cpu_load": {
+        "name": "CPU 负载"
+      },
+      "system_memory_usage": {
+        "name": "内存使用"
+      },
+      "system_hdd_usage": {
+        "name": "硬盘使用"
+      },
+      "system_clients_wired": {
+        "name": "有线客户端"
+      },
+      "system_clients_wireless": {
+        "name": "无线客户端"
+      },
+      "system_captive_authorized": {
+        "name": "强制门户客户端"
+      },
+      "system_gps_latitude": {
+        "name": "纬度"
+      },
+      "system_gps_longitude": {
+        "name": "经度"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX 总计"
+      },
+      "rx_total": {
+        "name": "RX 总计"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP 地址"
+      },
+      "cloud_public_address": {
+        "name": "公网地址"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "最后握手"
+      },
+      "system_device_mode": {
+        "name": "设备模式"
+      },
+      "system_packages": {
+        "name": "软件包"
+      },
+      "container_status": {
+        "name": "状态"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "连接" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "已连接" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "连接"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "已连接"
+      }
     },
     "switch": {
-      "interface_port": { "name": "端口" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "已暂停" }
+      "interface_port": {
+        "name": "端口"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "已暂停"
+      }
     },
     "button": {
-      "reboot": { "name": "重启" }
+      "reboot": {
+        "name": "重启"
+      }
     }
   }
 }

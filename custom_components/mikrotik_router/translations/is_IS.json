@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Ófullnægjandi API-heimildir fyrir {host}",
-      "description": "RouterOS notandinn **{username}** á beini **{host}** vantar eftirfarandi heimildir: `{missing}`.\n\nNokkrar samþættingaraðgerðir munu ekki virka (rofar, endurræsingarhnappurinn, sjálfvirk uppsetning Kid Control). Til að laga þetta skaltu bæta við heimildunum sem vantar í notendahópinn á beininum:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS notandinn **{username}** á beini **{host}** vantar eftirfarandi heimildir: **{missing}**.\n\nNokkrar samþættingaraðgerðir munu ekki virka (rofar, endurræsingarhnappurinn, sjálfvirk uppsetning Kid Control). Til að laga þetta skaltu bæta við heimildunum sem vantar í notendahópinn á beininum:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Hitastig" },
-      "system_voltage": { "name": "Spenna" },
-      "system_cpu_temperature": { "name": "CPU hitastig" },
-      "system_switch_temperature": { "name": "Switch hitastig" },
-      "system_board_temperature1": { "name": "Borðhitastig" },
-      "system_phy_temperature": { "name": "PHY hitastig" },
-      "system_power_consumption": { "name": "Orkueyðsla" },
-      "system_poe_out_consumption": { "name": "PoE úttaksorkueyðsla" },
-      "system_fan1_speed": { "name": "Vifta 1 hraði" },
-      "system_fan2_speed": { "name": "Vifta 2 hraði" },
-      "system_fan3_speed": { "name": "Vifta 3 hraði" },
-      "system_fan4_speed": { "name": "Vifta 4 hraði" },
-      "system_psu1_current": { "name": "Aflgjafi 1 straumur" },
-      "system_psu1_voltage": { "name": "Aflgjafi 1 spenna" },
-      "system_psu2_current": { "name": "Aflgjafi 2 straumur" },
-      "system_psu2_voltage": { "name": "Aflgjafi 2 spenna" },
-      "system_uptime": { "name": "Gangtími" },
-      "system_cpu_load": { "name": "CPU álag" },
-      "system_memory_usage": { "name": "Minnisnotkun" },
-      "system_hdd_usage": { "name": "Diskanotkun" },
-      "system_clients_wired": { "name": "Þráðtengdir biðlarar" },
-      "system_clients_wireless": { "name": "Þráðlausir biðlarar" },
-      "system_captive_authorized": { "name": "Captive portal biðlarar" },
-      "system_gps_latitude": { "name": "Breiddargráða" },
-      "system_gps_longitude": { "name": "Lengdargráða" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX samtals" },
-      "rx_total": { "name": "RX samtals" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP vistfang" },
-      "cloud_public_address": { "name": "Opinbert vistfang" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Síðasta handaband" },
-      "system_device_mode": { "name": "Tækjahamur" },
-      "system_packages": { "name": "Pakkar" },
-      "container_status": { "name": "Staða" }
+      "system_temperature": {
+        "name": "Hitastig"
+      },
+      "system_voltage": {
+        "name": "Spenna"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU hitastig"
+      },
+      "system_switch_temperature": {
+        "name": "Switch hitastig"
+      },
+      "system_board_temperature1": {
+        "name": "Borðhitastig"
+      },
+      "system_phy_temperature": {
+        "name": "PHY hitastig"
+      },
+      "system_power_consumption": {
+        "name": "Orkueyðsla"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE úttaksorkueyðsla"
+      },
+      "system_fan1_speed": {
+        "name": "Vifta 1 hraði"
+      },
+      "system_fan2_speed": {
+        "name": "Vifta 2 hraði"
+      },
+      "system_fan3_speed": {
+        "name": "Vifta 3 hraði"
+      },
+      "system_fan4_speed": {
+        "name": "Vifta 4 hraði"
+      },
+      "system_psu1_current": {
+        "name": "Aflgjafi 1 straumur"
+      },
+      "system_psu1_voltage": {
+        "name": "Aflgjafi 1 spenna"
+      },
+      "system_psu2_current": {
+        "name": "Aflgjafi 2 straumur"
+      },
+      "system_psu2_voltage": {
+        "name": "Aflgjafi 2 spenna"
+      },
+      "system_uptime": {
+        "name": "Gangtími"
+      },
+      "system_cpu_load": {
+        "name": "CPU álag"
+      },
+      "system_memory_usage": {
+        "name": "Minnisnotkun"
+      },
+      "system_hdd_usage": {
+        "name": "Diskanotkun"
+      },
+      "system_clients_wired": {
+        "name": "Þráðtengdir biðlarar"
+      },
+      "system_clients_wireless": {
+        "name": "Þráðlausir biðlarar"
+      },
+      "system_captive_authorized": {
+        "name": "Captive portal biðlarar"
+      },
+      "system_gps_latitude": {
+        "name": "Breiddargráða"
+      },
+      "system_gps_longitude": {
+        "name": "Lengdargráða"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX samtals"
+      },
+      "rx_total": {
+        "name": "RX samtals"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP vistfang"
+      },
+      "cloud_public_address": {
+        "name": "Opinbert vistfang"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Síðasta handaband"
+      },
+      "system_device_mode": {
+        "name": "Tækjahamur"
+      },
+      "system_packages": {
+        "name": "Pakkar"
+      },
+      "container_status": {
+        "name": "Staða"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Tenging" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Tengt" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Tenging"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Tengt"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Port" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Í bið" }
+      "interface_port": {
+        "name": "Port"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Í bið"
+      }
     },
     "button": {
-      "reboot": { "name": "Endurræsa" }
+      "reboot": {
+        "name": "Endurræsa"
+      }
     }
   }
 }

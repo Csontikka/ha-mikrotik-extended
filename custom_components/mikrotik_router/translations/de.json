@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Unzureichende API-Berechtigungen für {host}",
-      "description": "Dem RouterOS-Benutzer **{username}** auf Router **{host}** fehlen folgende Berechtigungen: `{missing}`.\n\nEinige Integrationsfunktionen funktionieren nicht (Schalter, Neustart-Schaltfläche, Kid Control Auto-Setup). Um dies zu beheben, füge die fehlenden Richtlinien zur Benutzergruppe auf dem Router hinzu:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "Dem RouterOS-Benutzer **{username}** auf Router **{host}** fehlen folgende Berechtigungen: **{missing}**.\n\nEinige Integrationsfunktionen funktionieren nicht (Schalter, Neustart-Schaltfläche, Kid Control Auto-Setup). Um dies zu beheben, füge die fehlenden Richtlinien zur Benutzergruppe auf dem Router hinzu:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Temperatur" },
-      "system_voltage": { "name": "Spannung" },
-      "system_cpu_temperature": { "name": "CPU-Temperatur" },
-      "system_switch_temperature": { "name": "Switch-Temperatur" },
-      "system_board_temperature1": { "name": "Board-Temperatur" },
-      "system_phy_temperature": { "name": "PHY-Temperatur" },
-      "system_power_consumption": { "name": "Leistungsaufnahme" },
-      "system_poe_out_consumption": { "name": "PoE-Ausgangsleistung" },
-      "system_fan1_speed": { "name": "Lüfter 1 Drehzahl" },
-      "system_fan2_speed": { "name": "Lüfter 2 Drehzahl" },
-      "system_fan3_speed": { "name": "Lüfter 3 Drehzahl" },
-      "system_fan4_speed": { "name": "Lüfter 4 Drehzahl" },
-      "system_psu1_current": { "name": "Netzteil 1 Strom" },
-      "system_psu1_voltage": { "name": "Netzteil 1 Spannung" },
-      "system_psu2_current": { "name": "Netzteil 2 Strom" },
-      "system_psu2_voltage": { "name": "Netzteil 2 Spannung" },
-      "system_uptime": { "name": "Betriebszeit" },
-      "system_cpu_load": { "name": "CPU-Auslastung" },
-      "system_memory_usage": { "name": "Speicherauslastung" },
-      "system_hdd_usage": { "name": "Festplattenauslastung" },
-      "system_clients_wired": { "name": "Kabelgebundene Clients" },
-      "system_clients_wireless": { "name": "WLAN-Clients" },
-      "system_captive_authorized": { "name": "Captive-Portal-Clients" },
-      "system_gps_latitude": { "name": "Breitengrad" },
-      "system_gps_longitude": { "name": "Längengrad" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX gesamt" },
-      "rx_total": { "name": "RX gesamt" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP-Adresse" },
-      "cloud_public_address": { "name": "Öffentliche Adresse" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Letzter Handshake" },
-      "system_device_mode": { "name": "Gerätemodus" },
-      "system_packages": { "name": "Pakete" },
-      "container_status": { "name": "Status" }
+      "system_temperature": {
+        "name": "Temperatur"
+      },
+      "system_voltage": {
+        "name": "Spannung"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU-Temperatur"
+      },
+      "system_switch_temperature": {
+        "name": "Switch-Temperatur"
+      },
+      "system_board_temperature1": {
+        "name": "Board-Temperatur"
+      },
+      "system_phy_temperature": {
+        "name": "PHY-Temperatur"
+      },
+      "system_power_consumption": {
+        "name": "Leistungsaufnahme"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE-Ausgangsleistung"
+      },
+      "system_fan1_speed": {
+        "name": "Lüfter 1 Drehzahl"
+      },
+      "system_fan2_speed": {
+        "name": "Lüfter 2 Drehzahl"
+      },
+      "system_fan3_speed": {
+        "name": "Lüfter 3 Drehzahl"
+      },
+      "system_fan4_speed": {
+        "name": "Lüfter 4 Drehzahl"
+      },
+      "system_psu1_current": {
+        "name": "Netzteil 1 Strom"
+      },
+      "system_psu1_voltage": {
+        "name": "Netzteil 1 Spannung"
+      },
+      "system_psu2_current": {
+        "name": "Netzteil 2 Strom"
+      },
+      "system_psu2_voltage": {
+        "name": "Netzteil 2 Spannung"
+      },
+      "system_uptime": {
+        "name": "Betriebszeit"
+      },
+      "system_cpu_load": {
+        "name": "CPU-Auslastung"
+      },
+      "system_memory_usage": {
+        "name": "Speicherauslastung"
+      },
+      "system_hdd_usage": {
+        "name": "Festplattenauslastung"
+      },
+      "system_clients_wired": {
+        "name": "Kabelgebundene Clients"
+      },
+      "system_clients_wireless": {
+        "name": "WLAN-Clients"
+      },
+      "system_captive_authorized": {
+        "name": "Captive-Portal-Clients"
+      },
+      "system_gps_latitude": {
+        "name": "Breitengrad"
+      },
+      "system_gps_longitude": {
+        "name": "Längengrad"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX gesamt"
+      },
+      "rx_total": {
+        "name": "RX gesamt"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP-Adresse"
+      },
+      "cloud_public_address": {
+        "name": "Öffentliche Adresse"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Letzter Handshake"
+      },
+      "system_device_mode": {
+        "name": "Gerätemodus"
+      },
+      "system_packages": {
+        "name": "Pakete"
+      },
+      "container_status": {
+        "name": "Status"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "USV" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Verbindung" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Verbunden" }
+      "system_ups": {
+        "name": "USV"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Verbindung"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Verbunden"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Port" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Pausiert" }
+      "interface_port": {
+        "name": "Port"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Pausiert"
+      }
     },
     "button": {
-      "reboot": { "name": "Neustart" }
+      "reboot": {
+        "name": "Neustart"
+      }
     }
   }
 }

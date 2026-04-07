@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "{host} の API 権限が不足しています",
-      "description": "RouterOS ユーザー **{username}** がルーター **{host}** で次の権限を持っていません: `{missing}`。\n\n一部のインテグレーション機能が動作しません（スイッチ、再起動ボタン、Kid Control 自動設定）。修正するには、ルーターのユーザーグループに不足しているポリシーを追加してください:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS ユーザー **{username}** がルーター **{host}** で次の権限を持っていません: **{missing}**。\n\n一部のインテグレーション機能が動作しません（スイッチ、再起動ボタン、Kid Control 自動設定）。修正するには、ルーターのユーザーグループに不足しているポリシーを追加してください:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "温度" },
-      "system_voltage": { "name": "電圧" },
-      "system_cpu_temperature": { "name": "CPU温度" },
-      "system_switch_temperature": { "name": "スイッチ温度" },
-      "system_board_temperature1": { "name": "ボード温度" },
-      "system_phy_temperature": { "name": "PHY温度" },
-      "system_power_consumption": { "name": "消費電力" },
-      "system_poe_out_consumption": { "name": "PoE出力消費電力" },
-      "system_fan1_speed": { "name": "ファン1速度" },
-      "system_fan2_speed": { "name": "ファン2速度" },
-      "system_fan3_speed": { "name": "ファン3速度" },
-      "system_fan4_speed": { "name": "ファン4速度" },
-      "system_psu1_current": { "name": "電源1電流" },
-      "system_psu1_voltage": { "name": "電源1電圧" },
-      "system_psu2_current": { "name": "電源2電流" },
-      "system_psu2_voltage": { "name": "電源2電圧" },
-      "system_uptime": { "name": "稼働時間" },
-      "system_cpu_load": { "name": "CPU負荷" },
-      "system_memory_usage": { "name": "メモリ使用率" },
-      "system_hdd_usage": { "name": "ディスク使用率" },
-      "system_clients_wired": { "name": "有線クライアント" },
-      "system_clients_wireless": { "name": "無線クライアント" },
-      "system_captive_authorized": { "name": "キャプティブポータルクライアント" },
-      "system_gps_latitude": { "name": "緯度" },
-      "system_gps_longitude": { "name": "経度" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX合計" },
-      "rx_total": { "name": "RX合計" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IPアドレス" },
-      "cloud_public_address": { "name": "パブリックアドレス" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "最終ハンドシェイク" },
-      "system_device_mode": { "name": "デバイスモード" },
-      "system_packages": { "name": "パッケージ" },
-      "container_status": { "name": "ステータス" }
+      "system_temperature": {
+        "name": "温度"
+      },
+      "system_voltage": {
+        "name": "電圧"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU温度"
+      },
+      "system_switch_temperature": {
+        "name": "スイッチ温度"
+      },
+      "system_board_temperature1": {
+        "name": "ボード温度"
+      },
+      "system_phy_temperature": {
+        "name": "PHY温度"
+      },
+      "system_power_consumption": {
+        "name": "消費電力"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE出力消費電力"
+      },
+      "system_fan1_speed": {
+        "name": "ファン1速度"
+      },
+      "system_fan2_speed": {
+        "name": "ファン2速度"
+      },
+      "system_fan3_speed": {
+        "name": "ファン3速度"
+      },
+      "system_fan4_speed": {
+        "name": "ファン4速度"
+      },
+      "system_psu1_current": {
+        "name": "電源1電流"
+      },
+      "system_psu1_voltage": {
+        "name": "電源1電圧"
+      },
+      "system_psu2_current": {
+        "name": "電源2電流"
+      },
+      "system_psu2_voltage": {
+        "name": "電源2電圧"
+      },
+      "system_uptime": {
+        "name": "稼働時間"
+      },
+      "system_cpu_load": {
+        "name": "CPU負荷"
+      },
+      "system_memory_usage": {
+        "name": "メモリ使用率"
+      },
+      "system_hdd_usage": {
+        "name": "ディスク使用率"
+      },
+      "system_clients_wired": {
+        "name": "有線クライアント"
+      },
+      "system_clients_wireless": {
+        "name": "無線クライアント"
+      },
+      "system_captive_authorized": {
+        "name": "キャプティブポータルクライアント"
+      },
+      "system_gps_latitude": {
+        "name": "緯度"
+      },
+      "system_gps_longitude": {
+        "name": "経度"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX合計"
+      },
+      "rx_total": {
+        "name": "RX合計"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IPアドレス"
+      },
+      "cloud_public_address": {
+        "name": "パブリックアドレス"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "最終ハンドシェイク"
+      },
+      "system_device_mode": {
+        "name": "デバイスモード"
+      },
+      "system_packages": {
+        "name": "パッケージ"
+      },
+      "container_status": {
+        "name": "ステータス"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "接続" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "接続済み" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "接続"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "接続済み"
+      }
     },
     "switch": {
-      "interface_port": { "name": "ポート" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "一時停止中" }
+      "interface_port": {
+        "name": "ポート"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "一時停止中"
+      }
     },
     "button": {
-      "reboot": { "name": "再起動" }
+      "reboot": {
+        "name": "再起動"
+      }
     }
   }
 }

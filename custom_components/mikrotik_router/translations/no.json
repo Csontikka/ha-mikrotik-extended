@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Utilstrekkelige API-tillatelser for {host}",
-      "description": "RouterOS-brukeren **{username}** på ruteren **{host}** mangler følgende tillatelser: `{missing}`.\n\nNoen integrasjonsfunksjoner vil ikke fungere (brytere, omstart-knapp, automatisk Kid Control-oppsett). For å fikse dette, legg til de manglende retningslinjene i brukergruppen på ruteren:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS-brukeren **{username}** på ruteren **{host}** mangler følgende tillatelser: **{missing}**.\n\nNoen integrasjonsfunksjoner vil ikke fungere (brytere, omstart-knapp, automatisk Kid Control-oppsett). For å fikse dette, legg til de manglende retningslinjene i brukergruppen på ruteren:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Temperatur" },
-      "system_voltage": { "name": "Spenning" },
-      "system_cpu_temperature": { "name": "CPU-temperatur" },
-      "system_switch_temperature": { "name": "Switch-temperatur" },
-      "system_board_temperature1": { "name": "Korttemperatur" },
-      "system_phy_temperature": { "name": "PHY-temperatur" },
-      "system_power_consumption": { "name": "Strømforbruk" },
-      "system_poe_out_consumption": { "name": "PoE-utgangsforbruk" },
-      "system_fan1_speed": { "name": "Vifte 1 hastighet" },
-      "system_fan2_speed": { "name": "Vifte 2 hastighet" },
-      "system_fan3_speed": { "name": "Vifte 3 hastighet" },
-      "system_fan4_speed": { "name": "Vifte 4 hastighet" },
-      "system_psu1_current": { "name": "Strømforsyning 1 strøm" },
-      "system_psu1_voltage": { "name": "Strømforsyning 1 spenning" },
-      "system_psu2_current": { "name": "Strømforsyning 2 strøm" },
-      "system_psu2_voltage": { "name": "Strømforsyning 2 spenning" },
-      "system_uptime": { "name": "Oppetid" },
-      "system_cpu_load": { "name": "CPU-belastning" },
-      "system_memory_usage": { "name": "Minnebruk" },
-      "system_hdd_usage": { "name": "Diskbruk" },
-      "system_clients_wired": { "name": "Kablede klienter" },
-      "system_clients_wireless": { "name": "Trådløse klienter" },
-      "system_captive_authorized": { "name": "Captive portal klienter" },
-      "system_gps_latitude": { "name": "Breddegrad" },
-      "system_gps_longitude": { "name": "Lengdegrad" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX totalt" },
-      "rx_total": { "name": "RX totalt" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP-adresse" },
-      "cloud_public_address": { "name": "Offentlig adresse" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Siste håndtrykk" },
-      "system_device_mode": { "name": "Enhetsmodus" },
-      "system_packages": { "name": "Pakker" },
-      "container_status": { "name": "Status" }
+      "system_temperature": {
+        "name": "Temperatur"
+      },
+      "system_voltage": {
+        "name": "Spenning"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU-temperatur"
+      },
+      "system_switch_temperature": {
+        "name": "Switch-temperatur"
+      },
+      "system_board_temperature1": {
+        "name": "Korttemperatur"
+      },
+      "system_phy_temperature": {
+        "name": "PHY-temperatur"
+      },
+      "system_power_consumption": {
+        "name": "Strømforbruk"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE-utgangsforbruk"
+      },
+      "system_fan1_speed": {
+        "name": "Vifte 1 hastighet"
+      },
+      "system_fan2_speed": {
+        "name": "Vifte 2 hastighet"
+      },
+      "system_fan3_speed": {
+        "name": "Vifte 3 hastighet"
+      },
+      "system_fan4_speed": {
+        "name": "Vifte 4 hastighet"
+      },
+      "system_psu1_current": {
+        "name": "Strømforsyning 1 strøm"
+      },
+      "system_psu1_voltage": {
+        "name": "Strømforsyning 1 spenning"
+      },
+      "system_psu2_current": {
+        "name": "Strømforsyning 2 strøm"
+      },
+      "system_psu2_voltage": {
+        "name": "Strømforsyning 2 spenning"
+      },
+      "system_uptime": {
+        "name": "Oppetid"
+      },
+      "system_cpu_load": {
+        "name": "CPU-belastning"
+      },
+      "system_memory_usage": {
+        "name": "Minnebruk"
+      },
+      "system_hdd_usage": {
+        "name": "Diskbruk"
+      },
+      "system_clients_wired": {
+        "name": "Kablede klienter"
+      },
+      "system_clients_wireless": {
+        "name": "Trådløse klienter"
+      },
+      "system_captive_authorized": {
+        "name": "Captive portal klienter"
+      },
+      "system_gps_latitude": {
+        "name": "Breddegrad"
+      },
+      "system_gps_longitude": {
+        "name": "Lengdegrad"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX totalt"
+      },
+      "rx_total": {
+        "name": "RX totalt"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP-adresse"
+      },
+      "cloud_public_address": {
+        "name": "Offentlig adresse"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Siste håndtrykk"
+      },
+      "system_device_mode": {
+        "name": "Enhetsmodus"
+      },
+      "system_packages": {
+        "name": "Pakker"
+      },
+      "container_status": {
+        "name": "Status"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Tilkobling" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Tilkoblet" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Tilkobling"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Tilkoblet"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Port" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Pauset" }
+      "interface_port": {
+        "name": "Port"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Pauset"
+      }
     },
     "button": {
-      "reboot": { "name": "Omstart" }
+      "reboot": {
+        "name": "Omstart"
+      }
     }
   }
 }

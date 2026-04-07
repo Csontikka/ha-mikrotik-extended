@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Permissões de API insuficientes para {host}",
-      "description": "O usuário `{username}` está se conectando ao roteador MikroTik em {host}, mas não tem as permissões de API necessárias. Permissões ausentes: `{missing}`\n\nPara corrigir as permissões, execute o seguinte comando no terminal do RouterOS:\n\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "O usuário `{username}` está se conectando ao roteador MikroTik em {host}, mas não tem as permissões de API necessárias. Permissões ausentes: **{missing}**\n\nPara corrigir as permissões, execute o seguinte comando no terminal do RouterOS:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Temperatura" },
-      "system_voltage": { "name": "Voltagem" },
-      "system_cpu_temperature": { "name": "Temperatura da CPU" },
-      "system_switch_temperature": { "name": "Temperatura do switch" },
-      "system_board_temperature1": { "name": "Temperatura da placa" },
-      "system_phy_temperature": { "name": "Temperatura PHY" },
-      "system_power_consumption": { "name": "Consumo de energia" },
-      "system_poe_out_consumption": { "name": "Consumo PoE de saída" },
-      "system_fan1_speed": { "name": "Velocidade do ventilador 1" },
-      "system_fan2_speed": { "name": "Velocidade do ventilador 2" },
-      "system_fan3_speed": { "name": "Velocidade do ventilador 3" },
-      "system_fan4_speed": { "name": "Velocidade do ventilador 4" },
-      "system_psu1_current": { "name": "Corrente da fonte 1" },
-      "system_psu1_voltage": { "name": "Voltagem da fonte 1" },
-      "system_psu2_current": { "name": "Corrente da fonte 2" },
-      "system_psu2_voltage": { "name": "Voltagem da fonte 2" },
-      "system_uptime": { "name": "Tempo de atividade" },
-      "system_cpu_load": { "name": "Carga da CPU" },
-      "system_memory_usage": { "name": "Uso de memória" },
-      "system_hdd_usage": { "name": "Uso de disco" },
-      "system_clients_wired": { "name": "Clientes cabeados" },
-      "system_clients_wireless": { "name": "Clientes sem fio" },
-      "system_captive_authorized": { "name": "Clientes do portal cativo" },
-      "system_gps_latitude": { "name": "Latitude" },
-      "system_gps_longitude": { "name": "Longitude" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX total" },
-      "rx_total": { "name": "RX total" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "Endereço IP" },
-      "cloud_public_address": { "name": "Endereço público" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Último handshake" },
-      "system_device_mode": { "name": "Modo do dispositivo" },
-      "system_packages": { "name": "Pacotes" },
-      "container_status": { "name": "Status" }
+      "system_temperature": {
+        "name": "Temperatura"
+      },
+      "system_voltage": {
+        "name": "Voltagem"
+      },
+      "system_cpu_temperature": {
+        "name": "Temperatura da CPU"
+      },
+      "system_switch_temperature": {
+        "name": "Temperatura do switch"
+      },
+      "system_board_temperature1": {
+        "name": "Temperatura da placa"
+      },
+      "system_phy_temperature": {
+        "name": "Temperatura PHY"
+      },
+      "system_power_consumption": {
+        "name": "Consumo de energia"
+      },
+      "system_poe_out_consumption": {
+        "name": "Consumo PoE de saída"
+      },
+      "system_fan1_speed": {
+        "name": "Velocidade do ventilador 1"
+      },
+      "system_fan2_speed": {
+        "name": "Velocidade do ventilador 2"
+      },
+      "system_fan3_speed": {
+        "name": "Velocidade do ventilador 3"
+      },
+      "system_fan4_speed": {
+        "name": "Velocidade do ventilador 4"
+      },
+      "system_psu1_current": {
+        "name": "Corrente da fonte 1"
+      },
+      "system_psu1_voltage": {
+        "name": "Voltagem da fonte 1"
+      },
+      "system_psu2_current": {
+        "name": "Corrente da fonte 2"
+      },
+      "system_psu2_voltage": {
+        "name": "Voltagem da fonte 2"
+      },
+      "system_uptime": {
+        "name": "Tempo de atividade"
+      },
+      "system_cpu_load": {
+        "name": "Carga da CPU"
+      },
+      "system_memory_usage": {
+        "name": "Uso de memória"
+      },
+      "system_hdd_usage": {
+        "name": "Uso de disco"
+      },
+      "system_clients_wired": {
+        "name": "Clientes cabeados"
+      },
+      "system_clients_wireless": {
+        "name": "Clientes sem fio"
+      },
+      "system_captive_authorized": {
+        "name": "Clientes do portal cativo"
+      },
+      "system_gps_latitude": {
+        "name": "Latitude"
+      },
+      "system_gps_longitude": {
+        "name": "Longitude"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX total"
+      },
+      "rx_total": {
+        "name": "RX total"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "Endereço IP"
+      },
+      "cloud_public_address": {
+        "name": "Endereço público"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Último handshake"
+      },
+      "system_device_mode": {
+        "name": "Modo do dispositivo"
+      },
+      "system_packages": {
+        "name": "Pacotes"
+      },
+      "container_status": {
+        "name": "Status"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "Nobreak" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Conexão" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Conectado" }
+      "system_ups": {
+        "name": "Nobreak"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Conexão"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Conectado"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Porta" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Pausado" }
+      "interface_port": {
+        "name": "Porta"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Pausado"
+      }
     },
     "button": {
-      "reboot": { "name": "Reiniciar" }
+      "reboot": {
+        "name": "Reiniciar"
+      }
     }
   }
 }
