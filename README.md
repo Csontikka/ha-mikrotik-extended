@@ -243,23 +243,33 @@ These fields are shown during the initial setup wizard:
 
 ### Configuration Parameters
 
-These options can be changed after setup via **Settings -> Devices & Services -> Mikrotik Router -> Configure**:
+These options can be changed after setup via **Settings -> Devices & Services -> Mikrotik Router -> Configure**. Changes take effect immediately — no HA restart needed.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | Scan interval | `30` s | How often the router is polled (minimum 10 s). Lower values increase load on the router. |
 | Host tracking timeout | `180` s | Seconds after the last ARP/DHCP/wireless activity before a network device is marked as away. |
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
+| Sensor preset | recommended | Quick preset selector — see below. |
 | Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, scripts, WireGuard, containers, etc. |
+
+> **Note:** The **Configure** button opens the options flow (scan interval, presets, sensor toggles). The **Reconfigure** option (three-dot menu) is for changing connection settings only (host, port, credentials, SSL).
 
 ### Sensor Presets
 
-During setup, choose a sensor preset:
+Available during initial setup and via the **Configure** button at any time:
 
-- **Minimal** — port tracking only
-- **Recommended** — ports, NAT, mangle, filter, scripts, netwatch
-- **Full** — all sensors enabled (can generate hundreds of entities on large networks)
-- **Custom** — manually select each sensor category
+| Preset | Enabled sensors |
+|--------|----------------|
+| **Minimal** | Port tracker only |
+| **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
+| **Full** | Everything — port traffic, client traffic, queues, routing rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Custom** | Manually select each sensor category |
+
+Switching presets takes effect after saving:
+- Enabling a category **creates and enables** the corresponding entities automatically.
+- Disabling a category **removes** the entities and their devices from Home Assistant.
+- Entities without a corresponding option (fan speed, PSU sensors, GPS, etc.) remain disabled by default and must be enabled manually.
 
 ### Configurable Traffic Units
 
