@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Chyba SSL pripojenia pre {host}",
       "description": "Nepodarilo sa vytvoriť bezpečné SSL pripojenie k MikroTik smerovači na adrese {host}. Prejdite na **Nastavenia → Integrácie → MikroTik Router → Prekonfigurovanie** pre zmenu nastavení SSL alebo vypnutie SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Nedostatočné oprávnenia API pre {host}",
+      "description": "Používateľ RouterOS **{username}** na smerovači **{host}** nemá nasledujúce oprávnenia: `{missing}`.\n\nNiektoré funkcie integrácie nebudú fungovať (prepínače, tlačidlo reštartu, automatické nastavenie Kid Control). Ak to chcete opraviť, pridajte chýbajúce zásady do skupiny používateľa na smerovači:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

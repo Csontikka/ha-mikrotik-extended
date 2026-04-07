@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Erro de conexao SSL em {host}",
       "description": "Nao foi possivel estabelecer uma conexao SSL segura com o roteador MikroTik em {host}. Va para **Configuracoes -> Integracoes -> MikroTik Router -> Reconfigurar** para alterar as configuracoes SSL ou desativar o SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Permissões de API insuficientes para {host}",
+      "description": "O usuário `{username}` está se conectando ao roteador MikroTik em {host}, mas não tem as permissões de API necessárias. Permissões ausentes: `{missing}`\n\nPara corrigir as permissões, execute o seguinte comando no terminal do RouterOS:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

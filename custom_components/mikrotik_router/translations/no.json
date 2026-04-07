@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "SSL-tilkoblingsfeil for {host}",
       "description": "Kunne ikke opprette en sikker SSL-tilkobling til MikroTik-ruteren på {host}. Gå til **Innstillinger → Integrasjoner → MikroTik Router → Rekonfigurer** for å endre SSL-innstillingene eller deaktivere SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Utilstrekkelige API-tillatelser for {host}",
+      "description": "RouterOS-brukeren **{username}** på ruteren **{host}** mangler følgende tillatelser: `{missing}`.\n\nNoen integrasjonsfunksjoner vil ikke fungere (brytere, omstart-knapp, automatisk Kid Control-oppsett). For å fikse dette, legg til de manglende retningslinjene i brukergruppen på ruteren:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

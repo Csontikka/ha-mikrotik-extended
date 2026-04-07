@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "SSL savienojuma kļūda ierīcei {host}",
       "description": "Neizdevās izveidot drošu SSL savienojumu ar MikroTik maršrutētāju adresē {host}. Dodieties uz **Iestatījumi → Integrācijas → MikroTik Router → Pārkonfigurēt**, lai mainītu SSL iestatījumus vai atspējotu SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Nepietiekamas API atļaujas {host}",
+      "description": "RouterOS lietotājam **{username}** maršrutētājā **{host}** trūkst šādas atļaujas: `{missing}`.\n\nDažas integrācijas funkcijas nedarbosies (slēdži, pārstartēšanas poga, Kid Control automātiskā iestatīšana). Lai to novērstu, pievienojiet trūkstošās politikas lietotāja grupai maršrutētājā:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

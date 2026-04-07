@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "SSL tengivilla fyrir {host}",
       "description": "Ekki tókst að koma á öruggri SSL tengingu við MikroTik beininn á {host}. Farðu í **Stillingar → Samþættingar → MikroTik Router → Endurstilla** til að breyta SSL stillingum eða slökkva á SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Ófullnægjandi API-heimildir fyrir {host}",
+      "description": "RouterOS notandinn **{username}** á beini **{host}** vantar eftirfarandi heimildir: `{missing}`.\n\nNokkrar samþættingaraðgerðir munu ekki virka (rotar, endurræsingarhnappurinn, sjálfvirk uppsetning Kid Control). Til að laga þetta skaltu bæta við heimildunum sem vantar í notendahópinn á beininum:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

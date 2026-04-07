@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "{host} के लिए SSL कनेक्शन त्रुटि",
       "description": "{host} पर MikroTik राउटर के साथ सुरक्षित SSL कनेक्शन स्थापित नहीं हो सका। SSL सेटिंग्स बदलने या SSL अक्षम करने के लिए **सेटिंग्स → इंटीग्रेशन → MikroTik Router → पुनः कॉन्फ़िगर** पर जाएं।"
+    },
+    "insufficient_permissions": {
+      "title": "{host} के लिए अपर्याप्त API अनुमतियाँ",
+      "description": "उपयोगकर्ता `{username}` {host} पर MikroTik राउटर से कनेक्ट हो रहा है लेकिन आवश्यक API अनुमतियाँ नहीं हैं। अनुपस्थित अनुमतियाँ: `{missing}`\n\nअनुमतियाँ ठीक करने के लिए RouterOS टर्मिनल में यह कमांड चलाएं:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

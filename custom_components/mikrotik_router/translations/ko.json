@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "{host}의 SSL 연결 오류",
       "description": "{host}의 MikroTik 라우터에 보안 SSL 연결을 설정할 수 없습니다. **설정 → 통합 → MikroTik Router → 재구성**으로 이동하여 SSL 설정을 변경하거나 SSL을 비활성화하세요."
+    },
+    "insufficient_permissions": {
+      "title": "{host}에 대한 API 권한 부족",
+      "description": "사용자 `{username}`이(가) {host}의 MikroTik 라우터에 연결 중이지만 필요한 API 권한이 없습니다. 누락된 권한: `{missing}`\n\n권한을 수정하려면 RouterOS 터미널에서 다음 명령을 실행하세요:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {
