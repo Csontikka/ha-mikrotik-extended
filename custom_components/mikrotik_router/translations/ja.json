@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "{host} のSSL接続エラー",
       "description": "{host} のMikroTikルーターへの安全なSSL接続を確立できませんでした。**設定 → インテグレーション → MikroTik Router → 再設定** でSSL設定を変更するかSSLを無効にしてください。"
+    },
+    "insufficient_permissions": {
+      "title": "{host} の API 権限が不足しています",
+      "description": "ユーザー `{username}` が {host} の MikroTik ルーターに接続していますが、必要な API 権限がありません。不足している権限: `{missing}`\n\n権限を修正するには、RouterOS ターミナルで次のコマンドを実行してください:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

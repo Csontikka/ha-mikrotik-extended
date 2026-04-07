@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Chyba SSL připojení pro {host}",
       "description": "Nepodařilo se navázat bezpečné SSL připojení k MikroTik routeru na adrese {host}. Přejděte na **Nastavení → Integrace → MikroTik Router → Překonfigurování** pro změnu nastavení SSL nebo vypnutí SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Nedostatečná oprávnění API pro {host}",
+      "description": "Uživatel RouterOS **{username}** na routeru **{host}** postrádá následující oprávnění: `{missing}`.\n\nNěkteré funkce integrace nebudou fungovat (přepínače, tlačítko restartu, automatické nastavení Kid Control). Chcete-li to opravit, přidejte chybějící zásady do skupiny uživatele na routeru:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

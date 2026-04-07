@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Помилка SSL-з'єднання для {host}",
       "description": "Не вдалося встановити безпечне SSL-з'єднання з маршрутизатором MikroTik за адресою {host}. Перейдіть до **Налаштування → Інтеграції → MikroTik Router → Переналаштування** для зміни параметрів SSL або вимкнення SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Недостатні права API для {host}",
+      "description": "Користувач `{username}` підключається до маршрутизатора MikroTik на {host}, але не має необхідних прав API. Відсутні права: `{missing}`\n\nЩоб виправити права, виконайте у терміналі RouterOS:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

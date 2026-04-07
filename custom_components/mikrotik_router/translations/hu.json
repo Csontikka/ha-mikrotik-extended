@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "SSL kapcsolati hiba: {host}",
       "description": "Nem sikerült biztonságos SSL kapcsolatot létesíteni a(z) {host} MikroTik routerrel. Lépj a **Beállítások → Integrációk → MikroTik Router → Újrakonfigurálás** menüpontra az SSL beállítások módosításához vagy letiltásához."
+    },
+    "insufficient_permissions": {
+      "title": "Elégtelen API-jogosultságok: {host}",
+      "description": "A(z) **{host}** routeren a(z) **{username}** RouterOS felhasználónak hiányzó jogosultságai vannak: `{missing}`.\n\nNéhány integrációs funkció nem fog működni (kapcsolók, újraindítás gomb, Kid Control automatikus beállítás). A javításhoz adj hozzá a hiányzó jogosultságokat a felhasználó csoportjához a routeren:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

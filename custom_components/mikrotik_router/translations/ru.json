@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Ошибка SSL-соединения для {host}",
       "description": "Не удалось установить безопасное SSL-соединение с маршрутизатором MikroTik по адресу {host}. Перейдите в **Настройки → Интеграции → MikroTik Router → Перенастройка** для изменения параметров SSL или отключения SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Недостаточно прав API для {host}",
+      "description": "Пользователь RouterOS **{username}** на роутере **{host}** не имеет следующих прав: `{missing}`.\n\nНекоторые функции интеграции не будут работать (переключатели, кнопка перезагрузки, автонастройка Kid Control). Чтобы исправить, добавьте недостающие политики в группу пользователя на роутере:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

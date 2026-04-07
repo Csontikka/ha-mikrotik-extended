@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "{host} için SSL bağlantı hatası",
       "description": "{host} adresindeki MikroTik yönlendiriciye güvenli SSL bağlantısı kurulamadı. SSL ayarlarını değiştirmek veya SSL'yi devre dışı bırakmak için **Ayarlar → Entegrasyonlar → MikroTik Router → Yeniden yapılandır** bölümüne gidin."
+    },
+    "insufficient_permissions": {
+      "title": "{host} için yetersiz API izinleri",
+      "description": "`{username}` kullanıcısı {host} adresindeki MikroTik yönlendiriciye bağlanıyor ancak gerekli API izinlerine sahip değil. Eksik izinler: `{missing}`\n\nİzinleri düzeltmek için RouterOS terminalinde şu komutu çalıştırın:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

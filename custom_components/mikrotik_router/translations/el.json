@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Σφάλμα σύνδεσης SSL για {host}",
       "description": "Δεν ήταν δυνατή η δημιουργία ασφαλούς σύνδεσης SSL με τον δρομολογητή MikroTik στο {host}. Μεταβείτε στις **Ρυθμίσεις → Ενσωματώσεις → MikroTik Router → Επαναρύθμιση** για να αλλάξετε τις ρυθμίσεις SSL ή να απενεργοποιήσετε το SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Ανεπαρκή δικαιώματα API για {host}",
+      "description": "Ο χρήστης RouterOS **{username}** στον δρομολογητή **{host}** δεν έχει τα παρακάτω δικαιώματα: `{missing}`.\n\nΟρισμένες λειτουργίες ενσωμάτωσης δεν θα λειτουργήσουν (διακόπτες, κουμπί επανεκκίνησης, αυτόματη ρύθμιση Kid Control). Για να το διορθώσετε, προσθέστε τις ελλείπουσες πολιτικές στην ομάδα χρήστη στον δρομολογητή:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

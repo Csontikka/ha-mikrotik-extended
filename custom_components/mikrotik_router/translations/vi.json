@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Lỗi kết nối SSL cho {host}",
       "description": "Không thể thiết lập kết nối SSL an toàn với bộ định tuyến MikroTik tại {host}. Đi tới **Cài đặt → Tích hợp → MikroTik Router → Cấu hình lại** để thay đổi cài đặt SSL hoặc tắt SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Quyền API không đủ cho {host}",
+      "description": "Người dùng `{username}` đang kết nối với bộ định tuyến MikroTik tại {host} nhưng không có các quyền API cần thiết. Các quyền còn thiếu: `{missing}`\n\nĐể khắc phục quyền, hãy chạy lệnh sau trong terminal RouterOS:\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

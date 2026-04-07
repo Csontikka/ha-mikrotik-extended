@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "خطأ اتصال SSL لـ {host}",
       "description": "تعذر إنشاء اتصال SSL آمن مع جهاز MikroTik على {host}. انتقل إلى **الإعدادات → التكاملات → MikroTik Router → إعادة التهيئة** لتغيير إعدادات SSL أو تعطيل SSL."
+    },
+    "insufficient_permissions": {
+      "title": "أذونات API غير كافية لـ {host}",
+      "description": "مستخدم RouterOS **{username}** على الموجه **{host}** يفتقد الأذونات التالية: `{missing}`.\n\nبعض ميزات التكامل لن تعمل (المفاتيح، زر إعادة التشغيل، الإعداد التلقائي لـ Kid Control). لإصلاح ذلك، أضف السياسات المفقودة إلى مجموعة المستخدم على الموجه:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {

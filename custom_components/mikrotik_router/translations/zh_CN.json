@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "{host} 的 SSL 连接错误",
       "description": "无法与 {host} 上的 MikroTik 路由器建立安全 SSL 连接。前往 **设置 → 集成 → MikroTik Router → 重新配置** 更改 SSL 设置或禁用 SSL。"
+    },
+    "insufficient_permissions": {
+      "title": "{host} 的 API 权限不足",
+      "description": "用户 `{username}` 正在连接 {host} 上的 MikroTik 路由器，但缺少所需的 API 权限。缺少的权限：`{missing}`\n\n要修复权限，请在 RouterOS 终端中运行以下命令：\n\n```\n/user group set full policy=local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api\n```"
     }
   },
   "exceptions": {

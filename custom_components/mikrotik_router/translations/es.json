@@ -215,6 +215,10 @@
     "ssl_error": {
       "title": "Error de conexión SSL para {host}",
       "description": "No se pudo establecer una conexión SSL segura con el router MikroTik en {host}. Ve a **Ajustes → Integraciones → MikroTik Router → Reconfigurar** para cambiar los ajustes SSL o desactivar SSL."
+    },
+    "insufficient_permissions": {
+      "title": "Permisos de API insuficientes para {host}",
+      "description": "Al usuario RouterOS **{username}** en el router **{host}** le faltan los siguientes permisos: `{missing}`.\n\nAlgunas funciones de la integración no funcionarán (interruptores, botón de reinicio, configuración automática de Kid Control). Para solucionarlo, añade las políticas que faltan al grupo del usuario en el router:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
     }
   },
   "exceptions": {
