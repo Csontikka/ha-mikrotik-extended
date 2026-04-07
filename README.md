@@ -235,7 +235,7 @@ These fields are shown during the initial setup wizard:
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
 | Name | Yes | `Mikrotik` | Display name for this integration instance |
-| Host | Yes | — | IP address or hostname of the MikroTik router |
+| Host | Yes | `192.168.88.1` | IP address or hostname of the MikroTik router |
 | Username | Yes | `admin` | RouterOS API username |
 | Password | Yes | — | RouterOS API password |
 | Port | No | `0` | API port (`0` = auto-detect: 8728 plain, 8729 SSL) |
