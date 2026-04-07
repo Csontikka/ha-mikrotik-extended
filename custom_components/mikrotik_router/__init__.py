@@ -22,9 +22,7 @@ from .const import DEFAULT_VERIFY_SSL, DOMAIN, PLATFORMS
 from .coordinator import MikrotikCoordinator, MikrotikData, MikrotikTrackerCoordinator
 from .mikrotikapi import MikrotikAPI
 
-SCRIPT_SCHEMA = vol.Schema(
-    {vol.Required("router"): cv.string, vol.Required("script"): cv.string}
-)
+SCRIPT_SCHEMA = vol.Schema({vol.Required("router"): cv.string, vol.Required("script"): cv.string})
 
 WOL_SCHEMA = vol.Schema(
     {
@@ -61,9 +59,7 @@ class _RingBufferHandler(logging.Handler):
 
 _log_handler = _RingBufferHandler(_LOG_BUFFER)
 _log_handler.setLevel(logging.DEBUG)
-_log_handler.setFormatter(
-    logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-)
+_log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
 _integration_logger = logging.getLogger("custom_components.mikrotik_router")
 _integration_logger.addHandler(_log_handler)
 _integration_logger.setLevel(logging.DEBUG)
@@ -92,9 +88,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             if not hasattr(entry, "runtime_data"):
                 continue
             entry_data = entry.runtime_data
-            success = await hass.async_add_executor_job(
-                entry_data.data_coordinator.api.wol, mac, interface
-            )
+            success = await hass.async_add_executor_job(entry_data.data_coordinator.api.wol, mac, interface)
             if not success:
                 _LOGGER.warning(
                     "WoL: failed to send magic packet to %s via router %s",
@@ -204,9 +198,7 @@ async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
 
-    unload_ok = await hass.config_entries.async_unload_platforms(
-        config_entry, PLATFORMS
-    )
+    unload_ok = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
     return unload_ok
 
 
@@ -250,9 +242,7 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 # ---------------------------
 #   async_remove_config_entry_device
 # ---------------------------
-async def async_remove_config_entry_device(
-    hass, config_entry: ConfigEntry, device_entry: device_registry.DeviceEntry
-) -> bool:
+async def async_remove_config_entry_device(hass, config_entry: ConfigEntry, device_entry: device_registry.DeviceEntry) -> bool:
     """Remove a config entry from a device."""
     return True
 

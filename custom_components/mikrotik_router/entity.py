@@ -57,18 +57,10 @@ _IFACE_TYPE_CATEGORY = {
 
 def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
     # Sensors
-    if (
-        entity_description.func == "MikrotikInterfaceTrafficSensor"
-        and not config_entry.options.get(
-            CONF_SENSOR_PORT_TRAFFIC, DEFAULT_SENSOR_PORT_TRAFFIC
-        )
-    ):
+    if entity_description.func == "MikrotikInterfaceTrafficSensor" and not config_entry.options.get(CONF_SENSOR_PORT_TRAFFIC, DEFAULT_SENSOR_PORT_TRAFFIC):
         return True
 
-    if (
-        entity_description.func == "MikrotikInterfaceTrafficSensor"
-        and data[uid]["type"] == "bridge"
-    ):
+    if entity_description.func == "MikrotikInterfaceTrafficSensor" and data[uid]["type"] == "bridge":
         return True
 
     if entity_description.data_path == "client_traffic":
@@ -78,39 +70,24 @@ def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
             return True
 
     # Binary sensors
-    if (
-        entity_description.func == "MikrotikPortBinarySensor"
-        and data[uid]["type"] == "wlan"
-    ):
+    if entity_description.func == "MikrotikPortBinarySensor" and data[uid]["type"] == "wlan":
         return True
 
-    if (
-        entity_description.func == "MikrotikPortBinarySensor"
-        and not config_entry.options.get(
-            CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER
-        )
-    ):
+    if entity_description.func == "MikrotikPortBinarySensor" and not config_entry.options.get(CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER):
         return True
 
-    if entity_description.data_path == "netwatch" and not config_entry.options.get(
-        CONF_SENSOR_NETWATCH_TRACKER, DEFAULT_SENSOR_NETWATCH_TRACKER
-    ):
+    if entity_description.data_path == "netwatch" and not config_entry.options.get(CONF_SENSOR_NETWATCH_TRACKER, DEFAULT_SENSOR_NETWATCH_TRACKER):
         return True
 
     # Device Tracker
     # Skip if host tracking is disabled
-    return (
-        entity_description.func == "MikrotikHostDeviceTracker"
-        and not config_entry.options.get(CONF_TRACK_HOSTS, DEFAULT_TRACK_HOSTS)
-    )
+    return entity_description.func == "MikrotikHostDeviceTracker" and not config_entry.options.get(CONF_TRACK_HOSTS, DEFAULT_TRACK_HOSTS)
 
 
 # ---------------------------
 #   async_add_entities
 # ---------------------------
-async def async_add_entities(
-    hass: HomeAssistant, config_entry: ConfigEntry, dispatcher: dict[str, Callable]
-):
+async def async_add_entities(hass: HomeAssistant, config_entry: ConfigEntry, dispatcher: dict[str, Callable]):
     """Add entities."""
     platform = ep.async_get_current_platform()
     services = platform.platform.SENSOR_SERVICES
@@ -134,19 +111,12 @@ async def async_add_entities(
             else:
                 unique_id = f"{entry_id}-{obj.entity_description.key}"
 
-            entity_id = entity_registry.async_get_entity_id(
-                platform.domain, DOMAIN, unique_id
-            )
+            entity_id = entity_registry.async_get_entity_id(platform.domain, DOMAIN, unique_id)
             entity = entity_registry.async_get(entity_id)
-            if entity is None or (
-                (entity_id not in platform.entities) and (entity.disabled is False)
-            ):
+            if entity is None or ((entity_id not in platform.entities) and (entity.disabled is False)):
                 _LOGGER.debug("Add entity %s", entity_id)
                 await platform.async_add_entities([obj])
-            elif (
-                entity is not None
-                and entity.disabled_by == er.RegistryEntryDisabler.INTEGRATION
-            ):
+            elif entity is not None and entity.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
                 enable_on = getattr(obj.entity_description, "enable_on_option", None)
                 if enable_on and config_entry.options.get(enable_on, False):
                     _LOGGER.debug("Re-enabling entity %s", entity_id)
@@ -194,9 +164,7 @@ async def async_add_entities(
                 _LOGGER.debug("Removing empty device %s", device_entry.name)
                 device_registry.async_remove_device(device_entry.id)
 
-    await async_update_controller(
-        config_entry.runtime_data.data_coordinator
-    )
+    await async_update_controller(config_entry.runtime_data.data_coordinator)
 
     unsub = async_dispatcher_connect(hass, f"update_sensors_{config_entry.entry_id}", async_update_controller)
     config_entry.async_on_unload(unsub)
@@ -268,10 +236,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return comment
 
         if self.entity_description.name:
-            if (
-                self._data[self.entity_description.data_reference]
-                == self._data[self.entity_description.data_name]
-            ):
+            if self._data[self.entity_description.data_reference] == self._data[self.entity_description.data_name]:
                 return f"{self.entity_description.name}"
 
             return f"{self._data[self.entity_description.data_name]} {self.entity_description.name}"
@@ -342,12 +307,8 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             dev_group = self._data[self.entity_description.data_name]
             dev_manufacturer = ""
             if dev_connection_value in self.coordinator.data["host"]:
-                dev_group = self.coordinator.data["host"][dev_connection_value][
-                    "host-name"
-                ]
-                dev_manufacturer = self.coordinator.data["host"][dev_connection_value][
-                    "manufacturer"
-                ]
+                dev_group = self.coordinator.data["host"][dev_connection_value]["host-name"]
+                dev_manufacturer = self.coordinator.data["host"][dev_connection_value]["manufacturer"]
 
             return DeviceInfo(
                 connections={(dev_connection, f"{dev_connection_value}")},

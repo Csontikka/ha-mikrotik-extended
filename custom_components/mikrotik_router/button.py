@@ -61,9 +61,7 @@ class MikrotikRebootButton(MikrotikButton):
             )
             return
         _LOGGER.info("Rebooting Mikrotik device %s", self.coordinator.host)
-        await self.hass.async_add_executor_job(
-            self.coordinator.execute, "/system", "reboot", None, None
-        )
+        await self.hass.async_add_executor_job(self.coordinator.execute, "/system", "reboot", None, None)
 
 
 # ---------------------------

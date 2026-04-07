@@ -1,4 +1,5 @@
 """MikroTik device discovery via ARP table and MNDP."""
+
 from __future__ import annotations
 
 import asyncio
@@ -67,17 +68,18 @@ _SNMP_TIMEOUT = 0.5
 #     }
 #   }
 _SNMP_SYSNAME_GET = bytes.fromhex(
-    "3029"                  # SEQUENCE (41 bytes)
-    "020101"                # INTEGER: version=1 (v2c)
-    "04067075626c6963"      # OCTET STRING: "public"
-    "a01c"                  # GetRequest-PDU (28 bytes)
-    "020400000001"          # INTEGER: request-id=1
-    "020100"                # INTEGER: error-status=0
-    "020100"                # INTEGER: error-index=0
-    "300e"                  # SEQUENCE: VarBindList (14 bytes)
-    "300c"                  # SEQUENCE: VarBind (12 bytes)
-    "06082b0601020101" "0500"  # OID 1.3.6.1.2.1.1.5.0
-    "0500"                    # NULL value
+    "3029"  # SEQUENCE (41 bytes)
+    "020101"  # INTEGER: version=1 (v2c)
+    "04067075626c6963"  # OCTET STRING: "public"
+    "a01c"  # GetRequest-PDU (28 bytes)
+    "020400000001"  # INTEGER: request-id=1
+    "020100"  # INTEGER: error-status=0
+    "020100"  # INTEGER: error-index=0
+    "300e"  # SEQUENCE: VarBindList (14 bytes)
+    "300c"  # SEQUENCE: VarBind (12 bytes)
+    "06082b0601020101"
+    "0500"  # OID 1.3.6.1.2.1.1.5.0
+    "0500"  # NULL value
 )
 
 
@@ -189,9 +191,7 @@ async def _snmp_sysname(loop: asyncio.AbstractEventLoop, ip: str) -> str | None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setblocking(False)
         sock.sendto(_SNMP_SYSNAME_GET, (ip, _SNMP_PORT))
-        data = await asyncio.wait_for(
-            loop.sock_recv(sock, 1024), timeout=_SNMP_TIMEOUT
-        )
+        data = await asyncio.wait_for(loop.sock_recv(sock, 1024), timeout=_SNMP_TIMEOUT)
         return _parse_snmp_sysname(data)
     except (TimeoutError, OSError):
         return None
@@ -258,9 +258,7 @@ async def _listen_mndp_broadcast(
             if remaining <= 0:
                 break
             try:
-                data = await asyncio.wait_for(
-                    loop.sock_recv(sock, 4096), timeout=remaining
-                )
+                data = await asyncio.wait_for(loop.sock_recv(sock, 4096), timeout=remaining)
                 if data == _MNDP_PROBE:
                     continue  # ignore loopback of our own probe
                 dev = _parse_mndp(data)
@@ -319,9 +317,7 @@ async def async_scan_mndp(timeout: float = 5.0) -> list[MndpDevice]:
     await _populate_arp_table()
 
     # --- Start broadcast listener (runs for full timeout) ---
-    broadcast_task = asyncio.ensure_future(
-        _listen_mndp_broadcast(loop, found, timeout)
-    )
+    broadcast_task = asyncio.ensure_future(_listen_mndp_broadcast(loop, found, timeout))
 
     # --- ARP table scan + unicast probes (runs in parallel with broadcast) ---
     arp_devices = _read_arp_table()
@@ -333,9 +329,7 @@ async def async_scan_mndp(timeout: float = 5.0) -> list[MndpDevice]:
     if gateway_ip and gateway_ip not in arp_ips:
         _LOGGER.debug("MNDP: probing default gateway %s", gateway_ip)
 
-    probe_list: list[tuple[str, str, bool]] = [
-        (ip, mac, True) for ip, mac in arp_devices
-    ]
+    probe_list: list[tuple[str, str, bool]] = [(ip, mac, True) for ip, mac in arp_devices]
     if gateway_ip and gateway_ip not in arp_ips:
         probe_list.append((gateway_ip, "", False))
 
@@ -351,9 +345,7 @@ async def async_scan_mndp(timeout: float = 5.0) -> list[MndpDevice]:
                 return_exceptions=True,
             ),
         )
-        for (ip, mac, is_known), mndp_result, snmp_result in zip(
-            probe_list, mndp_results, snmp_results, strict=False
-        ):
+        for (ip, mac, is_known), mndp_result, snmp_result in zip(probe_list, mndp_results, snmp_results, strict=False):
             snmp_name = snmp_result if isinstance(snmp_result, str) else None
             if isinstance(mndp_result, MndpDevice):
                 if not mndp_result.identity and snmp_name:

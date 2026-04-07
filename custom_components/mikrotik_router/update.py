@@ -93,9 +93,7 @@ class MikrotikRouterOSUpdate(MikrotikEntity, UpdateEntity):
         try:
             session = async_get_clientsession(self.hass)
             """Get concatenated changelogs from installed_version to latest_version in reverse order."""
-            versions_to_fetch = generate_version_list(
-                self._data["installed-version"], self._data["latest-version"]
-            )
+            versions_to_fetch = generate_version_list(self._data["installed-version"], self._data["latest-version"])
 
             tasks = [fetch_changelog(session, version) for version in versions_to_fetch]
             changelogs = await asyncio.gather(*tasks)
@@ -198,11 +196,7 @@ def decrement_version(version: Version, start_version: Version) -> Version:
         return Version(f"{version.major}.{version.minor}.{next_patch}")
     elif version.minor > 0:
         next_minor = version.minor - 1
-        return Version(
-            f"{version.major}.{next_minor}.999"
-        )  # Assuming .999 as max patch version
+        return Version(f"{version.major}.{next_minor}.999")  # Assuming .999 as max patch version
     else:
         next_major = version.major - 1
-        return Version(
-            f"{next_major}.999.999"
-        )  # Assuming .999 as max minor and patch version
+        return Version(f"{next_major}.999.999")  # Assuming .999 as max minor and patch version
