@@ -41,7 +41,7 @@ jobs:
             pytest \
             pytest-asyncio \
             pytest-cov \
-            "pytest-homeassistant-custom-component>=0.13.205,<0.14" \
+            "pytest-homeassistant-custom-component==0.13.205" \
             librouteros \
             mac-vendor-lookup
 
