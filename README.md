@@ -271,10 +271,6 @@ Switching presets takes effect after saving:
 - Disabling a category **removes** the entities and their devices from Home Assistant.
 - Entities without a corresponding option (fan speed, PSU sensors, GPS, etc.) remain disabled by default and must be enabled manually.
 
-### Configurable Traffic Units
-
-Traffic sensors support multiple units: bps, Kbps, Mbps, B/s, KB/s, MB/s — configurable per integration entry.
-
 ## Removal
 
 1. **Settings -> Devices & Services**
