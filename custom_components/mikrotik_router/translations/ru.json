@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Недостаточно прав API для {host}",
-      "description": "Пользователь RouterOS **{username}** на роутере **{host}** не имеет следующих прав: `{missing}`.\n\nНекоторые функции интеграции не будут работать (переключатели, кнопка перезагрузки, автонастройка Kid Control). Чтобы исправить, добавьте недостающие политики в группу пользователя на роутере:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "Пользователь RouterOS **{username}** на роутере **{host}** не имеет следующих прав: **{missing}**.\n\nНекоторые функции интеграции не будут работать (переключатели, кнопка перезагрузки, автонастройка Kid Control). Чтобы исправить, добавьте недостающие политики в группу пользователя на роутере:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Температура" },
-      "system_voltage": { "name": "Напряжение" },
-      "system_cpu_temperature": { "name": "Температура CPU" },
-      "system_switch_temperature": { "name": "Температура коммутатора" },
-      "system_board_temperature1": { "name": "Температура платы" },
-      "system_phy_temperature": { "name": "Температура PHY" },
-      "system_power_consumption": { "name": "Потребление энергии" },
-      "system_poe_out_consumption": { "name": "Выходная мощность PoE" },
-      "system_fan1_speed": { "name": "Скорость вентилятора 1" },
-      "system_fan2_speed": { "name": "Скорость вентилятора 2" },
-      "system_fan3_speed": { "name": "Скорость вентилятора 3" },
-      "system_fan4_speed": { "name": "Скорость вентилятора 4" },
-      "system_psu1_current": { "name": "БП 1 ток" },
-      "system_psu1_voltage": { "name": "БП 1 напряжение" },
-      "system_psu2_current": { "name": "БП 2 ток" },
-      "system_psu2_voltage": { "name": "БП 2 напряжение" },
-      "system_uptime": { "name": "Время работы" },
-      "system_cpu_load": { "name": "Загрузка CPU" },
-      "system_memory_usage": { "name": "Использование памяти" },
-      "system_hdd_usage": { "name": "Использование диска" },
-      "system_clients_wired": { "name": "Проводные клиенты" },
-      "system_clients_wireless": { "name": "Беспроводные клиенты" },
-      "system_captive_authorized": { "name": "Клиенты портала авторизации" },
-      "system_gps_latitude": { "name": "Широта" },
-      "system_gps_longitude": { "name": "Долгота" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX всего" },
-      "rx_total": { "name": "RX всего" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP-адрес" },
-      "cloud_public_address": { "name": "Публичный адрес" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Последний handshake" },
-      "system_device_mode": { "name": "Режим устройства" },
-      "system_packages": { "name": "Пакеты" },
-      "container_status": { "name": "Статус" }
+      "system_temperature": {
+        "name": "Температура"
+      },
+      "system_voltage": {
+        "name": "Напряжение"
+      },
+      "system_cpu_temperature": {
+        "name": "Температура CPU"
+      },
+      "system_switch_temperature": {
+        "name": "Температура коммутатора"
+      },
+      "system_board_temperature1": {
+        "name": "Температура платы"
+      },
+      "system_phy_temperature": {
+        "name": "Температура PHY"
+      },
+      "system_power_consumption": {
+        "name": "Потребление энергии"
+      },
+      "system_poe_out_consumption": {
+        "name": "Выходная мощность PoE"
+      },
+      "system_fan1_speed": {
+        "name": "Скорость вентилятора 1"
+      },
+      "system_fan2_speed": {
+        "name": "Скорость вентилятора 2"
+      },
+      "system_fan3_speed": {
+        "name": "Скорость вентилятора 3"
+      },
+      "system_fan4_speed": {
+        "name": "Скорость вентилятора 4"
+      },
+      "system_psu1_current": {
+        "name": "БП 1 ток"
+      },
+      "system_psu1_voltage": {
+        "name": "БП 1 напряжение"
+      },
+      "system_psu2_current": {
+        "name": "БП 2 ток"
+      },
+      "system_psu2_voltage": {
+        "name": "БП 2 напряжение"
+      },
+      "system_uptime": {
+        "name": "Время работы"
+      },
+      "system_cpu_load": {
+        "name": "Загрузка CPU"
+      },
+      "system_memory_usage": {
+        "name": "Использование памяти"
+      },
+      "system_hdd_usage": {
+        "name": "Использование диска"
+      },
+      "system_clients_wired": {
+        "name": "Проводные клиенты"
+      },
+      "system_clients_wireless": {
+        "name": "Беспроводные клиенты"
+      },
+      "system_captive_authorized": {
+        "name": "Клиенты портала авторизации"
+      },
+      "system_gps_latitude": {
+        "name": "Широта"
+      },
+      "system_gps_longitude": {
+        "name": "Долгота"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX всего"
+      },
+      "rx_total": {
+        "name": "RX всего"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP-адрес"
+      },
+      "cloud_public_address": {
+        "name": "Публичный адрес"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Последний handshake"
+      },
+      "system_device_mode": {
+        "name": "Режим устройства"
+      },
+      "system_packages": {
+        "name": "Пакеты"
+      },
+      "container_status": {
+        "name": "Статус"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "ИБП" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Соединение" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Подключён" }
+      "system_ups": {
+        "name": "ИБП"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Соединение"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Подключён"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Порт" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Приостановлен" }
+      "interface_port": {
+        "name": "Порт"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Приостановлен"
+      }
     },
     "button": {
-      "reboot": { "name": "Перезагрузка" }
+      "reboot": {
+        "name": "Перезагрузка"
+      }
     }
   }
 }

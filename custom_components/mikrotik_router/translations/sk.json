@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Nedostatočné oprávnenia API pre {host}",
-      "description": "Používateľ RouterOS **{username}** na smerovači **{host}** nemá nasledujúce oprávnenia: `{missing}`.\n\nNiektoré funkcie integrácie nebudú fungovať (prepínače, tlačidlo reštartu, automatické nastavenie Kid Control). Ak to chcete opraviť, pridajte chýbajúce zásady do skupiny používateľa na smerovači:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "Používateľ RouterOS **{username}** na smerovači **{host}** nemá nasledujúce oprávnenia: **{missing}**.\n\nNiektoré funkcie integrácie nebudú fungovať (prepínače, tlačidlo reštartu, automatické nastavenie Kid Control). Ak to chcete opraviť, pridajte chýbajúce zásady do skupiny používateľa na smerovači:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Teplota" },
-      "system_voltage": { "name": "Napätie" },
-      "system_cpu_temperature": { "name": "Teplota CPU" },
-      "system_switch_temperature": { "name": "Teplota switcha" },
-      "system_board_temperature1": { "name": "Teplota dosky" },
-      "system_phy_temperature": { "name": "Teplota PHY" },
-      "system_power_consumption": { "name": "Spotreba energie" },
-      "system_poe_out_consumption": { "name": "Spotreba PoE výstupu" },
-      "system_fan1_speed": { "name": "Otáčky ventilátora 1" },
-      "system_fan2_speed": { "name": "Otáčky ventilátora 2" },
-      "system_fan3_speed": { "name": "Otáčky ventilátora 3" },
-      "system_fan4_speed": { "name": "Otáčky ventilátora 4" },
-      "system_psu1_current": { "name": "Zdroj 1 prúd" },
-      "system_psu1_voltage": { "name": "Zdroj 1 napätie" },
-      "system_psu2_current": { "name": "Zdroj 2 prúd" },
-      "system_psu2_voltage": { "name": "Zdroj 2 napätie" },
-      "system_uptime": { "name": "Doba prevádzky" },
-      "system_cpu_load": { "name": "Zaťaženie CPU" },
-      "system_memory_usage": { "name": "Využitie pamäte" },
-      "system_hdd_usage": { "name": "Využitie disku" },
-      "system_clients_wired": { "name": "Kábloví klienti" },
-      "system_clients_wireless": { "name": "Bezdrôtoví klienti" },
-      "system_captive_authorized": { "name": "Klienti captive portálu" },
-      "system_gps_latitude": { "name": "Zemepisná šírka" },
-      "system_gps_longitude": { "name": "Zemepisná dĺžka" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX celkom" },
-      "rx_total": { "name": "RX celkom" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP adresa" },
-      "cloud_public_address": { "name": "Verejná adresa" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Posledný handshake" },
-      "system_device_mode": { "name": "Režim zariadenia" },
-      "system_packages": { "name": "Balíčky" },
-      "container_status": { "name": "Stav" }
+      "system_temperature": {
+        "name": "Teplota"
+      },
+      "system_voltage": {
+        "name": "Napätie"
+      },
+      "system_cpu_temperature": {
+        "name": "Teplota CPU"
+      },
+      "system_switch_temperature": {
+        "name": "Teplota switcha"
+      },
+      "system_board_temperature1": {
+        "name": "Teplota dosky"
+      },
+      "system_phy_temperature": {
+        "name": "Teplota PHY"
+      },
+      "system_power_consumption": {
+        "name": "Spotreba energie"
+      },
+      "system_poe_out_consumption": {
+        "name": "Spotreba PoE výstupu"
+      },
+      "system_fan1_speed": {
+        "name": "Otáčky ventilátora 1"
+      },
+      "system_fan2_speed": {
+        "name": "Otáčky ventilátora 2"
+      },
+      "system_fan3_speed": {
+        "name": "Otáčky ventilátora 3"
+      },
+      "system_fan4_speed": {
+        "name": "Otáčky ventilátora 4"
+      },
+      "system_psu1_current": {
+        "name": "Zdroj 1 prúd"
+      },
+      "system_psu1_voltage": {
+        "name": "Zdroj 1 napätie"
+      },
+      "system_psu2_current": {
+        "name": "Zdroj 2 prúd"
+      },
+      "system_psu2_voltage": {
+        "name": "Zdroj 2 napätie"
+      },
+      "system_uptime": {
+        "name": "Doba prevádzky"
+      },
+      "system_cpu_load": {
+        "name": "Zaťaženie CPU"
+      },
+      "system_memory_usage": {
+        "name": "Využitie pamäte"
+      },
+      "system_hdd_usage": {
+        "name": "Využitie disku"
+      },
+      "system_clients_wired": {
+        "name": "Kábloví klienti"
+      },
+      "system_clients_wireless": {
+        "name": "Bezdrôtoví klienti"
+      },
+      "system_captive_authorized": {
+        "name": "Klienti captive portálu"
+      },
+      "system_gps_latitude": {
+        "name": "Zemepisná šírka"
+      },
+      "system_gps_longitude": {
+        "name": "Zemepisná dĺžka"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX celkom"
+      },
+      "rx_total": {
+        "name": "RX celkom"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP adresa"
+      },
+      "cloud_public_address": {
+        "name": "Verejná adresa"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Posledný handshake"
+      },
+      "system_device_mode": {
+        "name": "Režim zariadenia"
+      },
+      "system_packages": {
+        "name": "Balíčky"
+      },
+      "container_status": {
+        "name": "Stav"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Pripojenie" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Pripojený" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Pripojenie"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Pripojený"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Port" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Pozastavené" }
+      "interface_port": {
+        "name": "Port"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Pozastavené"
+      }
     },
     "button": {
-      "reboot": { "name": "Reštartovať" }
+      "reboot": {
+        "name": "Reštartovať"
+      }
     }
   }
 }

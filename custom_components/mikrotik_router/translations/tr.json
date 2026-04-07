@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "{host} için yetersiz API izinleri",
-      "description": "RouterOS kullanıcısı **{username}**, **{host}** yönlendiricisinde şu izinlere sahip değil: `{missing}`.\n\nBazı entegrasyon özellikleri çalışmayacak (anahtarlar, yeniden başlatma düğmesi, Kid Control otomatik kurulumu). Bunu düzeltmek için yönlendiricide kullanıcı grubuna eksik politikaları ekleyin:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS kullanıcısı **{username}**, **{host}** yönlendiricisinde şu izinlere sahip değil: **{missing}**.\n\nBazı entegrasyon özellikleri çalışmayacak (anahtarlar, yeniden başlatma düğmesi, Kid Control otomatik kurulumu). Bunu düzeltmek için yönlendiricide kullanıcı grubuna eksik politikaları ekleyin:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Sıcaklık" },
-      "system_voltage": { "name": "Gerilim" },
-      "system_cpu_temperature": { "name": "CPU sıcaklığı" },
-      "system_switch_temperature": { "name": "Switch sıcaklığı" },
-      "system_board_temperature1": { "name": "Anakart sıcaklığı" },
-      "system_phy_temperature": { "name": "PHY sıcaklığı" },
-      "system_power_consumption": { "name": "Güç tüketimi" },
-      "system_poe_out_consumption": { "name": "PoE çıkış tüketimi" },
-      "system_fan1_speed": { "name": "Fan 1 hızı" },
-      "system_fan2_speed": { "name": "Fan 2 hızı" },
-      "system_fan3_speed": { "name": "Fan 3 hızı" },
-      "system_fan4_speed": { "name": "Fan 4 hızı" },
-      "system_psu1_current": { "name": "Güç kaynağı 1 akım" },
-      "system_psu1_voltage": { "name": "Güç kaynağı 1 gerilim" },
-      "system_psu2_current": { "name": "Güç kaynağı 2 akım" },
-      "system_psu2_voltage": { "name": "Güç kaynağı 2 gerilim" },
-      "system_uptime": { "name": "Çalışma süresi" },
-      "system_cpu_load": { "name": "CPU yükü" },
-      "system_memory_usage": { "name": "Bellek kullanımı" },
-      "system_hdd_usage": { "name": "Disk kullanımı" },
-      "system_clients_wired": { "name": "Kablolu istemciler" },
-      "system_clients_wireless": { "name": "Kablosuz istemciler" },
-      "system_captive_authorized": { "name": "Captive portal istemcileri" },
-      "system_gps_latitude": { "name": "Enlem" },
-      "system_gps_longitude": { "name": "Boylam" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX toplam" },
-      "rx_total": { "name": "RX toplam" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP adresi" },
-      "cloud_public_address": { "name": "Genel adres" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Son el sıkışma" },
-      "system_device_mode": { "name": "Cihaz modu" },
-      "system_packages": { "name": "Paketler" },
-      "container_status": { "name": "Durum" }
+      "system_temperature": {
+        "name": "Sıcaklık"
+      },
+      "system_voltage": {
+        "name": "Gerilim"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU sıcaklığı"
+      },
+      "system_switch_temperature": {
+        "name": "Switch sıcaklığı"
+      },
+      "system_board_temperature1": {
+        "name": "Anakart sıcaklığı"
+      },
+      "system_phy_temperature": {
+        "name": "PHY sıcaklığı"
+      },
+      "system_power_consumption": {
+        "name": "Güç tüketimi"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE çıkış tüketimi"
+      },
+      "system_fan1_speed": {
+        "name": "Fan 1 hızı"
+      },
+      "system_fan2_speed": {
+        "name": "Fan 2 hızı"
+      },
+      "system_fan3_speed": {
+        "name": "Fan 3 hızı"
+      },
+      "system_fan4_speed": {
+        "name": "Fan 4 hızı"
+      },
+      "system_psu1_current": {
+        "name": "Güç kaynağı 1 akım"
+      },
+      "system_psu1_voltage": {
+        "name": "Güç kaynağı 1 gerilim"
+      },
+      "system_psu2_current": {
+        "name": "Güç kaynağı 2 akım"
+      },
+      "system_psu2_voltage": {
+        "name": "Güç kaynağı 2 gerilim"
+      },
+      "system_uptime": {
+        "name": "Çalışma süresi"
+      },
+      "system_cpu_load": {
+        "name": "CPU yükü"
+      },
+      "system_memory_usage": {
+        "name": "Bellek kullanımı"
+      },
+      "system_hdd_usage": {
+        "name": "Disk kullanımı"
+      },
+      "system_clients_wired": {
+        "name": "Kablolu istemciler"
+      },
+      "system_clients_wireless": {
+        "name": "Kablosuz istemciler"
+      },
+      "system_captive_authorized": {
+        "name": "Captive portal istemcileri"
+      },
+      "system_gps_latitude": {
+        "name": "Enlem"
+      },
+      "system_gps_longitude": {
+        "name": "Boylam"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX toplam"
+      },
+      "rx_total": {
+        "name": "RX toplam"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP adresi"
+      },
+      "cloud_public_address": {
+        "name": "Genel adres"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Son el sıkışma"
+      },
+      "system_device_mode": {
+        "name": "Cihaz modu"
+      },
+      "system_packages": {
+        "name": "Paketler"
+      },
+      "container_status": {
+        "name": "Durum"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Bağlantı" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Bağlı" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Bağlantı"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Bağlı"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Port" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Duraklatıldı" }
+      "interface_port": {
+        "name": "Port"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Duraklatıldı"
+      }
     },
     "button": {
-      "reboot": { "name": "Yeniden başlat" }
+      "reboot": {
+        "name": "Yeniden başlat"
+      }
     }
   }
 }

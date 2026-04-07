@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Elégtelen API-jogosultságok: {host}",
-      "description": "A(z) **{host}** routeren a(z) **{username}** RouterOS felhasználónak hiányzó jogosultságai vannak: `{missing}`.\n\nNéhány integrációs funkció nem fog működni (kapcsolók, újraindítás gomb, Kid Control automatikus beállítás). A javításhoz adj hozzá a hiányzó jogosultságokat a felhasználó csoportjához a routeren:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "A(z) **{host}** routeren a(z) **{username}** RouterOS felhasználónak hiányzó jogosultságai vannak: **{missing}**.\n\nNéhány integrációs funkció nem fog működni (kapcsolók, újraindítás gomb, Kid Control automatikus beállítás). A javításhoz adj hozzá a hiányzó jogosultságokat a felhasználó csoportjához a routeren:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Hőmérséklet" },
-      "system_voltage": { "name": "Feszültség" },
-      "system_cpu_temperature": { "name": "CPU hőmérséklet" },
-      "system_switch_temperature": { "name": "Switch hőmérséklet" },
-      "system_board_temperature1": { "name": "Alaplap hőmérséklet" },
-      "system_phy_temperature": { "name": "PHY hőmérséklet" },
-      "system_power_consumption": { "name": "Teljesítményfelvétel" },
-      "system_poe_out_consumption": { "name": "PoE kimenet teljesítményfelvétel" },
-      "system_fan1_speed": { "name": "Ventilátor 1 fordulatszám" },
-      "system_fan2_speed": { "name": "Ventilátor 2 fordulatszám" },
-      "system_fan3_speed": { "name": "Ventilátor 3 fordulatszám" },
-      "system_fan4_speed": { "name": "Ventilátor 4 fordulatszám" },
-      "system_psu1_current": { "name": "PSU 1 áramerősség" },
-      "system_psu1_voltage": { "name": "PSU 1 feszültség" },
-      "system_psu2_current": { "name": "PSU 2 áramerősség" },
-      "system_psu2_voltage": { "name": "PSU 2 feszültség" },
-      "system_uptime": { "name": "Üzemidő" },
-      "system_cpu_load": { "name": "CPU terhelés" },
-      "system_memory_usage": { "name": "Memóriahasználat" },
-      "system_hdd_usage": { "name": "HDD használat" },
-      "system_clients_wired": { "name": "Vezetékes kliensek" },
-      "system_clients_wireless": { "name": "Vezeték nélküli kliensek" },
-      "system_captive_authorized": { "name": "Captive portal kliensek" },
-      "system_gps_latitude": { "name": "Szélességi fok" },
-      "system_gps_longitude": { "name": "Hosszúsági fok" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX összesen" },
-      "rx_total": { "name": "RX összesen" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP cím" },
-      "cloud_public_address": { "name": "Nyilvános cím" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Utolsó kézfogás" },
-      "system_device_mode": { "name": "Eszköz mód" },
-      "system_packages": { "name": "Csomagok" },
-      "container_status": { "name": "Állapot" }
+      "system_temperature": {
+        "name": "Hőmérséklet"
+      },
+      "system_voltage": {
+        "name": "Feszültség"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU hőmérséklet"
+      },
+      "system_switch_temperature": {
+        "name": "Switch hőmérséklet"
+      },
+      "system_board_temperature1": {
+        "name": "Alaplap hőmérséklet"
+      },
+      "system_phy_temperature": {
+        "name": "PHY hőmérséklet"
+      },
+      "system_power_consumption": {
+        "name": "Teljesítményfelvétel"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE kimenet teljesítményfelvétel"
+      },
+      "system_fan1_speed": {
+        "name": "Ventilátor 1 fordulatszám"
+      },
+      "system_fan2_speed": {
+        "name": "Ventilátor 2 fordulatszám"
+      },
+      "system_fan3_speed": {
+        "name": "Ventilátor 3 fordulatszám"
+      },
+      "system_fan4_speed": {
+        "name": "Ventilátor 4 fordulatszám"
+      },
+      "system_psu1_current": {
+        "name": "PSU 1 áramerősség"
+      },
+      "system_psu1_voltage": {
+        "name": "PSU 1 feszültség"
+      },
+      "system_psu2_current": {
+        "name": "PSU 2 áramerősség"
+      },
+      "system_psu2_voltage": {
+        "name": "PSU 2 feszültség"
+      },
+      "system_uptime": {
+        "name": "Üzemidő"
+      },
+      "system_cpu_load": {
+        "name": "CPU terhelés"
+      },
+      "system_memory_usage": {
+        "name": "Memóriahasználat"
+      },
+      "system_hdd_usage": {
+        "name": "HDD használat"
+      },
+      "system_clients_wired": {
+        "name": "Vezetékes kliensek"
+      },
+      "system_clients_wireless": {
+        "name": "Vezeték nélküli kliensek"
+      },
+      "system_captive_authorized": {
+        "name": "Captive portal kliensek"
+      },
+      "system_gps_latitude": {
+        "name": "Szélességi fok"
+      },
+      "system_gps_longitude": {
+        "name": "Hosszúsági fok"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX összesen"
+      },
+      "rx_total": {
+        "name": "RX összesen"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP cím"
+      },
+      "cloud_public_address": {
+        "name": "Nyilvános cím"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Utolsó kézfogás"
+      },
+      "system_device_mode": {
+        "name": "Eszköz mód"
+      },
+      "system_packages": {
+        "name": "Csomagok"
+      },
+      "container_status": {
+        "name": "Állapot"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Kapcsolat" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Csatlakozva" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Kapcsolat"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Csatlakozva"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Port" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Szüneteltetve" }
+      "interface_port": {
+        "name": "Port"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Szüneteltetve"
+      }
     },
     "button": {
-      "reboot": { "name": "Újraindítás" }
+      "reboot": {
+        "name": "Újraindítás"
+      }
     }
   }
 }

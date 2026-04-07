@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "{host}에 대한 API 권한 부족",
-      "description": "RouterOS 사용자 **{username}**이(가) 라우터 **{host}**에서 다음 권한이 없습니다: `{missing}`.\n\n일부 통합 기능이 작동하지 않습니다(스위치, 재시작 버튼, Kid Control 자동 설정). 이를 수정하려면 라우터의 사용자 그룹에 누락된 정책을 추가하세요:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS 사용자 **{username}**이(가) 라우터 **{host}**에서 다음 권한이 없습니다: **{missing}**.\n\n일부 통합 기능이 작동하지 않습니다(스위치, 재시작 버튼, Kid Control 자동 설정). 이를 수정하려면 라우터의 사용자 그룹에 누락된 정책을 추가하세요:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "온도" },
-      "system_voltage": { "name": "전압" },
-      "system_cpu_temperature": { "name": "CPU 온도" },
-      "system_switch_temperature": { "name": "스위치 온도" },
-      "system_board_temperature1": { "name": "보드 온도" },
-      "system_phy_temperature": { "name": "PHY 온도" },
-      "system_power_consumption": { "name": "전력 소비" },
-      "system_poe_out_consumption": { "name": "PoE 출력 소비" },
-      "system_fan1_speed": { "name": "팬 1 속도" },
-      "system_fan2_speed": { "name": "팬 2 속도" },
-      "system_fan3_speed": { "name": "팬 3 속도" },
-      "system_fan4_speed": { "name": "팬 4 속도" },
-      "system_psu1_current": { "name": "전원 1 전류" },
-      "system_psu1_voltage": { "name": "전원 1 전압" },
-      "system_psu2_current": { "name": "전원 2 전류" },
-      "system_psu2_voltage": { "name": "전원 2 전압" },
-      "system_uptime": { "name": "가동 시간" },
-      "system_cpu_load": { "name": "CPU 부하" },
-      "system_memory_usage": { "name": "메모리 사용량" },
-      "system_hdd_usage": { "name": "디스크 사용량" },
-      "system_clients_wired": { "name": "유선 클라이언트" },
-      "system_clients_wireless": { "name": "무선 클라이언트" },
-      "system_captive_authorized": { "name": "캡티브 포털 클라이언트" },
-      "system_gps_latitude": { "name": "위도" },
-      "system_gps_longitude": { "name": "경도" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX 합계" },
-      "rx_total": { "name": "RX 합계" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP 주소" },
-      "cloud_public_address": { "name": "공인 주소" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "마지막 핸드셰이크" },
-      "system_device_mode": { "name": "기기 모드" },
-      "system_packages": { "name": "패키지" },
-      "container_status": { "name": "상태" }
+      "system_temperature": {
+        "name": "온도"
+      },
+      "system_voltage": {
+        "name": "전압"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU 온도"
+      },
+      "system_switch_temperature": {
+        "name": "스위치 온도"
+      },
+      "system_board_temperature1": {
+        "name": "보드 온도"
+      },
+      "system_phy_temperature": {
+        "name": "PHY 온도"
+      },
+      "system_power_consumption": {
+        "name": "전력 소비"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE 출력 소비"
+      },
+      "system_fan1_speed": {
+        "name": "팬 1 속도"
+      },
+      "system_fan2_speed": {
+        "name": "팬 2 속도"
+      },
+      "system_fan3_speed": {
+        "name": "팬 3 속도"
+      },
+      "system_fan4_speed": {
+        "name": "팬 4 속도"
+      },
+      "system_psu1_current": {
+        "name": "전원 1 전류"
+      },
+      "system_psu1_voltage": {
+        "name": "전원 1 전압"
+      },
+      "system_psu2_current": {
+        "name": "전원 2 전류"
+      },
+      "system_psu2_voltage": {
+        "name": "전원 2 전압"
+      },
+      "system_uptime": {
+        "name": "가동 시간"
+      },
+      "system_cpu_load": {
+        "name": "CPU 부하"
+      },
+      "system_memory_usage": {
+        "name": "메모리 사용량"
+      },
+      "system_hdd_usage": {
+        "name": "디스크 사용량"
+      },
+      "system_clients_wired": {
+        "name": "유선 클라이언트"
+      },
+      "system_clients_wireless": {
+        "name": "무선 클라이언트"
+      },
+      "system_captive_authorized": {
+        "name": "캡티브 포털 클라이언트"
+      },
+      "system_gps_latitude": {
+        "name": "위도"
+      },
+      "system_gps_longitude": {
+        "name": "경도"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX 합계"
+      },
+      "rx_total": {
+        "name": "RX 합계"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP 주소"
+      },
+      "cloud_public_address": {
+        "name": "공인 주소"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "마지막 핸드셰이크"
+      },
+      "system_device_mode": {
+        "name": "기기 모드"
+      },
+      "system_packages": {
+        "name": "패키지"
+      },
+      "container_status": {
+        "name": "상태"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "연결" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "연결됨" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "연결"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "연결됨"
+      }
     },
     "switch": {
-      "interface_port": { "name": "포트" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "일시중지됨" }
+      "interface_port": {
+        "name": "포트"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "일시중지됨"
+      }
     },
     "button": {
-      "reboot": { "name": "재시작" }
+      "reboot": {
+        "name": "재시작"
+      }
     }
   }
 }

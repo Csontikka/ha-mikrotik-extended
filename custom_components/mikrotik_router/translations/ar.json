@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "أذونات API غير كافية لـ {host}",
-      "description": "مستخدم RouterOS **{username}** على الموجه **{host}** يفتقد الأذونات التالية: `{missing}`.\n\nبعض ميزات التكامل لن تعمل (المفاتيح، زر إعادة التشغيل، الإعداد التلقائي لـ Kid Control). لإصلاح ذلك، أضف السياسات المفقودة إلى مجموعة المستخدم على الموجه:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "مستخدم RouterOS **{username}** على الموجه **{host}** يفتقد الأذونات التالية: **{missing}**.\n\nبعض ميزات التكامل لن تعمل (المفاتيح، زر إعادة التشغيل، الإعداد التلقائي لـ Kid Control). لإصلاح ذلك، أضف السياسات المفقودة إلى مجموعة المستخدم على الموجه:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "درجة الحرارة" },
-      "system_voltage": { "name": "الجهد الكهربائي" },
-      "system_cpu_temperature": { "name": "درجة حرارة المعالج" },
-      "system_switch_temperature": { "name": "درجة حرارة المبدّل" },
-      "system_board_temperature1": { "name": "درجة حرارة اللوحة" },
-      "system_phy_temperature": { "name": "درجة حرارة PHY" },
-      "system_power_consumption": { "name": "استهلاك الطاقة" },
-      "system_poe_out_consumption": { "name": "استهلاك PoE الخارج" },
-      "system_fan1_speed": { "name": "سرعة المروحة 1" },
-      "system_fan2_speed": { "name": "سرعة المروحة 2" },
-      "system_fan3_speed": { "name": "سرعة المروحة 3" },
-      "system_fan4_speed": { "name": "سرعة المروحة 4" },
-      "system_psu1_current": { "name": "مزود الطاقة 1 التيار" },
-      "system_psu1_voltage": { "name": "مزود الطاقة 1 الجهد" },
-      "system_psu2_current": { "name": "مزود الطاقة 2 التيار" },
-      "system_psu2_voltage": { "name": "مزود الطاقة 2 الجهد" },
-      "system_uptime": { "name": "وقت التشغيل" },
-      "system_cpu_load": { "name": "حمل المعالج" },
-      "system_memory_usage": { "name": "استخدام الذاكرة" },
-      "system_hdd_usage": { "name": "استخدام القرص" },
-      "system_clients_wired": { "name": "العملاء السلكيون" },
-      "system_clients_wireless": { "name": "العملاء اللاسلكيون" },
-      "system_captive_authorized": { "name": "عملاء البوابة المقيدة" },
-      "system_gps_latitude": { "name": "خط العرض" },
-      "system_gps_longitude": { "name": "خط الطول" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX إجمالي" },
-      "rx_total": { "name": "RX إجمالي" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "عنوان IP" },
-      "cloud_public_address": { "name": "العنوان العام" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "آخر مصافحة" },
-      "system_device_mode": { "name": "وضع الجهاز" },
-      "system_packages": { "name": "الحزم" },
-      "container_status": { "name": "الحالة" }
+      "system_temperature": {
+        "name": "درجة الحرارة"
+      },
+      "system_voltage": {
+        "name": "الجهد الكهربائي"
+      },
+      "system_cpu_temperature": {
+        "name": "درجة حرارة المعالج"
+      },
+      "system_switch_temperature": {
+        "name": "درجة حرارة المبدّل"
+      },
+      "system_board_temperature1": {
+        "name": "درجة حرارة اللوحة"
+      },
+      "system_phy_temperature": {
+        "name": "درجة حرارة PHY"
+      },
+      "system_power_consumption": {
+        "name": "استهلاك الطاقة"
+      },
+      "system_poe_out_consumption": {
+        "name": "استهلاك PoE الخارج"
+      },
+      "system_fan1_speed": {
+        "name": "سرعة المروحة 1"
+      },
+      "system_fan2_speed": {
+        "name": "سرعة المروحة 2"
+      },
+      "system_fan3_speed": {
+        "name": "سرعة المروحة 3"
+      },
+      "system_fan4_speed": {
+        "name": "سرعة المروحة 4"
+      },
+      "system_psu1_current": {
+        "name": "مزود الطاقة 1 التيار"
+      },
+      "system_psu1_voltage": {
+        "name": "مزود الطاقة 1 الجهد"
+      },
+      "system_psu2_current": {
+        "name": "مزود الطاقة 2 التيار"
+      },
+      "system_psu2_voltage": {
+        "name": "مزود الطاقة 2 الجهد"
+      },
+      "system_uptime": {
+        "name": "وقت التشغيل"
+      },
+      "system_cpu_load": {
+        "name": "حمل المعالج"
+      },
+      "system_memory_usage": {
+        "name": "استخدام الذاكرة"
+      },
+      "system_hdd_usage": {
+        "name": "استخدام القرص"
+      },
+      "system_clients_wired": {
+        "name": "العملاء السلكيون"
+      },
+      "system_clients_wireless": {
+        "name": "العملاء اللاسلكيون"
+      },
+      "system_captive_authorized": {
+        "name": "عملاء البوابة المقيدة"
+      },
+      "system_gps_latitude": {
+        "name": "خط العرض"
+      },
+      "system_gps_longitude": {
+        "name": "خط الطول"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX إجمالي"
+      },
+      "rx_total": {
+        "name": "RX إجمالي"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "عنوان IP"
+      },
+      "cloud_public_address": {
+        "name": "العنوان العام"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "آخر مصافحة"
+      },
+      "system_device_mode": {
+        "name": "وضع الجهاز"
+      },
+      "system_packages": {
+        "name": "الحزم"
+      },
+      "container_status": {
+        "name": "الحالة"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "الاتصال" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "متصل" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "الاتصال"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "متصل"
+      }
     },
     "switch": {
-      "interface_port": { "name": "منفذ" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "متوقف مؤقتًا" }
+      "interface_port": {
+        "name": "منفذ"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "متوقف مؤقتًا"
+      }
     },
     "button": {
-      "reboot": { "name": "إعادة التشغيل" }
+      "reboot": {
+        "name": "إعادة التشغيل"
+      }
     }
   }
 }

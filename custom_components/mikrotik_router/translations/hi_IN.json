@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "{host} के लिए अपर्याप्त API अनुमतियाँ",
-      "description": "RouterOS उपयोगकर्ता **{username}** राउटर **{host}** पर निम्नलिखित अनुमतियाँ नहीं हैं: `{missing}`।\n\nकुछ इंटीग्रेशन सुविधाएं काम नहीं करेंगी (स्विच, रीबूट बटन, Kid Control स्वचालित सेटअप)। इसे ठीक करने के लिए, राउटर पर उपयोगकर्ता समूह में अनुपस्थित नीतियाँ जोड़ें:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS उपयोगकर्ता **{username}** राउटर **{host}** पर निम्नलिखित अनुमतियाँ नहीं हैं: **{missing}**।\n\nकुछ इंटीग्रेशन सुविधाएं काम नहीं करेंगी (स्विच, रीबूट बटन, Kid Control स्वचालित सेटअप)। इसे ठीक करने के लिए, राउटर पर उपयोगकर्ता समूह में अनुपस्थित नीतियाँ जोड़ें:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "तापमान" },
-      "system_voltage": { "name": "वोल्टेज" },
-      "system_cpu_temperature": { "name": "CPU तापमान" },
-      "system_switch_temperature": { "name": "स्विच तापमान" },
-      "system_board_temperature1": { "name": "बोर्ड तापमान" },
-      "system_phy_temperature": { "name": "PHY तापमान" },
-      "system_power_consumption": { "name": "बिजली की खपत" },
-      "system_poe_out_consumption": { "name": "PoE आउटपुट खपत" },
-      "system_fan1_speed": { "name": "पंखा 1 गति" },
-      "system_fan2_speed": { "name": "पंखा 2 गति" },
-      "system_fan3_speed": { "name": "पंखा 3 गति" },
-      "system_fan4_speed": { "name": "पंखा 4 गति" },
-      "system_psu1_current": { "name": "पावर सप्लाई 1 करंट" },
-      "system_psu1_voltage": { "name": "पावर सप्लाई 1 वोल्टेज" },
-      "system_psu2_current": { "name": "पावर सप्लाई 2 करंट" },
-      "system_psu2_voltage": { "name": "पावर सप्लाई 2 वोल्टेज" },
-      "system_uptime": { "name": "अपटाइम" },
-      "system_cpu_load": { "name": "CPU लोड" },
-      "system_memory_usage": { "name": "मेमोरी उपयोग" },
-      "system_hdd_usage": { "name": "डिस्क उपयोग" },
-      "system_clients_wired": { "name": "वायर्ड क्लाइंट" },
-      "system_clients_wireless": { "name": "वायरलेस क्लाइंट" },
-      "system_captive_authorized": { "name": "कैप्टिव पोर्टल क्लाइंट" },
-      "system_gps_latitude": { "name": "अक्षांश" },
-      "system_gps_longitude": { "name": "देशांतर" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX कुल" },
-      "rx_total": { "name": "RX कुल" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP पता" },
-      "cloud_public_address": { "name": "सार्वजनिक पता" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "अंतिम हैंडशेक" },
-      "system_device_mode": { "name": "डिवाइस मोड" },
-      "system_packages": { "name": "पैकेज" },
-      "container_status": { "name": "स्थिति" }
+      "system_temperature": {
+        "name": "तापमान"
+      },
+      "system_voltage": {
+        "name": "वोल्टेज"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU तापमान"
+      },
+      "system_switch_temperature": {
+        "name": "स्विच तापमान"
+      },
+      "system_board_temperature1": {
+        "name": "बोर्ड तापमान"
+      },
+      "system_phy_temperature": {
+        "name": "PHY तापमान"
+      },
+      "system_power_consumption": {
+        "name": "बिजली की खपत"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE आउटपुट खपत"
+      },
+      "system_fan1_speed": {
+        "name": "पंखा 1 गति"
+      },
+      "system_fan2_speed": {
+        "name": "पंखा 2 गति"
+      },
+      "system_fan3_speed": {
+        "name": "पंखा 3 गति"
+      },
+      "system_fan4_speed": {
+        "name": "पंखा 4 गति"
+      },
+      "system_psu1_current": {
+        "name": "पावर सप्लाई 1 करंट"
+      },
+      "system_psu1_voltage": {
+        "name": "पावर सप्लाई 1 वोल्टेज"
+      },
+      "system_psu2_current": {
+        "name": "पावर सप्लाई 2 करंट"
+      },
+      "system_psu2_voltage": {
+        "name": "पावर सप्लाई 2 वोल्टेज"
+      },
+      "system_uptime": {
+        "name": "अपटाइम"
+      },
+      "system_cpu_load": {
+        "name": "CPU लोड"
+      },
+      "system_memory_usage": {
+        "name": "मेमोरी उपयोग"
+      },
+      "system_hdd_usage": {
+        "name": "डिस्क उपयोग"
+      },
+      "system_clients_wired": {
+        "name": "वायर्ड क्लाइंट"
+      },
+      "system_clients_wireless": {
+        "name": "वायरलेस क्लाइंट"
+      },
+      "system_captive_authorized": {
+        "name": "कैप्टिव पोर्टल क्लाइंट"
+      },
+      "system_gps_latitude": {
+        "name": "अक्षांश"
+      },
+      "system_gps_longitude": {
+        "name": "देशांतर"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX कुल"
+      },
+      "rx_total": {
+        "name": "RX कुल"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP पता"
+      },
+      "cloud_public_address": {
+        "name": "सार्वजनिक पता"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "अंतिम हैंडशेक"
+      },
+      "system_device_mode": {
+        "name": "डिवाइस मोड"
+      },
+      "system_packages": {
+        "name": "पैकेज"
+      },
+      "container_status": {
+        "name": "स्थिति"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "कनेक्शन" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "जुड़ा हुआ" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "कनेक्शन"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "जुड़ा हुआ"
+      }
     },
     "switch": {
-      "interface_port": { "name": "पोर्ट" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "रोका गया" }
+      "interface_port": {
+        "name": "पोर्ट"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "रोका गया"
+      }
     },
     "button": {
-      "reboot": { "name": "पुनः आरंभ" }
+      "reboot": {
+        "name": "पुनः आरंभ"
+      }
     }
   }
 }

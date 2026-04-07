@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Ανεπαρκή δικαιώματα API για {host}",
-      "description": "Ο χρήστης RouterOS **{username}** στον δρομολογητή **{host}** δεν έχει τα παρακάτω δικαιώματα: `{missing}`.\n\nΟρισμένες λειτουργίες ενσωμάτωσης δεν θα λειτουργήσουν (διακόπτες, κουμπί επανεκκίνησης, αυτόματη ρύθμιση Kid Control). Για να το διορθώσετε, προσθέστε τις ελλείπουσες πολιτικές στην ομάδα χρήστη στον δρομολογητή:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "Ο χρήστης RouterOS **{username}** στον δρομολογητή **{host}** δεν έχει τα παρακάτω δικαιώματα: **{missing}**.\n\nΟρισμένες λειτουργίες ενσωμάτωσης δεν θα λειτουργήσουν (διακόπτες, κουμπί επανεκκίνησης, αυτόματη ρύθμιση Kid Control). Για να το διορθώσετε, προσθέστε τις ελλείπουσες πολιτικές στην ομάδα χρήστη στον δρομολογητή:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Θερμοκρασία" },
-      "system_voltage": { "name": "Τάση" },
-      "system_cpu_temperature": { "name": "Θερμοκρασία CPU" },
-      "system_switch_temperature": { "name": "Θερμοκρασία switch" },
-      "system_board_temperature1": { "name": "Θερμοκρασία πλακέτας" },
-      "system_phy_temperature": { "name": "Θερμοκρασία PHY" },
-      "system_power_consumption": { "name": "Κατανάλωση ενέργειας" },
-      "system_poe_out_consumption": { "name": "Κατανάλωση PoE εξόδου" },
-      "system_fan1_speed": { "name": "Ταχύτητα ανεμιστήρα 1" },
-      "system_fan2_speed": { "name": "Ταχύτητα ανεμιστήρα 2" },
-      "system_fan3_speed": { "name": "Ταχύτητα ανεμιστήρα 3" },
-      "system_fan4_speed": { "name": "Ταχύτητα ανεμιστήρα 4" },
-      "system_psu1_current": { "name": "Τροφοδοτικό 1 ρεύμα" },
-      "system_psu1_voltage": { "name": "Τροφοδοτικό 1 τάση" },
-      "system_psu2_current": { "name": "Τροφοδοτικό 2 ρεύμα" },
-      "system_psu2_voltage": { "name": "Τροφοδοτικό 2 τάση" },
-      "system_uptime": { "name": "Χρόνος λειτουργίας" },
-      "system_cpu_load": { "name": "Φόρτος CPU" },
-      "system_memory_usage": { "name": "Χρήση μνήμης" },
-      "system_hdd_usage": { "name": "Χρήση δίσκου" },
-      "system_clients_wired": { "name": "Ενσύρματοι πελάτες" },
-      "system_clients_wireless": { "name": "Ασύρματοι πελάτες" },
-      "system_captive_authorized": { "name": "Πελάτες captive portal" },
-      "system_gps_latitude": { "name": "Γεωγραφικό πλάτος" },
-      "system_gps_longitude": { "name": "Γεωγραφικό μήκος" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX σύνολο" },
-      "rx_total": { "name": "RX σύνολο" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "Διεύθυνση IP" },
-      "cloud_public_address": { "name": "Δημόσια διεύθυνση" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Τελευταία χειραψία" },
-      "system_device_mode": { "name": "Λειτουργία συσκευής" },
-      "system_packages": { "name": "Πακέτα" },
-      "container_status": { "name": "Κατάσταση" }
+      "system_temperature": {
+        "name": "Θερμοκρασία"
+      },
+      "system_voltage": {
+        "name": "Τάση"
+      },
+      "system_cpu_temperature": {
+        "name": "Θερμοκρασία CPU"
+      },
+      "system_switch_temperature": {
+        "name": "Θερμοκρασία switch"
+      },
+      "system_board_temperature1": {
+        "name": "Θερμοκρασία πλακέτας"
+      },
+      "system_phy_temperature": {
+        "name": "Θερμοκρασία PHY"
+      },
+      "system_power_consumption": {
+        "name": "Κατανάλωση ενέργειας"
+      },
+      "system_poe_out_consumption": {
+        "name": "Κατανάλωση PoE εξόδου"
+      },
+      "system_fan1_speed": {
+        "name": "Ταχύτητα ανεμιστήρα 1"
+      },
+      "system_fan2_speed": {
+        "name": "Ταχύτητα ανεμιστήρα 2"
+      },
+      "system_fan3_speed": {
+        "name": "Ταχύτητα ανεμιστήρα 3"
+      },
+      "system_fan4_speed": {
+        "name": "Ταχύτητα ανεμιστήρα 4"
+      },
+      "system_psu1_current": {
+        "name": "Τροφοδοτικό 1 ρεύμα"
+      },
+      "system_psu1_voltage": {
+        "name": "Τροφοδοτικό 1 τάση"
+      },
+      "system_psu2_current": {
+        "name": "Τροφοδοτικό 2 ρεύμα"
+      },
+      "system_psu2_voltage": {
+        "name": "Τροφοδοτικό 2 τάση"
+      },
+      "system_uptime": {
+        "name": "Χρόνος λειτουργίας"
+      },
+      "system_cpu_load": {
+        "name": "Φόρτος CPU"
+      },
+      "system_memory_usage": {
+        "name": "Χρήση μνήμης"
+      },
+      "system_hdd_usage": {
+        "name": "Χρήση δίσκου"
+      },
+      "system_clients_wired": {
+        "name": "Ενσύρματοι πελάτες"
+      },
+      "system_clients_wireless": {
+        "name": "Ασύρματοι πελάτες"
+      },
+      "system_captive_authorized": {
+        "name": "Πελάτες captive portal"
+      },
+      "system_gps_latitude": {
+        "name": "Γεωγραφικό πλάτος"
+      },
+      "system_gps_longitude": {
+        "name": "Γεωγραφικό μήκος"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX σύνολο"
+      },
+      "rx_total": {
+        "name": "RX σύνολο"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "Διεύθυνση IP"
+      },
+      "cloud_public_address": {
+        "name": "Δημόσια διεύθυνση"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Τελευταία χειραψία"
+      },
+      "system_device_mode": {
+        "name": "Λειτουργία συσκευής"
+      },
+      "system_packages": {
+        "name": "Πακέτα"
+      },
+      "container_status": {
+        "name": "Κατάσταση"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Σύνδεση" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Συνδεδεμένο" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Σύνδεση"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Συνδεδεμένο"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Θύρα" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Σε παύση" }
+      "interface_port": {
+        "name": "Θύρα"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Σε παύση"
+      }
     },
     "button": {
-      "reboot": { "name": "Επανεκκίνηση" }
+      "reboot": {
+        "name": "Επανεκκίνηση"
+      }
     }
   }
 }

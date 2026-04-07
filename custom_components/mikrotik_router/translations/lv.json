@@ -218,7 +218,7 @@
     },
     "insufficient_permissions": {
       "title": "Nepietiekamas API atļaujas {host}",
-      "description": "RouterOS lietotājam **{username}** maršrutētājā **{host}** trūkst šādas atļaujas: `{missing}`.\n\nDažas integrācijas funkcijas nedarbosies (slēdži, pārstartēšanas poga, Kid Control automātiskā iestatīšana). Lai to novērstu, pievienojiet trūkstošās politikas lietotāja grupai maršrutētājā:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "RouterOS lietotājam **{username}** maršrutētājā **{host}** trūkst šādas atļaujas: **{missing}**.\n\nDažas integrācijas funkcijas nedarbosies (slēdži, pārstartēšanas poga, Kid Control automātiskā iestatīšana). Lai to novērstu, pievienojiet trūkstošās politikas lietotāja grupai maršrutētājā:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
@@ -237,60 +237,156 @@
   },
   "entity": {
     "sensor": {
-      "system_temperature": { "name": "Temperatūra" },
-      "system_voltage": { "name": "Spriegums" },
-      "system_cpu_temperature": { "name": "CPU temperatūra" },
-      "system_switch_temperature": { "name": "Komutatora temperatūra" },
-      "system_board_temperature1": { "name": "Plates temperatūra" },
-      "system_phy_temperature": { "name": "PHY temperatūra" },
-      "system_power_consumption": { "name": "Enerģijas patēriņš" },
-      "system_poe_out_consumption": { "name": "PoE izejas patēriņš" },
-      "system_fan1_speed": { "name": "Ventilatora 1 ātrums" },
-      "system_fan2_speed": { "name": "Ventilatora 2 ātrums" },
-      "system_fan3_speed": { "name": "Ventilatora 3 ātrums" },
-      "system_fan4_speed": { "name": "Ventilatora 4 ātrums" },
-      "system_psu1_current": { "name": "Barošanas bloks 1 strāva" },
-      "system_psu1_voltage": { "name": "Barošanas bloks 1 spriegums" },
-      "system_psu2_current": { "name": "Barošanas bloks 2 strāva" },
-      "system_psu2_voltage": { "name": "Barošanas bloks 2 spriegums" },
-      "system_uptime": { "name": "Darbības laiks" },
-      "system_cpu_load": { "name": "CPU slodze" },
-      "system_memory_usage": { "name": "Atmiņas izmantošana" },
-      "system_hdd_usage": { "name": "Diska izmantošana" },
-      "system_clients_wired": { "name": "Vadu klienti" },
-      "system_clients_wireless": { "name": "Bezvadu klienti" },
-      "system_captive_authorized": { "name": "Captive portal klienti" },
-      "system_gps_latitude": { "name": "Platums" },
-      "system_gps_longitude": { "name": "Garums" },
-      "traffic_tx": { "name": "TX" },
-      "traffic_rx": { "name": "RX" },
-      "tx_total": { "name": "TX kopā" },
-      "rx_total": { "name": "RX kopā" },
-      "client_traffic_tx": { "name": "TX" },
-      "client_traffic_rx": { "name": "RX" },
-      "ip_address": { "name": "IP adrese" },
-      "cloud_public_address": { "name": "Publiskā adrese" },
-      "wireguard_peer_rx": { "name": "RX" },
-      "wireguard_peer_tx": { "name": "TX" },
-      "wireguard_peer_handshake": { "name": "Pēdējais handshake" },
-      "system_device_mode": { "name": "Ierīces režīms" },
-      "system_packages": { "name": "Pakotnes" },
-      "container_status": { "name": "Statuss" }
+      "system_temperature": {
+        "name": "Temperatūra"
+      },
+      "system_voltage": {
+        "name": "Spriegums"
+      },
+      "system_cpu_temperature": {
+        "name": "CPU temperatūra"
+      },
+      "system_switch_temperature": {
+        "name": "Komutatora temperatūra"
+      },
+      "system_board_temperature1": {
+        "name": "Plates temperatūra"
+      },
+      "system_phy_temperature": {
+        "name": "PHY temperatūra"
+      },
+      "system_power_consumption": {
+        "name": "Enerģijas patēriņš"
+      },
+      "system_poe_out_consumption": {
+        "name": "PoE izejas patēriņš"
+      },
+      "system_fan1_speed": {
+        "name": "Ventilatora 1 ātrums"
+      },
+      "system_fan2_speed": {
+        "name": "Ventilatora 2 ātrums"
+      },
+      "system_fan3_speed": {
+        "name": "Ventilatora 3 ātrums"
+      },
+      "system_fan4_speed": {
+        "name": "Ventilatora 4 ātrums"
+      },
+      "system_psu1_current": {
+        "name": "Barošanas bloks 1 strāva"
+      },
+      "system_psu1_voltage": {
+        "name": "Barošanas bloks 1 spriegums"
+      },
+      "system_psu2_current": {
+        "name": "Barošanas bloks 2 strāva"
+      },
+      "system_psu2_voltage": {
+        "name": "Barošanas bloks 2 spriegums"
+      },
+      "system_uptime": {
+        "name": "Darbības laiks"
+      },
+      "system_cpu_load": {
+        "name": "CPU slodze"
+      },
+      "system_memory_usage": {
+        "name": "Atmiņas izmantošana"
+      },
+      "system_hdd_usage": {
+        "name": "Diska izmantošana"
+      },
+      "system_clients_wired": {
+        "name": "Vadu klienti"
+      },
+      "system_clients_wireless": {
+        "name": "Bezvadu klienti"
+      },
+      "system_captive_authorized": {
+        "name": "Captive portal klienti"
+      },
+      "system_gps_latitude": {
+        "name": "Platums"
+      },
+      "system_gps_longitude": {
+        "name": "Garums"
+      },
+      "traffic_tx": {
+        "name": "TX"
+      },
+      "traffic_rx": {
+        "name": "RX"
+      },
+      "tx_total": {
+        "name": "TX kopā"
+      },
+      "rx_total": {
+        "name": "RX kopā"
+      },
+      "client_traffic_tx": {
+        "name": "TX"
+      },
+      "client_traffic_rx": {
+        "name": "RX"
+      },
+      "ip_address": {
+        "name": "IP adrese"
+      },
+      "cloud_public_address": {
+        "name": "Publiskā adrese"
+      },
+      "wireguard_peer_rx": {
+        "name": "RX"
+      },
+      "wireguard_peer_tx": {
+        "name": "TX"
+      },
+      "wireguard_peer_handshake": {
+        "name": "Pēdējais handshake"
+      },
+      "system_device_mode": {
+        "name": "Ierīces režīms"
+      },
+      "system_packages": {
+        "name": "Pakotnes"
+      },
+      "container_status": {
+        "name": "Statuss"
+      }
     },
     "binary_sensor": {
-      "system_ups": { "name": "UPS" },
-      "ppp_tracker": { "name": "PPP" },
-      "interface_connection": { "name": "Savienojums" },
-      "netwatch": { "name": "Netwatch" },
-      "wireguard_peer": { "name": "Savienots" }
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Savienojums"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Savienots"
+      }
     },
     "switch": {
-      "interface_port": { "name": "Ports" },
-      "ppp_secret": { "name": "PPP secret" },
-      "kidcontrol_paused": { "name": "Apturēts" }
+      "interface_port": {
+        "name": "Ports"
+      },
+      "ppp_secret": {
+        "name": "PPP secret"
+      },
+      "kidcontrol_paused": {
+        "name": "Apturēts"
+      }
     },
     "button": {
-      "reboot": { "name": "Pārstartēt" }
+      "reboot": {
+        "name": "Pārstartēt"
+      }
     }
   }
 }

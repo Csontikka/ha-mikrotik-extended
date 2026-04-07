@@ -227,7 +227,7 @@
     },
     "insufficient_permissions": {
       "title": "Insufficient API permissions for {host}",
-      "description": "The RouterOS user **{username}** on router **{host}** is missing the following permissions: `{missing}`.\n\nSome integration features will not work (switches, reboot button, Kid Control auto-setup). To fix this, add the missing policies to the user's group on the router:\n```\n/user/group/set [find name=<group>] policy=read,write,api,reboot,policy,test,sensitive\n```"
+      "description": "The RouterOS user **{username}** on router **{host}** is missing the following permissions: **{missing}**.\n\nSome integration features will not work (switches, reboot button, Kid Control auto-setup). To fix this, add the missing policies to the user's group on the router:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     }
   },
   "exceptions": {
