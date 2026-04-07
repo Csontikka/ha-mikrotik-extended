@@ -634,17 +634,23 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 entity.config_entry_id == self.config_entry.entry_id
                 and entity.entity_id.startswith("device_tracker.")
             ):
-                tmp = entity.unique_id.split("-")
-                if tmp[0] != self.name.lower():
+                parts = entity.unique_id.split("-")
+                if len(parts) < 3 or parts[1] != "host":
                     continue
 
-                if tmp[1] != "host":
+                # New format: {entry_id}-host-{mac_slug} (underscores instead of colons)
+                if parts[0] == self.config_entry.entry_id:
+                    mac = parts[2].replace("_", ":").upper()
+                # Old format: {name}-host-{mac_with_colons}
+                elif parts[0] == self.name.lower() and ":" in parts[2]:
+                    mac = parts[2].upper()
+                else:
                     continue
 
-                if ":" not in tmp[2]:
+                if len(mac) != 17:
                     continue
 
-                self.ds["host_hass"][tmp[2].upper()] = entity.original_name
+                self.ds["host_hass"][mac] = entity.original_name
 
     # ---------------------------
     #   _async_update_data
@@ -2637,10 +2643,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if not self.host_hass_recovered:
             self.host_hass_recovered = True
             for uid in self.ds["host_hass"]:
-                if uid not in self.ds["host"]:
-                    self.ds["host"][uid] = {"source": "restored"}
-                    self.ds["host"][uid]["mac-address"] = uid
-                    self.ds["host"][uid]["host-name"] = self.ds["host_hass"][uid]
+                uid_lower = uid.lower()
+                if uid_lower not in self.ds["host"]:
+                    self.ds["host"][uid_lower] = {"source": "restored"}
+                    self.ds["host"][uid_lower]["mac-address"] = uid_lower
+                    self.ds["host"][uid_lower]["host-name"] = self.ds["host_hass"][uid]
 
         for uid, vals in self.ds["host"].items():
             # Add missing default values
