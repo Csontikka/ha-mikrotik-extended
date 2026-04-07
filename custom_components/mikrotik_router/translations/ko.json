@@ -27,7 +27,7 @@
           "ssl_mode": "연결 보안"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "RouterOS API 포트입니다. 기본값을 사용하려면 0으로 두세요: 8728 (SSL 없음) 또는 8729 (SSL)."
         }
       },
       "basic_options": {
@@ -39,9 +39,9 @@
           "zone": "기기 추적기용 지역"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "최솟값: 10s. 기본값: 30s. 값이 낮을수록 RouterOS API 부하가 증가합니다.",
+          "track_network_hosts_timeout": "유선 기기만 해당합니다. ARP에서 감지되지 않을 경우 기기가 오프라인으로 판단되기까지의 초 수입니다. 기본값: 180s.",
+          "zone": "추적된 기기가 연결될 때 사용할 Home Assistant 지역 이름입니다. 기본값: home."
         }
       },
       "sensor_mode": {
@@ -51,7 +51,7 @@
           "sensor_preset": "센서 프리셋"
         },
         "data_description": {
-          "sensor_preset": "Recommended enables the most useful sensors with minimal entity count. Full enables everything — use with caution on large networks."
+          "sensor_preset": "권장 모드는 최소한의 엔티티 수로 가장 유용한 센서를 활성화합니다. 전체 모드는 모든 것을 활성화합니다 — 대형 네트워크에서는 주의하여 사용하세요."
         }
       },
       "sensor_select": {
@@ -77,23 +77,23 @@
           "sensor_wireguard": "WireGuard peer 센서"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "추적된 기기에 핫스팟 인증 상태를 추가합니다. 캡티브 포털(핫스팟)이 구성된 경우에만 유용합니다.",
+          "sensor_client_traffic": "추적된 기기당 2개의 센서(TX/RX 속도)입니다. Kid Control이 있는 RouterOS 7이 필요합니다 — 활성화하면 통합이 라우터에 'ha-monitoring' 프로필을 자동으로 생성합니다. 센서는 Kid Control이 적극적으로 추적하는 기기에만 표시됩니다. 참고: RouterOS 6은 지원되지 않습니다.",
+          "sensor_containers": "컨테이너당 센서와 스위치로 Docker 유사 컨테이너를 모니터링하고 시작/중지합니다.",
+          "sensor_environment": "RouterOS 환경 변수에 대한 센서입니다.",
+          "sensor_filter": "Filter 규칙당 스위치로 HA에서 방화벽 필터 규칙을 활성화/비활성화합니다. 경고: 필터 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_kidcontrol": "Kid Control 기기 프로필용 스위치(인터넷 접근 일시중지/재개)입니다.",
+          "sensor_mangle": "Mangle 규칙당 스위치로 HA에서 패킷 마킹 규칙을 활성화/비활성화합니다. 경고: Mangle 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_nat": "NAT 규칙당 스위치로 HA에서 규칙을 활성화/비활성화합니다. 경고: NAT 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_netwatch_tracker": "Netwatch 항목당 바이너리 센서로 도달 가능성 상태를 표시합니다.",
+          "sensor_port_tracker": "포트당 바이너리 센서로 링크 연결/해제 상태를 표시합니다.",
+          "sensor_port_traffic": "인터페이스당 4개의 센서(TX/RX 바이트 및 총량)입니다. 경고: 인터페이스당 4개의 엔티티가 생성됩니다 — 트래픽 그래프가 필요하지 않으면 비활성화하세요.",
+          "sensor_ppp": "PPP 시크릿(사용자)당 스위치로 HA에서 VPN/PPPoE 계정을 활성화/비활성화합니다.",
+          "sensor_routing_rules": "Routing Rule당 스위치로 HA에서 정책 라우팅 규칙을 활성화/비활성화합니다. 경고: 라우팅 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_scripts": "스크립트당 버튼으로 HA에서 RouterOS 스크립트를 트리거합니다.",
+          "sensor_simple_queues": "Simple Queue 항목당 스위치로 HA에서 대역폭 제한을 활성화/비활성화합니다. 경고: 큐 규칙당 하나의 엔티티가 생성됩니다.",
+          "track_network_hosts": "ARP/DHCP/무선 테이블에서 발견된 모든 기기에 대한 기기 추적기 엔티티를 생성합니다. 추적된 각 기기는 별도의 HA 기기를 생성합니다. 경고: 대형 네트워크에서는 수백 개의 기기와 엔티티가 생성될 수 있습니다.",
+          "sensor_wireguard": "WireGuard peer당 센서(마지막 핸드셰이크, 전송량, 엔드포인트)입니다."
         }
       },
       "reauth_confirm": {
@@ -116,7 +116,7 @@
           "ssl_mode": "연결 보안"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "RouterOS API 포트입니다. 기본값을 사용하려면 0으로 두세요: 8728 (SSL 없음) 또는 8729 (SSL)."
         }
       }
     },
@@ -146,9 +146,9 @@
           "zone": "기기 추적기용 지역"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "최솟값: 10s. 기본값: 30s. 값이 낮을수록 RouterOS API 부하가 증가합니다.",
+          "track_network_hosts_timeout": "유선 기기만 해당합니다. ARP에서 감지되지 않을 경우 기기가 오프라인으로 판단되기까지의 초 수입니다. 기본값: 180s.",
+          "zone": "추적된 기기가 연결될 때 사용할 Home Assistant 지역 이름입니다. 기본값: home."
         },
         "title": "Mikrotik Router 옵션 (1/3)",
         "description": "통합 환경설정"
@@ -158,7 +158,7 @@
           "sensor_preset": "센서 프리셋"
         },
         "data_description": {
-          "sensor_preset": "Select a preset to quickly configure which sensors and switches are enabled, or choose Custom to configure individually."
+          "sensor_preset": "프리셋을 선택하여 활성화할 센서와 스위치를 빠르게 구성하거나, 사용자 지정을 선택하여 개별적으로 구성하세요."
         },
         "title": "Mikrotik Router 옵션 (2/3)",
         "description": "센서 프리셋 선택"
@@ -184,23 +184,23 @@
           "sensor_wireguard": "WireGuard peer 센서"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "추적된 기기에 핫스팟 인증 상태를 추가합니다. 캡티브 포털(핫스팟)이 구성된 경우에만 유용합니다.",
+          "sensor_client_traffic": "추적된 기기당 2개의 센서(TX/RX 속도)입니다. Kid Control이 있는 RouterOS 7이 필요합니다 — 활성화하면 통합이 라우터에 'ha-monitoring' 프로필을 자동으로 생성합니다. 센서는 Kid Control이 적극적으로 추적하는 기기에만 표시됩니다. 참고: RouterOS 6은 지원되지 않습니다.",
+          "sensor_containers": "컨테이너당 센서와 스위치로 Docker 유사 컨테이너를 모니터링하고 시작/중지합니다.",
+          "sensor_environment": "RouterOS 환경 변수에 대한 센서입니다.",
+          "sensor_filter": "Filter 규칙당 스위치로 HA에서 방화벽 필터 규칙을 활성화/비활성화합니다. 경고: 필터 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_kidcontrol": "Kid Control 기기 프로필용 스위치(인터넷 접근 일시중지/재개)입니다.",
+          "sensor_mangle": "Mangle 규칙당 스위치로 HA에서 패킷 마킹 규칙을 활성화/비활성화합니다. 경고: Mangle 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_nat": "NAT 규칙당 스위치로 HA에서 규칙을 활성화/비활성화합니다. 경고: NAT 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_netwatch_tracker": "Netwatch 항목당 바이너리 센서로 도달 가능성 상태를 표시합니다.",
+          "sensor_port_tracker": "포트당 바이너리 센서로 링크 연결/해제 상태를 표시합니다.",
+          "sensor_port_traffic": "인터페이스당 4개의 센서(TX/RX 바이트 및 총량)입니다. 경고: 인터페이스당 4개의 엔티티가 생성됩니다 — 트래픽 그래프가 필요하지 않으면 비활성화하세요.",
+          "sensor_ppp": "PPP 시크릿(사용자)당 스위치로 HA에서 VPN/PPPoE 계정을 활성화/비활성화합니다.",
+          "sensor_routing_rules": "Routing Rule당 스위치로 HA에서 정책 라우팅 규칙을 활성화/비활성화합니다. 경고: 라우팅 규칙당 하나의 엔티티가 생성됩니다.",
+          "sensor_scripts": "스크립트당 버튼으로 HA에서 RouterOS 스크립트를 트리거합니다.",
+          "sensor_simple_queues": "Simple Queue 항목당 스위치로 HA에서 대역폭 제한을 활성화/비활성화합니다. 경고: 큐 규칙당 하나의 엔티티가 생성됩니다.",
+          "track_network_hosts": "ARP/DHCP/무선 테이블에서 발견된 모든 기기에 대한 기기 추적기 엔티티를 생성합니다. 추적된 각 기기는 별도의 HA 기기를 생성합니다. 경고: 대형 네트워크에서는 수백 개의 기기와 엔티티가 생성될 수 있습니다.",
+          "sensor_wireguard": "WireGuard peer당 센서(마지막 핸드셰이크, 전송량, 엔드포인트)입니다."
         },
         "title": "Mikrotik Router 옵션 (3/3)",
         "description": "센서 및 스위치 활성화"
@@ -223,7 +223,7 @@
   },
   "exceptions": {
     "invalid_mac": {
-      "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
+      "message": "잘못된 MAC 주소 형식: {mac}. 예상 형식: AA:BB:CC:DD:EE:FF"
     }
   },
   "selector": {

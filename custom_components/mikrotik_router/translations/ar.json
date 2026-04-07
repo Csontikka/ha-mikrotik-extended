@@ -27,7 +27,7 @@
           "ssl_mode": "أمان الاتصال"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "منفذ RouterOS API. اتركه عند 0 لاستخدام الافتراضي: 8728 (بدون SSL) أو 8729 (مع SSL)."
         }
       },
       "basic_options": {
@@ -39,9 +39,9 @@
           "zone": "منطقة لتعقُّب الجهاز"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "الحد الأدنى: 10s. الافتراضي: 30s. القيم الأقل تزيد من حمل RouterOS API.",
+          "track_network_hosts_timeout": "الأجهزة السلكية فقط. عدد الثواني قبل اعتبار الجهاز غير متصل إذا لم يُرَ في ARP. الافتراضي: 180s.",
+          "zone": "اسم منطقة Home Assistant للاستخدام عند توصيل جهاز متعقَّب. الافتراضي: home."
         }
       },
       "sensor_mode": {
@@ -51,7 +51,7 @@
           "sensor_preset": "إعداد مسبق للمستشعرات"
         },
         "data_description": {
-          "sensor_preset": "Recommended enables the most useful sensors with minimal entity count. Full enables everything — use with caution on large networks."
+          "sensor_preset": "الإعداد الموصى به يفعّل أكثر المستشعرات فائدة بأقل عدد ممكن من الكيانات. الإعداد الكامل يفعّل كل شيء — استخدمه بحذر على الشبكات الكبيرة."
         }
       },
       "sensor_select": {
@@ -77,23 +77,23 @@
           "sensor_wireguard": "مستشعرات WireGuard peer"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "يضيف حالة تفويض النقطة الساخنة إلى الأجهزة المتعقَّبة. مفيد فقط إذا كانت بوابة captive (هوت سبوت) مُهيَّأة.",
+          "sensor_client_traffic": "مستشعران لكل جهاز متعقَّب (سرعة TX/RX). يتطلب RouterOS 7 مع Kid Control — يُنشئ التكامل تلقائيًا ملف تعريف 'ha-monitoring' على الموجِّه عند التفعيل. تظهر المستشعرات فقط للأجهزة التي يتتبعها Kid Control فعليًا. ملاحظة: RouterOS 6 غير مدعوم.",
+          "sensor_containers": "مستشعر ومفتاح لكل حاوية لمراقبة وتشغيل/إيقاف الحاويات المشابهة لـ Docker.",
+          "sensor_environment": "مستشعرات لمتغيرات بيئة RouterOS.",
+          "sensor_filter": "مفتاح لكل قاعدة Filter لتفعيل/تعطيل قواعد جدار الحماية من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة فلتر.",
+          "sensor_kidcontrol": "مفاتيح لملفات تعريف أجهزة Kid Control (إيقاف/استئناف الوصول إلى الإنترنت).",
+          "sensor_mangle": "مفتاح لكل قاعدة Mangle لتفعيل/تعطيل قواعد وضع علامات الحزم من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة Mangle.",
+          "sensor_nat": "مفتاح لكل قاعدة NAT لتفعيل/تعطيل القواعد من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة NAT.",
+          "sensor_netwatch_tracker": "مستشعر ثنائي لكل إدخال Netwatch يُظهر حالة إمكانية الوصول.",
+          "sensor_port_tracker": "مستشعر ثنائي لكل منفذ يُظهر حالة الاتصال (متصل/غير متصل).",
+          "sensor_port_traffic": "4 مستشعرات لكل واجهة (بايتات TX/RX والإجماليات). تحذير: ينشئ 4 كيانات لكل واجهة — عطِّله إذا لم تكن رسوم بيانية لحركة المرور مطلوبة.",
+          "sensor_ppp": "مفتاح لكل PPP secret (مستخدم) لتفعيل/تعطيل حسابات VPN/PPPoE من HA.",
+          "sensor_routing_rules": "مفتاح لكل قاعدة توجيه لتفعيل/تعطيل قواعد توجيه السياسات من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة توجيه.",
+          "sensor_scripts": "زر لكل سكريبت لتشغيل سكريبتات RouterOS من HA.",
+          "sensor_simple_queues": "مفتاح لكل إدخال Simple Queue لتفعيل/تعطيل حدود النطاق الترددي من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة قائمة انتظار.",
+          "track_network_hosts": "ينشئ كيان متتبع جهاز لكل جهاز مرئي في جداول ARP/DHCP/اللاسلكية. كل جهاز متعقَّب ينشئ جهاز HA منفصلًا. تحذير: على الشبكات الكبيرة قد يُنتج مئات الأجهزة والكيانات.",
+          "sensor_wireguard": "مستشعرات لكل WireGuard peer (آخر مصافحة، النقل، نقطة النهاية)."
         }
       },
       "reauth_confirm": {
@@ -116,7 +116,7 @@
           "ssl_mode": "أمان الاتصال"
         },
         "data_description": {
-          "port": "RouterOS API port. Leave at 0 to use the default: 8728 (no SSL) or 8729 (SSL)."
+          "port": "منفذ RouterOS API. اتركه عند 0 لاستخدام الافتراضي: 8728 (بدون SSL) أو 8729 (مع SSL)."
         }
       }
     },
@@ -146,9 +146,9 @@
           "zone": "منطقة لتعقُّب الجهاز"
         },
         "data_description": {
-          "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
-          "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
-          "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
+          "scan_interval": "الحد الأدنى: 10s. الافتراضي: 30s. القيم الأقل تزيد من حمل RouterOS API.",
+          "track_network_hosts_timeout": "الأجهزة السلكية فقط. عدد الثواني قبل اعتبار الجهاز غير متصل إذا لم يُرَ في ARP. الافتراضي: 180s.",
+          "zone": "اسم منطقة Home Assistant للاستخدام عند توصيل جهاز متعقَّب. الافتراضي: home."
         },
         "title": "خيارات جهاز Mikrotik Router (1/3)",
         "description": "تهيئة التكامل"
@@ -158,7 +158,7 @@
           "sensor_preset": "إعداد مسبق للمستشعرات"
         },
         "data_description": {
-          "sensor_preset": "Select a preset to quickly configure which sensors and switches are enabled, or choose Custom to configure individually."
+          "sensor_preset": "اختر إعدادًا مسبقًا لتهيئة المستشعرات والمفاتيح المفعَّلة بسرعة، أو اختر مخصص للتهيئة الفردية."
         },
         "title": "خيارات جهاز Mikrotik Router (2/3)",
         "description": "اختر إعداد مسبق للمستشعرات"
@@ -184,23 +184,23 @@
           "sensor_wireguard": "مستشعرات WireGuard peer"
         },
         "data_description": {
-          "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
-          "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
-          "sensor_environment": "Sensors for RouterOS environment variables.",
-          "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
-          "sensor_kidcontrol": "Switches for Kid Control device profiles (pause/resume internet access).",
-          "sensor_mangle": "Switch per Mangle rule to enable/disable packet marking rules from HA. Warning: creates one entity per Mangle rule.",
-          "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
-          "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
-          "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
-          "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
-          "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
-          "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
-          "sensor_simple_queues": "Switch per Simple Queue entry to enable/disable bandwidth limits from HA. Warning: creates one entity per queue rule.",
-          "track_network_hosts": "Create a device tracker entity for every device seen in ARP/DHCP/wireless tables. Each tracked device creates a separate HA device. Warning: on large networks this can generate hundreds of devices and entities.",
-          "sensor_wireguard": "Sensors per WireGuard peer (last handshake, transfer, endpoint)."
+          "sensor_client_captive": "يضيف حالة تفويض النقطة الساخنة إلى الأجهزة المتعقَّبة. مفيد فقط إذا كانت بوابة captive (هوت سبوت) مُهيَّأة.",
+          "sensor_client_traffic": "مستشعران لكل جهاز متعقَّب (سرعة TX/RX). يتطلب RouterOS 7 مع Kid Control — يُنشئ التكامل تلقائيًا ملف تعريف 'ha-monitoring' على الموجِّه عند التفعيل. تظهر المستشعرات فقط للأجهزة التي يتتبعها Kid Control فعليًا. ملاحظة: RouterOS 6 غير مدعوم.",
+          "sensor_containers": "مستشعر ومفتاح لكل حاوية لمراقبة وتشغيل/إيقاف الحاويات المشابهة لـ Docker.",
+          "sensor_environment": "مستشعرات لمتغيرات بيئة RouterOS.",
+          "sensor_filter": "مفتاح لكل قاعدة Filter لتفعيل/تعطيل قواعد جدار الحماية من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة فلتر.",
+          "sensor_kidcontrol": "مفاتيح لملفات تعريف أجهزة Kid Control (إيقاف/استئناف الوصول إلى الإنترنت).",
+          "sensor_mangle": "مفتاح لكل قاعدة Mangle لتفعيل/تعطيل قواعد وضع علامات الحزم من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة Mangle.",
+          "sensor_nat": "مفتاح لكل قاعدة NAT لتفعيل/تعطيل القواعد من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة NAT.",
+          "sensor_netwatch_tracker": "مستشعر ثنائي لكل إدخال Netwatch يُظهر حالة إمكانية الوصول.",
+          "sensor_port_tracker": "مستشعر ثنائي لكل منفذ يُظهر حالة الاتصال (متصل/غير متصل).",
+          "sensor_port_traffic": "4 مستشعرات لكل واجهة (بايتات TX/RX والإجماليات). تحذير: ينشئ 4 كيانات لكل واجهة — عطِّله إذا لم تكن رسوم بيانية لحركة المرور مطلوبة.",
+          "sensor_ppp": "مفتاح لكل PPP secret (مستخدم) لتفعيل/تعطيل حسابات VPN/PPPoE من HA.",
+          "sensor_routing_rules": "مفتاح لكل قاعدة توجيه لتفعيل/تعطيل قواعد توجيه السياسات من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة توجيه.",
+          "sensor_scripts": "زر لكل سكريبت لتشغيل سكريبتات RouterOS من HA.",
+          "sensor_simple_queues": "مفتاح لكل إدخال Simple Queue لتفعيل/تعطيل حدود النطاق الترددي من HA. تحذير: ينشئ كيانًا واحدًا لكل قاعدة قائمة انتظار.",
+          "track_network_hosts": "ينشئ كيان متتبع جهاز لكل جهاز مرئي في جداول ARP/DHCP/اللاسلكية. كل جهاز متعقَّب ينشئ جهاز HA منفصلًا. تحذير: على الشبكات الكبيرة قد يُنتج مئات الأجهزة والكيانات.",
+          "sensor_wireguard": "مستشعرات لكل WireGuard peer (آخر مصافحة، النقل، نقطة النهاية)."
         },
         "title": "خيارات جهاز Mikrotik Router (3/3)",
         "description": "تمكين أجهزة الاستشعار والمفاتيح"
@@ -223,7 +223,7 @@
   },
   "exceptions": {
     "invalid_mac": {
-      "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
+      "message": "صيغة عنوان MAC غير صالحة: {mac}. الصيغة المطلوبة: AA:BB:CC:DD:EE:FF"
     }
   },
   "selector": {
