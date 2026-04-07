@@ -190,11 +190,7 @@ def get_uid(entry, key, key_secondary, key_search, keymap) -> str | None:
 # ---------------------------
 def generate_keymap(data, key_search) -> dict | None:
     """Generate keymap."""
-    return (
-        {data[uid][key_search]: uid for uid in data if key_search in data[uid]}
-        if key_search
-        else None
-    )
+    return {data[uid][key_search]: uid for uid in data if key_search in data[uid]} if key_search else None
 
 
 # ---------------------------
@@ -253,9 +249,7 @@ def fill_defaults(data, vals) -> dict:
             _default = val.get("default", False)
             _reverse = val.get("reverse", False)
             if _name not in data:
-                data[_name] = from_entry_bool(
-                    [], _source, default=_default, reverse=_reverse
-                )
+                data[_name] = from_entry_bool([], _source, default=_default, reverse=_reverse)
 
     return data
 
@@ -286,13 +280,9 @@ def fill_vals(data, entry, uid, vals) -> dict:
             _reverse = val.get("reverse", False)
 
             if uid:
-                data[uid][_name] = from_entry_bool(
-                    entry, _source, default=_default, reverse=_reverse
-                )
+                data[uid][_name] = from_entry_bool(entry, _source, default=_default, reverse=_reverse)
             else:
-                data[_name] = from_entry_bool(
-                    entry, _source, default=_default, reverse=_reverse
-                )
+                data[_name] = from_entry_bool(entry, _source, default=_default, reverse=_reverse)
 
         if _convert == "utc_from_timestamp":
             if uid:

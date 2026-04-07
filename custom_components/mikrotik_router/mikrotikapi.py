@@ -95,9 +95,7 @@ class MikrotikAPI:
             if location == "unknown":
                 _LOGGER.error("Mikrotik %s connection closed", self._host)
             else:
-                _LOGGER.error(
-                    "Mikrotik %s error while %s : %s", self._host, location, error
-                )
+                _LOGGER.error("Mikrotik %s error while %s : %s", self._host, location, error)
 
             self.connection_error_reported = True
 
@@ -134,9 +132,7 @@ class MikrotikAPI:
                             ssl_context.verify_mode = ssl.CERT_NONE  # NOSONAR
                         self._ssl_wrapper = ssl_context.wrap_socket
                     kwargs["ssl_wrapper"] = self._ssl_wrapper
-                self._connection = librouteros.connect(
-                    self._host, self._username, self._password, **kwargs
-                )
+                self._connection = librouteros.connect(self._host, self._username, self._password, **kwargs)
             except Exception as e:
                 if not self.connection_error_reported:
                     _LOGGER.error("Mikrotik %s error while connecting: %s", self._host, e)
@@ -236,7 +232,12 @@ class MikrotikAPI:
         """Modify a parameter"""
         _LOGGER.debug(
             "Mikrotik %s set_value: path=%s param=%s value=%s mod_param=%s mod_value=%s",
-            self._host, path, param, value, mod_param, mod_value,
+            self._host,
+            path,
+            param,
+            value,
+            mod_param,
+            mod_value,
         )
         entry_found = None
 
@@ -427,4 +428,3 @@ class MikrotikAPI:
 
         _LOGGER.debug("Ping host failure: %s", args["address"])
         return False
-

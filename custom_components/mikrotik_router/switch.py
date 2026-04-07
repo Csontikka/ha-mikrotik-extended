@@ -301,10 +301,7 @@ class MikrotikRoutingRulesSwitch(MikrotikSwitch):
         value = None
         for uid in self.coordinator.data["routing_rules"]:
             if self.coordinator.data["routing_rules"][uid]["uniq-id"] == (
-                f"{self._data['comment']},{self._data['action']},"
-                f"{self._data['src-address']},"
-                f"{self._data['dst-address']},"
-                f"{self._data['routing-mark']},{self._data['interface']}"
+                f"{self._data['comment']},{self._data['action']},{self._data['src-address']},{self._data['dst-address']},{self._data['routing-mark']},{self._data['interface']}"
             ):
                 value = self.coordinator.data["routing_rules"][uid][".id"]
 
@@ -322,10 +319,7 @@ class MikrotikRoutingRulesSwitch(MikrotikSwitch):
         value = None
         for uid in self.coordinator.data["routing_rules"]:
             if self.coordinator.data["routing_rules"][uid]["uniq-id"] == (
-                f"{self._data['comment']},{self._data['action']},"
-                f"{self._data['src-address']},"
-                f"{self._data['dst-address']},"
-                f"{self._data['routing-mark']},{self._data['interface']}"
+                f"{self._data['comment']},{self._data['action']},{self._data['src-address']},{self._data['dst-address']},{self._data['routing-mark']},{self._data['interface']}"
             ):
                 value = self.coordinator.data["routing_rules"][uid][".id"]
 
