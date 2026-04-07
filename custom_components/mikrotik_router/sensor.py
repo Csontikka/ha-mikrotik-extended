@@ -133,7 +133,7 @@ class MikrotikClientTrafficSensor(MikrotikSensor):
     @property
     def custom_name(self) -> str:
         """Return the name for this entity"""
-        return f"{self.entity_description.name}"
+        return f"{self.entity_description.name} ({self._inst})"
 
     @property
     def available(self) -> bool:
