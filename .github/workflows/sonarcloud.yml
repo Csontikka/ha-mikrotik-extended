@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.12"
       - name: Install test dependencies
         run: |
           pip install --upgrade pip
@@ -24,7 +24,7 @@ jobs:
             pytest \
             pytest-asyncio \
             pytest-cov \
-            pytest-homeassistant-custom-component \
+            "pytest-homeassistant-custom-component>=0.13.205,<0.14" \
             librouteros \
             mac-vendor-lookup
       - name: Run tests with coverage
