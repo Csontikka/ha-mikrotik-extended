@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_NAME, CONF_HOST
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import (
+    device_registry as dr,
     entity_platform as ep,
     entity_registry as er,
 )
@@ -183,6 +184,14 @@ async def async_add_entities(
                     continue
                 _LOGGER.debug("Removing orphaned entity %s", entry.entity_id)
                 entity_registry.async_remove(entry.entity_id)
+
+        # Remove devices belonging to this config entry that have no remaining entities
+        device_registry = dr.async_get(hass)
+        for device_entry in dr.async_entries_for_config_entry(device_registry, config_entry.entry_id):
+            device_entities = er.async_entries_for_device(entity_registry, device_entry.id, include_disabled_entities=True)
+            if not device_entities:
+                _LOGGER.debug("Removing empty device %s", device_entry.name)
+                device_registry.async_remove_device(device_entry.id)
 
     await async_update_controller(
         config_entry.runtime_data.data_coordinator
