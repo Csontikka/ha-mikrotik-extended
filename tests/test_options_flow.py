@@ -117,9 +117,16 @@ async def test_options_flow_updates_scan_interval(hass):
         },
     )
     assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "sensor_mode"
+
+    # Step 2: sensor_mode — choose custom
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"sensor_preset": "custom"}
+    )
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "sensor_select"
 
-    # Step 2: sensor_select — save
+    # Step 3: sensor_select — save
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], SENSOR_SELECT_INPUT
     )
@@ -149,6 +156,11 @@ async def test_options_flow_sensor_toggle(hass):
             CONF_TRACK_HOSTS_TIMEOUT: 180,
             CONF_ZONE: STATE_HOME,
         },
+    )
+
+    # sensor_mode — choose custom
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"sensor_preset": "custom"}
     )
 
     disabled_sensors = {k: False for k in SENSOR_SELECT_INPUT}
