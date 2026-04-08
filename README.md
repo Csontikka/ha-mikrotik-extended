@@ -242,13 +242,15 @@ Update RouterOS and RouterBoard firmware directly from Home Assistant.
 | IP Cloud (public IP) | ✓ | ✓ | No |
 | Device mode & packages | ✓ | — | No |
 | Firmware updates | ✓ | ✓ | No |
-| Wake-on-LAN service | ✓ | ✓ | No |
-| API Test service | ✓ | ✓ | No |
-| Refresh Data service | ✓ | ✓ | No |
+| Wake-on-LAN service | ✓ | ? | No |
+| API Test service | ✓ | ? | No |
+| Refresh Data service | ✓ | ? | No |
 | Set Environment service | ✓ | ? | No |
 | Reboot button | ✓ | ✓ | No |
 | Multi-router support | ✓ | ✓ | No |
 
+> **?** = not tested on RouterOS 6.
+>
 > **\*RouterOS 6 is not officially supported.** Basic features may still work, but v6 is not tested or maintained. Upgrade to RouterOS 7 is strongly recommended.
 >
 > Active development and testing is done on a **MikroTik hAP ax³** running the latest stable RouterOS 7 and a **Cloud Hosted Router (CHR)** virtual instance.
