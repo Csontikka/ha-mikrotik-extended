@@ -203,6 +203,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
                 )
+                self.hass.config_entries.async_schedule_reload(reauth_entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(
