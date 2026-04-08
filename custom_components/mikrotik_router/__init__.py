@@ -156,6 +156,81 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         supports_response=SupportsResponse.ONLY,
     )
 
+    async def async_refresh_data(call) -> None:
+        """Force an immediate data refresh on all (or a specific) router."""
+        host_filter = call.data.get("host")
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if not hasattr(entry, "runtime_data"):
+                continue
+            entry_data = entry.runtime_data
+            router_host = entry_data.data_coordinator.config_entry.data.get("host", "unknown")
+            if host_filter and router_host != host_filter:
+                continue
+            await entry_data.data_coordinator.async_request_refresh()
+            await entry_data.tracker_coordinator.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN,
+        "refresh_data",
+        async_refresh_data,
+        schema=vol.Schema({vol.Optional("host"): cv.string}),
+    )
+
+    async def async_set_environment(call) -> None:
+        """Set, create or remove a RouterOS script environment variable."""
+        name = call.data["name"]
+        value = call.data.get("value")
+        action = call.data.get("action", "set")
+        host_filter = call.data.get("host")
+
+        if action in ("add", "set") and value is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="missing_value",
+            )
+
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if not hasattr(entry, "runtime_data"):
+                continue
+            entry_data = entry.runtime_data
+            coordinator = entry_data.data_coordinator
+            router_host = coordinator.config_entry.data.get("host", "unknown")
+            if host_filter and router_host != host_filter:
+                continue
+
+            if action == "remove":
+                success = await hass.async_add_executor_job(
+                    coordinator.api.remove_env_variable, name,
+                )
+            else:  # add or set
+                success = await hass.async_add_executor_job(
+                    coordinator.api.set_env_variable, name, value,
+                )
+
+            if not success:
+                _LOGGER.warning(
+                    "set_environment: %s '%s' failed on %s",
+                    action,
+                    name,
+                    router_host,
+                )
+            else:
+                await entry_data.data_coordinator.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN,
+        "set_environment",
+        async_set_environment,
+        schema=vol.Schema(
+            {
+                vol.Required("name"): cv.string,
+                vol.Optional("value"): cv.string,
+                vol.Optional("action", default="set"): vol.In(["set", "add", "remove"]),
+                vol.Optional("host"): cv.string,
+            }
+        ),
+    )
+
     return True
 
 

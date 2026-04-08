@@ -224,6 +224,9 @@
   "exceptions": {
     "invalid_mac": {
       "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
+    },
+    "missing_value": {
+      "message": "A value is required for add or set actions."
     }
   },
   "selector": {

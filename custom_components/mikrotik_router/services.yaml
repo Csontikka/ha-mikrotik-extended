@@ -63,3 +63,62 @@ api_test:
       default: false
       selector:
         boolean:
+
+set_environment:
+  name: Set Environment Variable
+  description: >
+    Create, update or remove a RouterOS script environment variable.
+    Use action "add" to create a new variable, "set" to update an existing one,
+    or "remove" to delete it.
+  fields:
+    name:
+      name: Variable Name
+      description: Name of the environment variable.
+      required: true
+      example: "myVar"
+      selector:
+        text:
+    value:
+      name: Value
+      description: Value to set (required for "add" and "set" actions).
+      required: false
+      example: "hello"
+      selector:
+        text:
+    action:
+      name: Action
+      description: "Action to perform: set (update existing), add (create new), or remove (delete)."
+      required: false
+      default: "set"
+      selector:
+        select:
+          options:
+            - "set"
+            - "add"
+            - "remove"
+    host:
+      name: Host Filter
+      description: >
+        Only target this specific router host.
+        If omitted, targets all configured routers.
+      required: false
+      example: "192.168.88.1"
+      selector:
+        text:
+
+refresh_data:
+  name: Refresh Data
+  description: >
+    Force an immediate data refresh from the router, including all sensors,
+    environment variables, and device trackers. Useful in automations when
+    you need up-to-date values without waiting for the next poll cycle.
+  fields:
+    host:
+      name: Host Filter
+      description: >
+        Only refresh this specific router host.
+        If omitted, refreshes all configured routers.
+      required: false
+      example: "192.168.88.1"
+      selector:
+        text:
