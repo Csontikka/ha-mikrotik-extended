@@ -1,5 +1,6 @@
 """Mikrotik API for MikroTik Extended."""
 
+import contextlib
 import logging
 import ssl
 from threading import Lock
@@ -91,10 +92,8 @@ class MikrotikAPI:
         """Gracefully close the API connection without logging errors."""
         self.connection_error_reported = True
         if self._connection:
-            try:
+            with contextlib.suppress(Exception):
                 self._connection.close()
-            except Exception:  # noqa: BLE001
-                pass
         self._reconnected = False
         self._connected = False
         self._connection = None

@@ -42,10 +42,10 @@ from homeassistant.const import (
     CONF_ZONE,
     STATE_HOME,
 )
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.util.dt import utcnow
 
 from .apiparser import parse_api
