@@ -84,6 +84,21 @@ class MikrotikAPI:
         return True
 
     # ---------------------------
+    #   close
+    # ---------------------------
+    def close(self):
+        """Gracefully close the API connection without logging errors."""
+        if self._connection:
+            try:
+                self._connection.close()
+            except Exception:  # noqa: BLE001
+                pass
+        self._reconnected = False
+        self._connected = False
+        self._connection = None
+        self._connection_epoch = 0
+
+    # ---------------------------
     #   disconnect
     # ---------------------------
     def disconnect(self, location="unknown", error=None):
