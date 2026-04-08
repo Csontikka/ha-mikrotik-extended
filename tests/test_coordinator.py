@@ -15,6 +15,7 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
     CONF_NAME,
 )
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -242,7 +243,7 @@ class TestRepairIssues:
         mock_create = MagicMock()
 
         with self._patch_severity_and_issues(mock_create, MagicMock()):
-            with pytest.raises(UpdateFailed):
+            with pytest.raises(ConfigEntryAuthFailed):
                 await coordinator._async_update_data()
 
         mock_create.assert_called_once()
@@ -297,7 +298,7 @@ class TestRepairIssues:
             patch("custom_components.mikrotik_extended.coordinator.async_create_issue", None),
             patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", None),
         ):
-            with pytest.raises(UpdateFailed):
+            with pytest.raises(ConfigEntryAuthFailed):
                 await coordinator._async_update_data()
 
     async def test_repair_issues_deleted_on_successful_reconnect(self, hass):
@@ -320,8 +321,8 @@ class TestRepairIssues:
         assert "wrong_credentials" in deleted_issue_ids
         assert "ssl_error" in deleted_issue_ids
 
-    async def test_wrong_login_triggers_start_reauth(self, hass):
-        """async_start_reauth called when error is wrong_login."""
+    async def test_wrong_login_triggers_reauth(self, hass):
+        """ConfigEntryAuthFailed raised on wrong_login, which triggers reauth automatically."""
         coordinator = _make_coordinator(hass)
         self._stub_all_get_methods(coordinator)
 
@@ -329,14 +330,9 @@ class TestRepairIssues:
         coordinator.api.connected.return_value = False
         coordinator.api.error = "wrong_login"
 
-        mock_reauth = MagicMock()
-        coordinator.config_entry.async_start_reauth = mock_reauth
-
         with self._patch_severity_and_issues(MagicMock(), MagicMock()):
-            with pytest.raises(UpdateFailed):
+            with pytest.raises(ConfigEntryAuthFailed):
                 await coordinator._async_update_data()
-
-        mock_reauth.assert_called_once_with(hass)
 
     async def test_non_wrong_login_error_does_not_trigger_reauth(self, hass):
         """async_start_reauth NOT called for non-auth errors."""

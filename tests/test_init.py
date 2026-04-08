@@ -49,7 +49,15 @@ async def test_setup_entry_sets_runtime_data(hass):
     mock_tracker = MagicMock()
     mock_tracker.async_config_entry_first_refresh = AsyncMock()
 
+    mock_api = MagicMock()
+    mock_api.connect.return_value = True
+    mock_api.error = ""
+
     with (
+        patch(
+            "custom_components.mikrotik_extended.MikrotikAPI",
+            return_value=mock_api,
+        ),
         patch(
             "custom_components.mikrotik_extended.MikrotikCoordinator",
             return_value=mock_coord,
@@ -88,7 +96,15 @@ async def test_unload_entry(hass):
     mock_tracker = MagicMock()
     mock_tracker.async_config_entry_first_refresh = AsyncMock()
 
+    mock_api = MagicMock()
+    mock_api.connect.return_value = True
+    mock_api.error = ""
+
     with (
+        patch(
+            "custom_components.mikrotik_extended.MikrotikAPI",
+            return_value=mock_api,
+        ),
         patch(
             "custom_components.mikrotik_extended.MikrotikCoordinator",
             return_value=mock_coord,

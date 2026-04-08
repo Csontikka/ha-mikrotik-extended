@@ -10,7 +10,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant, SupportsResponse
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry
 
@@ -242,10 +242,26 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 # ---------------------------
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up a config entry."""
-    _LOGGER.info(
-        "Setting up MikroTik Extended integration for %s",
-        config_entry.data.get("host", "unknown"),
+    host = config_entry.data.get(CONF_HOST, "unknown")
+    _LOGGER.info("Setting up MikroTik Extended integration for %s", host)
+
+    # Early credential check — raises ConfigEntryAuthFailed immediately
+    # so HA triggers reauth flow instead of setup_retry loop.
+    api = MikrotikAPI(
+        config_entry.data[CONF_HOST],
+        config_entry.data[CONF_USERNAME],
+        config_entry.data[CONF_PASSWORD],
+        config_entry.data[CONF_PORT],
+        config_entry.data[CONF_SSL],
+        config_entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
     )
+    connected = await hass.async_add_executor_job(api.connect)
+    if not connected:
+        if api.error == "wrong_login":
+            raise ConfigEntryAuthFailed(f"Invalid credentials for {host}")
+        raise ConfigEntryNotReady(f"Cannot connect to {host}")
+    api.disconnect()
+
     coordinator = MikrotikCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()
     coordinatorTracker = MikrotikTrackerCoordinator(hass, config_entry, coordinator)

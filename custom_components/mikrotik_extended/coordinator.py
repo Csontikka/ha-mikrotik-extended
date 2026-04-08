@@ -45,6 +45,7 @@ from homeassistant.const import (
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.util.dt import utcnow
 
 from .apiparser import parse_api
@@ -666,7 +667,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                             translation_placeholders={"host": self.host},
                         )
                 if self.api.error == "wrong_login":
-                    self.config_entry.async_start_reauth(self.hass)
+                    raise ConfigEntryAuthFailed(
+                        f"Invalid credentials for {self.host}"
+                    )
                 raise UpdateFailed("Mikrotik Disconnected")
 
             if self.api.connected():
@@ -794,6 +797,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             await self.hass.async_add_executor_job(self.get_gps)
 
         if not self.api.connected():
+            if self.api.error == "wrong_login":
+                raise ConfigEntryAuthFailed(
+                    f"Invalid credentials for {self.host}"
+                )
             raise UpdateFailed("Mikrotik Disconnected")
 
         _cycle_s = (datetime.now() - _cycle_start).total_seconds()
