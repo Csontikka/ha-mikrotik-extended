@@ -1,6 +1,6 @@
 Monitor and control your Mikrotik device from Home Assistant.
 
-![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-extended/master/images/banner.png)
+![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-extended/master/images/banner.svg)
  * Interfaces:
    * Enable/disable interfaces
    * SFP status and information
