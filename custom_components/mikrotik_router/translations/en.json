@@ -354,6 +354,9 @@
       "system_packages": {
         "name": "Packages"
       },
+      "system_dhcp_leases": {
+        "name": "DHCP leases"
+      },
       "container_status": {
         "name": "Status"
       }

@@ -278,6 +278,7 @@
       "wireguard_peer_handshake": { "name": "Last handshake" },
       "system_device_mode": { "name": "Device mode" },
       "system_packages": { "name": "Packages" },
+      "system_dhcp_leases": { "name": "DHCP leases" },
       "container_status": { "name": "Status" }
     },
     "binary_sensor": {

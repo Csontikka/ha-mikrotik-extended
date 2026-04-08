@@ -305,6 +305,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "containers": {},
             "system_device_mode": {},
             "system_packages": {},
+            "dhcp_leases": {},
         }
 
         self.notified_flags = []
@@ -2216,6 +2217,29 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     self.ds["dhcp"][uid]["interface"] = self.ds["arp"][uid]["bridge"]
                 else:
                     self.ds["dhcp"][uid]["interface"] = self.ds["arp"][uid]["interface"]
+
+        # Build DHCP lease summary for sensor
+        total = len(self.ds["dhcp"])
+        bound = 0
+        leases = []
+        for uid, entry in self.ds["dhcp"].items():
+            if entry.get("status") == "bound":
+                bound += 1
+            leases.append(
+                {
+                    "mac": uid,
+                    "address": entry.get("address", "unknown"),
+                    "host_name": entry.get("host-name", "unknown"),
+                    "status": entry.get("status", "unknown"),
+                    "server": entry.get("server", "unknown"),
+                    "interface": entry.get("interface", "unknown"),
+                }
+            )
+        self.ds["dhcp_leases"] = {
+            "total": total,
+            "bound": bound,
+            "leases": leases,
+        }
 
     # ---------------------------
     #   get_dhcp_server
