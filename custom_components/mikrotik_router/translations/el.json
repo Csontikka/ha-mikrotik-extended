@@ -224,6 +224,9 @@
   "exceptions": {
     "invalid_mac": {
       "message": "Μη έγκυρη μορφή διεύθυνσης MAC: {mac}. Αναμενόμενη μορφή: AA:BB:CC:DD:EE:FF"
+    },
+    "missing_value": {
+      "message": "A value is required for add or set actions."
     }
   },
   "selector": {
@@ -350,6 +353,9 @@
       },
       "system_packages": {
         "name": "Πακέτα"
+      },
+      "system_dhcp_leases": {
+        "name": "DHCP leases"
       },
       "container_status": {
         "name": "Κατάσταση"
