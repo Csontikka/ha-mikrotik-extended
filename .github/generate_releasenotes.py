@@ -25,7 +25,7 @@ import sys
 from github import Github
 
 BODY = """
-[![Downloads for this release](https://img.shields.io/github/downloads/Csontikka/ha-mikrotik-router/{version}/total.svg)](https://github.com/Csontikka/ha-mikrotik-router/releases/{version})
+[![Downloads for this release](https://img.shields.io/github/downloads/Csontikka/ha-mikrotik-extended/{version}/total.svg)](https://github.com/Csontikka/ha-mikrotik-extended/releases/{version})
 
 {changes}
 """
@@ -58,7 +58,7 @@ def new_commits(repo, sha):
 
 def last_integration_release(github, skip=True):
     """Return last release."""
-    repo = github.get_repo("Csontikka/ha-mikrotik-router")
+    repo = github.get_repo("Csontikka/ha-mikrotik-extended")
     tag_sha = None
     data = {}
     tags = list(repo.get_tags())
@@ -79,7 +79,7 @@ def last_integration_release(github, skip=True):
 
 def get_integration_commits(github, skip=True):
     changes = ""
-    repo = github.get_repo("Csontikka/ha-mikrotik-router")
+    repo = github.get_repo("Csontikka/ha-mikrotik-extended")
     commits = new_commits(repo, last_integration_release(github, skip)["tag_sha"])
 
     if not commits:
@@ -114,7 +114,7 @@ def get_integration_commits(github, skip=True):
 
 # Update release notes:
 UPDATERELEASE = str(sys.argv[4])
-REPO = GITHUB.get_repo("Csontikka/ha-mikrotik-router")
+REPO = GITHUB.get_repo("Csontikka/ha-mikrotik-extended")
 if UPDATERELEASE == "yes":
     VERSION = str(sys.argv[6]).replace("refs/tags/", "")
     RELEASE = REPO.get_release(VERSION)

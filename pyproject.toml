@@ -1,5 +1,5 @@
 [project]
-name = "ha-mikrotik-router"
+name = "ha-mikrotik-extended"
 version = "0.2.3"
 requires-python = ">=3.12"
 

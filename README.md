@@ -1,12 +1,12 @@
 # MikroTik Extended — Home Assistant Integration
 
-![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-router/master/images/banner.png)
+![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-extended/master/images/banner.png)
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/Csontikka/ha-mikrotik-router?style=plastic)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/Csontikka/ha-mikrotik-extended?style=plastic)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=plastic)](https://github.com/hacs/integration)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-router&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-router)
-[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-router&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-router)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-router&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-router)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-extended&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-extended)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-extended&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-extended)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-extended&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-extended)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-donate-yellow.svg?style=plastic)](https://buymeacoffee.com/Csontikka)
 
 Full-featured Home Assistant integration for MikroTik routers running **RouterOS 7+**. Monitor system resources, control firewall rules, track network devices, manage WireGuard peers, containers, and more — all from your HA dashboard. Supports multiple routers simultaneously.
@@ -324,7 +324,7 @@ automation:
 This integration is distributed via [HACS](https://hacs.xyz/) as a custom repository.
 
 1. Open HACS -> three-dot menu -> **Custom repositories**
-2. URL: `https://github.com/Csontikka/ha-mikrotik-router`
+2. URL: `https://github.com/Csontikka/ha-mikrotik-extended`
 3. Category: **Integration**
 4. Search and install **MikroTik Extended**
 
@@ -454,7 +454,7 @@ Download the integration diagnostics file for bug reports — it includes integr
 1. **Settings -> Devices & Services**
 2. Find **MikroTik Extended** -> click the integration
 3. Click the **three-dot menu** -> **Download diagnostics**
-4. Attach the `.json` file to your [GitHub issue](https://github.com/Csontikka/ha-mikrotik-router/issues)
+4. Attach the `.json` file to your [GitHub issue](https://github.com/Csontikka/ha-mikrotik-extended/issues)
 
 ### Debug Logs
 
@@ -469,7 +469,7 @@ logger:
 
 ## Support
 
-Found a bug or have an idea? [Open an issue](https://github.com/Csontikka/ha-mikrotik-router/issues) — feedback and feature requests are welcome!
+Found a bug or have an idea? [Open an issue](https://github.com/Csontikka/ha-mikrotik-extended/issues) — feedback and feature requests are welcome!
 
 If you find this integration useful, consider [buying me a coffee](https://buymeacoffee.com/Csontikka).
 

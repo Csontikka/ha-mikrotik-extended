@@ -1,6 +1,6 @@
 Monitor and control your Mikrotik device from Home Assistant.
 
-![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-router/master/images/banner.png)
+![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-extended/master/images/banner.png)
  * Interfaces:
    * Enable/disable interfaces
    * SFP status and information
@@ -33,7 +33,7 @@ Monitor and control your Mikrotik device from Home Assistant.
  * Supports monitoring of multiple mikrotik devices simultaneously
 
 ## Links
-- [Documentation](https://github.com/Csontikka/ha-mikrotik-router)
-- [Configuration](https://github.com/Csontikka/ha-mikrotik-router#setup-integration)
-- [Report a Bug](https://github.com/Csontikka/ha-mikrotik-router/issues/new?labels=bug&template=bug_report.md&title=%5BBug%5D)
-- [Suggest an idea](https://github.com/Csontikka/ha-mikrotik-router/issues/new?labels=enhancement&template=feature_request.md&title=%5BFeature%5D)
+- [Documentation](https://github.com/Csontikka/ha-mikrotik-extended)
+- [Configuration](https://github.com/Csontikka/ha-mikrotik-extended#setup-integration)
+- [Report a Bug](https://github.com/Csontikka/ha-mikrotik-extended/issues/new?labels=bug&template=bug_report.md&title=%5BBug%5D)
+- [Suggest an idea](https://github.com/Csontikka/ha-mikrotik-extended/issues/new?labels=enhancement&template=feature_request.md&title=%5BFeature%5D)
