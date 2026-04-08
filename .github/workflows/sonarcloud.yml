@@ -30,7 +30,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           pytest tests/ \
-            --cov=custom_components/mikrotik_router \
+            --cov=custom_components/mikrotik_extended \
             --cov-report=xml:coverage.xml \
             -q
       - name: SonarQube Scan

@@ -16,7 +16,7 @@ from homeassistant.const import (
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mikrotik_router.const import (
+from custom_components.mikrotik_extended.const import (
     DOMAIN,
     CONF_SCAN_INTERVAL,
     CONF_TRACK_HOSTS_TIMEOUT,

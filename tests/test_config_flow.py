@@ -15,7 +15,7 @@ from homeassistant.const import (
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mikrotik_router.const import DOMAIN
+from custom_components.mikrotik_extended.const import DOMAIN
 
 ENTRY_DATA = {
     CONF_HOST: "192.168.88.1",
@@ -47,7 +47,7 @@ BASIC_OPTIONS_INPUT = {
 async def _init_and_skip_discovery(hass):
     """Init flow, pass through discovery step (scan=False), return flow result on 'user' step."""
     with patch(
-        "custom_components.mikrotik_router.config_flow.async_scan_mndp",
+        "custom_components.mikrotik_extended.config_flow.async_scan_mndp",
         return_value=[],
     ):
         result = await hass.config_entries.flow.async_init(
@@ -67,7 +67,7 @@ async def _init_and_skip_discovery(hass):
 async def test_successful_setup_recommended(hass):
     """Test full config flow with recommended preset — entry is created."""
     with patch(
-        "custom_components.mikrotik_router.config_flow.MikrotikAPI"
+        "custom_components.mikrotik_extended.config_flow.MikrotikAPI"
     ) as mock_api_cls:
         mock_api = MagicMock()
         mock_api.connect.return_value = True
@@ -103,7 +103,7 @@ async def test_successful_setup_recommended(hass):
 async def test_duplicate_entry_aborted(hass):
     """Test config flow aborts when the same host is added a second time."""
     with patch(
-        "custom_components.mikrotik_router.config_flow.MikrotikAPI"
+        "custom_components.mikrotik_extended.config_flow.MikrotikAPI"
     ) as mock_api_cls:
         mock_api = MagicMock()
         mock_api.connect.return_value = True
@@ -135,7 +135,7 @@ async def test_duplicate_entry_aborted(hass):
 async def test_connection_failure(hass):
     """Test config flow shows error when router is unreachable."""
     with patch(
-        "custom_components.mikrotik_router.config_flow.MikrotikAPI"
+        "custom_components.mikrotik_extended.config_flow.MikrotikAPI"
     ) as mock_api_cls:
         mock_api = MagicMock()
         mock_api.connect.return_value = False
@@ -164,7 +164,7 @@ async def test_reauth_flow_success(hass):
     entry.add_to_hass(hass)
 
     with patch(
-        "custom_components.mikrotik_router.config_flow.MikrotikAPI"
+        "custom_components.mikrotik_extended.config_flow.MikrotikAPI"
     ) as mock_api_cls:
         mock_api = MagicMock()
         mock_api.connect.return_value = True
@@ -200,7 +200,7 @@ async def test_reauth_flow_wrong_credentials(hass):
     entry.add_to_hass(hass)
 
     with patch(
-        "custom_components.mikrotik_router.config_flow.MikrotikAPI"
+        "custom_components.mikrotik_extended.config_flow.MikrotikAPI"
     ) as mock_api_cls:
         mock_api = MagicMock()
         mock_api.connect.return_value = False

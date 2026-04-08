@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from custom_components.mikrotik_router.coordinator import (
+from custom_components.mikrotik_extended.coordinator import (
     _parse_duration_seconds,
     is_valid_ip,
 )

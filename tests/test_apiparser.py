@@ -1,6 +1,6 @@
 """Tests for apiparser functions."""
 import pytest
-from custom_components.mikrotik_router.apiparser import (
+from custom_components.mikrotik_extended.apiparser import (
     from_entry,
     from_entry_bool,
     parse_api,

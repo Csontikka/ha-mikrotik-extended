@@ -18,9 +18,9 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Run ruff check
-        run: ruff check custom_components/mikrotik_router/
+        run: ruff check custom_components/mikrotik_extended/
       - name: Run ruff format check
-        run: ruff format --check custom_components/mikrotik_router/
+        run: ruff format --check custom_components/mikrotik_extended/
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
@@ -48,7 +48,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           pytest tests/ \
-            --cov=custom_components/mikrotik_router \
+            --cov=custom_components/mikrotik_extended \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
             -v

@@ -15,7 +15,7 @@ from homeassistant.const import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mikrotik_router.const import DOMAIN
+from custom_components.mikrotik_extended.const import DOMAIN
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -87,7 +87,7 @@ def _make_coordinator(hass, data=None):
 
 def _make_entity(coordinator, entity_description, uid=None):
     """Instantiate a MikrotikEntity subclass for testing."""
-    from custom_components.mikrotik_router.entity import MikrotikEntity
+    from custom_components.mikrotik_extended.entity import MikrotikEntity
 
     class _TestEntity(MikrotikEntity):
         """Minimal concrete subclass."""
@@ -154,7 +154,7 @@ class TestHandleCoordinatorUpdate:
         coord.data = {"interface": {"ether1": {"name": "ether1", "running": False}}}
 
         # Call _handle_coordinator_update — patch super to avoid HA internals
-        from custom_components.mikrotik_router.entity import MikrotikEntity
+        from custom_components.mikrotik_extended.entity import MikrotikEntity
         with patch.object(MikrotikEntity, "_handle_coordinator_update", entity._handle_coordinator_update.__func__):
             # Call the actual implementation directly
             pass

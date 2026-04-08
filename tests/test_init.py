@@ -13,7 +13,7 @@ from homeassistant.const import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mikrotik_router.const import DOMAIN
+from custom_components.mikrotik_extended.const import DOMAIN
 
 ENTRY_DATA = {
     CONF_HOST: "192.168.88.1",
@@ -51,11 +51,11 @@ async def test_setup_entry_sets_runtime_data(hass):
 
     with (
         patch(
-            "custom_components.mikrotik_router.MikrotikCoordinator",
+            "custom_components.mikrotik_extended.MikrotikCoordinator",
             return_value=mock_coord,
         ),
         patch(
-            "custom_components.mikrotik_router.MikrotikTrackerCoordinator",
+            "custom_components.mikrotik_extended.MikrotikTrackerCoordinator",
             return_value=mock_tracker,
         ),
         patch.object(
@@ -90,11 +90,11 @@ async def test_unload_entry(hass):
 
     with (
         patch(
-            "custom_components.mikrotik_router.MikrotikCoordinator",
+            "custom_components.mikrotik_extended.MikrotikCoordinator",
             return_value=mock_coord,
         ),
         patch(
-            "custom_components.mikrotik_router.MikrotikTrackerCoordinator",
+            "custom_components.mikrotik_extended.MikrotikTrackerCoordinator",
             return_value=mock_tracker,
         ),
         patch.object(

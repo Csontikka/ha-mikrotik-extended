@@ -15,17 +15,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Zip mikrotik_router dir
+      - name: Zip mikrotik_extended dir
         run: |
-          cd ${{ github.workspace }}/custom_components/mikrotik_router
-          zip mikrotik_router.zip -r ./
+          cd ${{ github.workspace }}/custom_components/mikrotik_extended
+          zip mikrotik_extended.zip -r ./
 
       - name: Upload zip to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ github.workspace }}/custom_components/mikrotik_router/mikrotik_router.zip
-          asset_name: mikrotik_router.zip
+          file: ${{ github.workspace }}/custom_components/mikrotik_extended/mikrotik_extended.zip
+          asset_name: mikrotik_extended.zip
           tag: ${{ github.ref }}
           overwrite: true
 

@@ -18,7 +18,7 @@ from homeassistant.const import (
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mikrotik_router.const import DOMAIN
+from custom_components.mikrotik_extended.const import DOMAIN
 
 
 # Provide IssueSeverity fallback for test environment
@@ -60,18 +60,18 @@ def _make_config_entry():
 
 def _make_coordinator(hass):
     """Build a MikrotikCoordinator with a mocked MikrotikAPI."""
-    from custom_components.mikrotik_router.coordinator import MikrotikCoordinator
+    from custom_components.mikrotik_extended.coordinator import MikrotikCoordinator
 
     entry = _make_config_entry()
     entry.add_to_hass(hass)
 
     with patch(
-        "custom_components.mikrotik_router.coordinator.MikrotikAPI"
+        "custom_components.mikrotik_extended.coordinator.MikrotikAPI"
     ) as MockAPI:
         mock_api = MagicMock()
         MockAPI.return_value = mock_api
         with patch(
-            "custom_components.mikrotik_router.coordinator.IssueSeverity",
+            "custom_components.mikrotik_extended.coordinator.IssueSeverity",
             _FakeIssueSeverity,
         ):
             coordinator = MikrotikCoordinator(hass, entry)
@@ -192,10 +192,10 @@ class TestAsyncUpdateDataConnection:
         coordinator.api.error = ""
 
         with (
-            patch("custom_components.mikrotik_router.coordinator.IssueSeverity", _FakeIssueSeverity),
-            patch("custom_components.mikrotik_router.coordinator.async_create_issue", MagicMock()),
-            patch("custom_components.mikrotik_router.coordinator.async_delete_issue", MagicMock()),
-            patch("custom_components.mikrotik_router.coordinator.async_dispatcher_send"),
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
         ):
             result = await self._run_update(coordinator)
 
@@ -223,9 +223,9 @@ class TestRepairIssues:
         @contextlib.contextmanager
         def _ctx():
             with (
-                patch("custom_components.mikrotik_router.coordinator.IssueSeverity", _FakeIssueSeverity),
-                patch("custom_components.mikrotik_router.coordinator.async_create_issue", mock_create),
-                patch("custom_components.mikrotik_router.coordinator.async_delete_issue", mock_delete),
+                patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+                patch("custom_components.mikrotik_extended.coordinator.async_create_issue", mock_create),
+                patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", mock_delete),
             ):
                 yield
         return _ctx()
@@ -293,9 +293,9 @@ class TestRepairIssues:
         coordinator.api.error = "wrong_login"
 
         with (
-            patch("custom_components.mikrotik_router.coordinator.IssueSeverity", None),
-            patch("custom_components.mikrotik_router.coordinator.async_create_issue", None),
-            patch("custom_components.mikrotik_router.coordinator.async_delete_issue", None),
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", None),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", None),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", None),
         ):
             with pytest.raises(UpdateFailed):
                 await coordinator._async_update_data()
@@ -313,7 +313,7 @@ class TestRepairIssues:
         mock_delete = MagicMock()
 
         with self._patch_severity_and_issues(MagicMock(), mock_delete):
-            with patch("custom_components.mikrotik_router.coordinator.async_dispatcher_send"):
+            with patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"):
                 await coordinator._async_update_data()
 
         deleted_issue_ids = [c[0][2] for c in mock_delete.call_args_list]

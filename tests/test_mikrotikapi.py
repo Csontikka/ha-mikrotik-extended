@@ -4,7 +4,7 @@ from time import time
 
 import pytest
 
-from custom_components.mikrotik_router.mikrotikapi import MikrotikAPI
+from custom_components.mikrotik_extended.mikrotikapi import MikrotikAPI
 
 
 class TestMikrotikAPIInit:
@@ -52,7 +52,7 @@ class TestConnect:
     def setup_method(self):
         self.api = MikrotikAPI("192.168.88.1", "admin", "pass", use_ssl=False)
 
-    @patch("custom_components.mikrotik_router.mikrotikapi.librouteros.connect")
+    @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
     def test_successful_connect(self, mock_connect):
         mock_connect.return_value = MagicMock()
         result = self.api.connect()
@@ -60,7 +60,7 @@ class TestConnect:
         assert self.api.connected() is True
         assert self.api._reconnected is True
 
-    @patch("custom_components.mikrotik_router.mikrotikapi.librouteros.connect")
+    @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
     def test_failed_connect(self, mock_connect):
         mock_connect.side_effect = Exception("connection refused")
         result = self.api.connect()
@@ -68,14 +68,14 @@ class TestConnect:
         assert self.api.connected() is False
         assert self.api.error == "cannot_connect"
 
-    @patch("custom_components.mikrotik_router.mikrotikapi.librouteros.connect")
+    @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
     def test_wrong_login_connect(self, mock_connect):
         mock_connect.side_effect = Exception("invalid user name or password (6)")
         result = self.api.connect()
         assert result is False
         assert self.api.error == "wrong_login"
 
-    @patch("custom_components.mikrotik_router.mikrotikapi.librouteros.connect")
+    @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
     def test_reconnect_logs_warning(self, mock_connect):
         mock_connect.return_value = MagicMock()
         self.api.connection_error_reported = True
@@ -132,7 +132,7 @@ class TestConnectionCheck:
         self.api._connection = MagicMock()
         assert self.api.connection_check() is True
 
-    @patch("custom_components.mikrotik_router.mikrotikapi.librouteros.connect")
+    @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
     def test_disconnected_tries_reconnect(self, mock_connect):
         mock_connect.return_value = MagicMock()
         self.api._connected = False

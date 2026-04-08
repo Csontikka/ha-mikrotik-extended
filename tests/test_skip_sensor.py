@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.mikrotik_router.entity import _skip_sensor
-from custom_components.mikrotik_router.const import (
+from custom_components.mikrotik_extended.entity import _skip_sensor
+from custom_components.mikrotik_extended.const import (
     CONF_SENSOR_PORT_TRAFFIC,
     CONF_SENSOR_PORT_TRACKER,
     CONF_SENSOR_NETWATCH_TRACKER,

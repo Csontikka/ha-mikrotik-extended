@@ -8,8 +8,8 @@ from homeassistant.const import (
 )
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.mikrotik_router.const import DOMAIN
-from custom_components.mikrotik_router.mndp import MndpDevice
+from custom_components.mikrotik_extended.const import DOMAIN
+from custom_components.mikrotik_extended.mndp import MndpDevice
 
 BASIC_OPTIONS_INPUT = {
     "scan_interval": 30,
@@ -41,7 +41,7 @@ async def test_discovery_single_router_shown(hass):
 
     result = await _init_discovery_step(hass)
 
-    with patch("custom_components.mikrotik_router.config_flow.async_scan_mndp", return_value=discovered):
+    with patch("custom_components.mikrotik_extended.config_flow.async_scan_mndp", return_value=discovered):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"scan": True}
         )
@@ -59,7 +59,7 @@ async def test_discovery_multiple_routers_shown(hass):
 
     result = await _init_discovery_step(hass)
 
-    with patch("custom_components.mikrotik_router.config_flow.async_scan_mndp", return_value=discovered):
+    with patch("custom_components.mikrotik_extended.config_flow.async_scan_mndp", return_value=discovered):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"scan": True}
         )
@@ -74,7 +74,7 @@ async def test_discovery_select_router_prefills_host(hass):
 
     result = await _init_discovery_step(hass)
 
-    with patch("custom_components.mikrotik_router.config_flow.async_scan_mndp", return_value=discovered):
+    with patch("custom_components.mikrotik_extended.config_flow.async_scan_mndp", return_value=discovered):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"scan": True}
         )
@@ -94,7 +94,7 @@ async def test_discovery_manual_entry_shows_empty_form(hass):
 
     result = await _init_discovery_step(hass)
 
-    with patch("custom_components.mikrotik_router.config_flow.async_scan_mndp", return_value=discovered):
+    with patch("custom_components.mikrotik_extended.config_flow.async_scan_mndp", return_value=discovered):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"scan": True}
         )
@@ -111,7 +111,7 @@ async def test_discovery_no_routers_skips_pick_device(hass):
     """When MNDP finds nothing, the credentials form is shown directly."""
     result = await _init_discovery_step(hass)
 
-    with patch("custom_components.mikrotik_router.config_flow.async_scan_mndp", return_value=[]):
+    with patch("custom_components.mikrotik_extended.config_flow.async_scan_mndp", return_value=[]):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"scan": True}
         )
@@ -125,7 +125,7 @@ async def test_discovery_scan_error_skips_pick_device(hass):
     result = await _init_discovery_step(hass)
 
     with patch(
-        "custom_components.mikrotik_router.config_flow.async_scan_mndp",
+        "custom_components.mikrotik_extended.config_flow.async_scan_mndp",
         side_effect=OSError("network unreachable"),
     ):
         result = await hass.config_entries.flow.async_configure(
@@ -153,7 +153,7 @@ async def test_discovery_full_flow_after_pick(hass):
     discovered = [MndpDevice(ip="192.168.88.1", identity="MyRouter", board="CCR2004")]
 
     with patch(
-        "custom_components.mikrotik_router.config_flow.MikrotikAPI"
+        "custom_components.mikrotik_extended.config_flow.MikrotikAPI"
     ) as mock_api_cls:
         mock_api_cls.return_value = _mock_api(connect_ok=True)
 
@@ -162,7 +162,7 @@ async def test_discovery_full_flow_after_pick(hass):
 
         # Step 2: scan finds routers → pick_device
         with patch(
-            "custom_components.mikrotik_router.config_flow.async_scan_mndp",
+            "custom_components.mikrotik_extended.config_flow.async_scan_mndp",
             return_value=discovered,
         ):
             result = await hass.config_entries.flow.async_configure(

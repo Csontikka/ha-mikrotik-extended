@@ -1,5 +1,5 @@
 """Tests for helper functions."""
-from custom_components.mikrotik_router.helper import format_attribute, format_value
+from custom_components.mikrotik_extended.helper import format_attribute, format_value
 
 
 def test_format_attribute_replaces_hyphens():
