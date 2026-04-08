@@ -167,6 +167,7 @@ class MikrotikPortSwitch(MikrotikSwitch):
             self.coordinator.set_value(path, param, value, "poe-out", "auto-on")
 
         await self.coordinator.async_refresh()
+        await self._config_entry.runtime_data.tracker_coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> str | None:
         """Turn off the switch."""
@@ -189,6 +190,7 @@ class MikrotikPortSwitch(MikrotikSwitch):
             self.coordinator.set_value(path, param, value, "poe-out", "off")
 
         await self.coordinator.async_refresh()
+        await self._config_entry.runtime_data.tracker_coordinator.async_request_refresh()
 
 
 # ---------------------------
