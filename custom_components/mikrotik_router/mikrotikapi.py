@@ -3,7 +3,7 @@
 import logging
 import ssl
 from threading import Lock
-from time import time
+from time import sleep, time
 
 import librouteros
 from voluptuous import Optional
@@ -387,6 +387,100 @@ class MikrotikAPI:
                 return False
 
         return True
+
+    # ---------------------------
+    #   set_env_variable
+    # ---------------------------
+    def set_env_variable(self, name, value) -> bool:
+        """Create or update a RouterOS script environment variable."""
+        if not self.connection_check():
+            return False
+
+        with self.lock:
+            # Check if variable already exists
+            try:
+                env = self._connection.path("/system/script/environment")
+                entries = list(env)
+                entry_id = None
+                for e in entries:
+                    if e.get("name") == name:
+                        entry_id = e[".id"]
+                        break
+            except Exception as e:
+                self.disconnect("set_env_variable", e)
+                return False
+
+            if entry_id:
+                # Update existing variable directly via API
+                try:
+                    env.update(**{".id": entry_id, "value": str(value)})
+                except Exception as e:
+                    self.disconnect("set_env_variable", e)
+                    return False
+                return True
+
+            # Variable doesn't exist — create via one-shot scheduler
+            escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+            sched_name = "_ha_env_set"
+            on_event = (
+                f':global {name} "{escaped}"; '
+                f'/system/scheduler/remove [find name={sched_name}]'
+            )
+            try:
+                sched = self._connection.path("/system/scheduler")
+                tuple(sched("add", name=sched_name, **{"on-event": on_event, "interval": "1s"}))
+            except Exception as e:
+                self.disconnect("set_env_variable", e)
+                return False
+
+        # Wait for scheduler to execute (runs within 1s)
+        sleep(2)
+
+        # Verify the variable was created
+        with self.lock:
+            try:
+                env2 = self._connection.path("/system/script/environment")
+                for e in env2:
+                    if e.get("name") == name:
+                        return True
+            except Exception as e:
+                self.disconnect("set_env_variable", e)
+                return False
+
+            # Clean up scheduler if it didn't self-delete
+            try:
+                sched2 = self._connection.path("/system/scheduler")
+                for s in sched2:
+                    if s.get("name") == sched_name:
+                        sched2.remove(s[".id"])
+            except Exception:
+                pass
+
+        _LOGGER.error("Mikrotik %s env variable %s not created by scheduler", self._host, name)
+        return False
+
+    # ---------------------------
+    #   remove_env_variable
+    # ---------------------------
+    def remove_env_variable(self, name) -> bool:
+        """Remove a RouterOS script environment variable."""
+        if not self.connection_check():
+            return False
+
+        with self.lock:
+            try:
+                env = self._connection.path("/system/script/environment")
+                entries = list(env)
+                for e in entries:
+                    if e.get("name") == name:
+                        env.remove(e[".id"])
+                        return True
+            except Exception as e:
+                self.disconnect("remove_env_variable", e)
+                return False
+
+        _LOGGER.warning("Mikrotik %s env variable %s not found", self._host, name)
+        return False
 
     # ---------------------------
     #   arp_ping
