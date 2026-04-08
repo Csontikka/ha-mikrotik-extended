@@ -101,6 +101,7 @@ Without the required backend, sensors show "unavailable" instead of 0.
 - **Scripts** — execute RouterOS scripts via button entities
 - **Netwatch** — monitor host reachability (binary sensor per watched host)
 - **Environment Variables** — read RouterOS script environment variable values
+- **DHCP Leases** — sensor showing total DHCP lease count, with bound count and per-lease details (MAC, IP, hostname, status, server, interface) as attributes
 - **IP Cloud** — public IP address sensor via MikroTik cloud service
 - **Device Mode & Packages** — diagnostic sensors showing enabled features and installed packages
 - **CAPsMAN** (v6) / **WiFi** (v7) — wireless client detection (auto-detected)
@@ -235,6 +236,7 @@ Update RouterOS and RouterBoard firmware directly from Home Assistant.
 | Scripts | ✓ | ✓ | Yes |
 | Netwatch | ✓ | ✓ | Yes |
 | Environment variables | ✓ | ✓ | Yes |
+| DHCP leases | ✓ | ? | No |
 | WiFi (wifiwave2/wifi-qcom) | ✓ | — | Auto |
 | CAPsMAN (wireless controller) | — | ✓ | Auto |
 | UPS monitoring | ✓ | ✓ | Package |
