@@ -224,6 +224,9 @@
   "exceptions": {
     "invalid_mac": {
       "message": "Formato de endereço MAC inválido: {mac}. Formato esperado: AA:BB:CC:DD:EE:FF"
+    },
+    "missing_value": {
+      "message": "A value is required for add or set actions."
     }
   },
   "selector": {
@@ -350,6 +353,9 @@
       },
       "system_packages": {
         "name": "Pacotes"
+      },
+      "system_dhcp_leases": {
+        "name": "DHCP leases"
       },
       "container_status": {
         "name": "Estado"
