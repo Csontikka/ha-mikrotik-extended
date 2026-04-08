@@ -77,5 +77,9 @@ class MikrotikScriptButton(MikrotikButton):
     async def async_press(self) -> None:
         """Run script using Mikrotik API"""
         _LOGGER.debug("Running script %s on %s", self._data["name"], self.coordinator.host)
-        if not self.coordinator.api.run_script(self._data["name"]):
+        success = await self.hass.async_add_executor_job(self.coordinator.api.run_script, self._data["name"])
+        if not success:
             _LOGGER.error("Failed to run script: %s", self._data["name"])
+            return
+        await self.coordinator.async_refresh()
+        await self._config_entry.runtime_data.tracker_coordinator.async_request_refresh()
