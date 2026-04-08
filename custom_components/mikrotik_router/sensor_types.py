@@ -544,6 +544,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
         data_name="",
         data_uid="",
         data_reference="",
+        data_attributes_list=["wired_clients_list"],
     ),
     MikrotikSensorEntityDescription(
         key="system_clients-wireless",
@@ -559,6 +560,7 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
         data_name="",
         data_uid="",
         data_reference="",
+        data_attributes_list=["wireless_clients_list"],
     ),
     MikrotikSensorEntityDescription(
         key="system_captive-authorized",

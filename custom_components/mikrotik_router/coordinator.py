@@ -2558,6 +2558,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Process hosts
         self.ds["resource"]["clients_wired"] = 0
         self.ds["resource"]["clients_wireless"] = 0
+        _wired_clients = []
+        _wireless_clients = []
         for uid, vals in self.ds["host"].items():
             # Captive portal data
             if self.option_sensor_client_captive:
@@ -2625,12 +2627,23 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             if vals["manufacturer"] == "detect":
                 self.ds["host"][uid]["manufacturer"] = ""
 
-            # Count hosts
+            # Count hosts and build client lists
             if self.ds["host"][uid]["available"]:
+                client_info = {
+                    "mac": vals.get("mac-address", uid),
+                    "address": vals.get("address", "unknown"),
+                    "host_name": vals.get("host-name", "unknown"),
+                    "interface": vals.get("interface", "unknown"),
+                }
                 if vals["source"] in ["capsman", "wireless"]:
                     self.ds["resource"]["clients_wireless"] += 1
+                    _wireless_clients.append(client_info)
                 else:
                     self.ds["resource"]["clients_wired"] += 1
+                    _wired_clients.append(client_info)
+
+        self.ds["resource"]["wired_clients_list"] = _wired_clients
+        self.ds["resource"]["wireless_clients_list"] = _wireless_clients
 
     # ---------------------------
     #   _get_iface_from_entry
