@@ -264,11 +264,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     coordinator = MikrotikCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()
-    coordinatorTracker = MikrotikTrackerCoordinator(hass, config_entry, coordinator)
-    await coordinatorTracker.async_config_entry_first_refresh()
+    coordinator_tracker = MikrotikTrackerCoordinator(hass, config_entry, coordinator)
+    await coordinator_tracker.async_config_entry_first_refresh()
     config_entry.runtime_data = MikrotikData(
         data_coordinator=coordinator,
-        tracker_coordinator=coordinatorTracker,
+        tracker_coordinator=coordinator_tracker,
     )
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
