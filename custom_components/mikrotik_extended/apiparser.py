@@ -1,10 +1,9 @@
 """API parser for JSON APIs."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from logging import DEBUG, getLogger
 
 from homeassistant.components.diagnostics import async_redact_data
-from pytz import utc
 
 from .const import TO_REDACT
 
@@ -16,7 +15,7 @@ _LOGGER = getLogger(__name__)
 # ---------------------------
 def utc_from_timestamp(timestamp: float) -> datetime:
     """Return a UTC time from a timestamp."""
-    return utc.localize(datetime.utcfromtimestamp(timestamp))
+    return datetime.fromtimestamp(timestamp, tz=UTC)
 
 
 # ---------------------------
@@ -144,7 +143,7 @@ def parse_api(
             data = fill_vals_proc(data, uid, val_proc)
 
     if prune_stale and stale_counters is not None and (key or key_search):
-        for uid in list(data.keys()):
+        for uid in list(data):
             if uid not in seen_uids:
                 stale_counters[uid] = stale_counters.get(uid, 0) + 1
                 if stale_counters[uid] >= 3:
