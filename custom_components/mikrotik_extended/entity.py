@@ -55,33 +55,49 @@ _IFACE_TYPE_CATEGORY = {
 }
 
 
-def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
-    # Sensors
-    if entity_description.func == "MikrotikInterfaceTrafficSensor" and not config_entry.options.get(CONF_SENSOR_PORT_TRAFFIC, DEFAULT_SENSOR_PORT_TRAFFIC):
+def _skip_interface_traffic_sensor(config_entry, entity_description, item) -> bool:
+    if entity_description.func != "MikrotikInterfaceTrafficSensor":
+        return False
+    if not config_entry.options.get(CONF_SENSOR_PORT_TRAFFIC, DEFAULT_SENSOR_PORT_TRAFFIC):
         return True
+    return item["type"] == "bridge"
 
-    if entity_description.func == "MikrotikInterfaceTrafficSensor" and data[uid]["type"] == "bridge":
+
+def _skip_client_traffic(entity_description, item) -> bool:
+    if entity_description.data_path != "client_traffic":
+        return False
+    if not item.get("available", False):
         return True
+    return entity_description.data_attribute not in item
 
-    if entity_description.data_path == "client_traffic":
-        if not data[uid].get("available", False):
-            return True
-        if entity_description.data_attribute not in data[uid]:
-            return True
 
-    # Binary sensors
-    if entity_description.func == "MikrotikPortBinarySensor" and data[uid]["type"] == "wlan":
+def _skip_port_binary_sensor(config_entry, entity_description, item) -> bool:
+    if entity_description.func != "MikrotikPortBinarySensor":
+        return False
+    if item["type"] == "wlan":
         return True
+    return not config_entry.options.get(CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER)
 
-    if entity_description.func == "MikrotikPortBinarySensor" and not config_entry.options.get(CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER):
-        return True
 
-    if entity_description.data_path == "netwatch" and not config_entry.options.get(CONF_SENSOR_NETWATCH_TRACKER, DEFAULT_SENSOR_NETWATCH_TRACKER):
-        return True
+def _skip_netwatch(config_entry, entity_description) -> bool:
+    return entity_description.data_path == "netwatch" and not config_entry.options.get(CONF_SENSOR_NETWATCH_TRACKER, DEFAULT_SENSOR_NETWATCH_TRACKER)
 
-    # Device Tracker
-    # Skip if host tracking is disabled
+
+def _skip_host_tracker(config_entry, entity_description) -> bool:
     return entity_description.func == "MikrotikHostDeviceTracker" and not config_entry.options.get(CONF_TRACK_HOSTS, DEFAULT_TRACK_HOSTS)
+
+
+def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
+    item = data[uid]
+    if _skip_interface_traffic_sensor(config_entry, entity_description, item):
+        return True
+    if _skip_client_traffic(entity_description, item):
+        return True
+    if _skip_port_binary_sensor(config_entry, entity_description, item):
+        return True
+    if _skip_netwatch(config_entry, entity_description):
+        return True
+    return _skip_host_tracker(config_entry, entity_description)
 
 
 # ---------------------------
@@ -263,9 +279,8 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return bool(self._config_entry.options.get(enable_on, False))
         return False
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return a description for device registry."""
+    def _resolve_device_identity(self) -> tuple[str, Any, str]:
+        """Resolve (dev_connection, dev_connection_value, dev_group) from entity description."""
         dev_connection = DOMAIN
         dev_connection_value = self.entity_description.data_reference
         dev_group = self.entity_description.ha_group
@@ -288,53 +303,68 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
                 dev_connection_value = dev_connection_value[6:]
                 dev_connection_value = self._data[dev_connection_value]
 
+        return dev_connection, dev_connection_value, dev_group
+
+    def _build_system_device_info(self, entry_id, dev_connection, dev_connection_value) -> DeviceInfo:
+        return DeviceInfo(
+            connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
+            identifiers={(dev_connection, f"{entry_id}-{dev_connection_value}")},
+            name=f"{self._inst} router Core",
+            model=f"{self.coordinator.data['resource']['board-name']}",
+            manufacturer=f"{self.coordinator.data['resource']['platform']}",
+            sw_version=f"{self.coordinator.data['resource']['version']}",
+            configuration_url=f"http://{self.coordinator.config_entry.data[CONF_HOST]}",  # NOSONAR
+        )
+
+    def _build_mac_device_info(self, entry_id, dev_connection, dev_connection_value) -> DeviceInfo:
+        dev_group = self._data[self.entity_description.data_name]
+        dev_manufacturer = ""
+        if dev_connection_value in self.coordinator.data["host"]:
+            dev_group = self.coordinator.data["host"][dev_connection_value]["host-name"]
+            dev_manufacturer = self.coordinator.data["host"][dev_connection_value]["manufacturer"]
+
+        return DeviceInfo(
+            connections={(dev_connection, f"{dev_connection_value}")},
+            default_name=f"{dev_group}",
+            default_manufacturer=f"{dev_manufacturer}",
+            via_device=(
+                DOMAIN,
+                f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
+            ),
+        )
+
+    def _build_generic_device_info(self, entry_id, dev_connection, dev_connection_value, dev_group) -> DeviceInfo:
+        orig_ha_group = self.entity_description.ha_group
+        if orig_ha_group.startswith("data__"):
+            iface_type = self._data.get("type", "")
+            category = _IFACE_TYPE_CATEGORY.get(iface_type, "port")
+            dev_display_name = f"{self._inst} router {category} {dev_group}"
+        elif orig_ha_group in _FIREWALL_GROUPS:
+            dev_display_name = f"{self._inst} router firewall {dev_group}"
+        else:
+            dev_display_name = f"{self._inst} router {dev_group}"
+        return DeviceInfo(
+            connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
+            default_name=dev_display_name,
+            default_model=f"{self.coordinator.data['resource']['board-name']}",
+            default_manufacturer=f"{self.coordinator.data['resource']['platform']}",
+            via_device=(
+                DOMAIN,
+                f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
+            ),
+        )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return a description for device registry."""
+        dev_connection, dev_connection_value, dev_group = self._resolve_device_identity()
         entry_id = self._config_entry.entry_id
         if self.entity_description.ha_group == "System":
-            return DeviceInfo(
-                connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-                identifiers={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-                name=f"{self._inst} router Core",
-                model=f"{self.coordinator.data['resource']['board-name']}",
-                manufacturer=f"{self.coordinator.data['resource']['platform']}",
-                sw_version=f"{self.coordinator.data['resource']['version']}",
-                configuration_url=f"http://{self.coordinator.config_entry.data[CONF_HOST]}",  # NOSONAR
-            )
+            return self._build_system_device_info(entry_id, dev_connection, dev_connection_value)
         elif "mac-address" in self.entity_description.data_reference:
-            dev_group = self._data[self.entity_description.data_name]
-            dev_manufacturer = ""
-            if dev_connection_value in self.coordinator.data["host"]:
-                dev_group = self.coordinator.data["host"][dev_connection_value]["host-name"]
-                dev_manufacturer = self.coordinator.data["host"][dev_connection_value]["manufacturer"]
-
-            return DeviceInfo(
-                connections={(dev_connection, f"{dev_connection_value}")},
-                default_name=f"{dev_group}",
-                default_manufacturer=f"{dev_manufacturer}",
-                via_device=(
-                    DOMAIN,
-                    f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
-                ),
-            )
+            return self._build_mac_device_info(entry_id, dev_connection, dev_connection_value)
         else:
-            orig_ha_group = self.entity_description.ha_group
-            if orig_ha_group.startswith("data__"):
-                iface_type = self._data.get("type", "")
-                category = _IFACE_TYPE_CATEGORY.get(iface_type, "port")
-                dev_display_name = f"{self._inst} router {category} {dev_group}"
-            elif orig_ha_group in _FIREWALL_GROUPS:
-                dev_display_name = f"{self._inst} router firewall {dev_group}"
-            else:
-                dev_display_name = f"{self._inst} router {dev_group}"
-            return DeviceInfo(
-                connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-                default_name=dev_display_name,
-                default_model=f"{self.coordinator.data['resource']['board-name']}",
-                default_manufacturer=f"{self.coordinator.data['resource']['platform']}",
-                via_device=(
-                    DOMAIN,
-                    f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
-                ),
-            )
+            return self._build_generic_device_info(entry_id, dev_connection, dev_connection_value, dev_group)
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
