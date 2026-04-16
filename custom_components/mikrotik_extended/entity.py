@@ -263,11 +263,6 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return bool(self._config_entry.options.get(enable_on, False))
         return False
 
-    # @property
-    # def available(self) -> bool:
-    #     """Return if controller is available"""
-    #     return self.coordinator.connected()
-
     @property
     def device_info(self) -> DeviceInfo:
         """Return a description for device registry."""
