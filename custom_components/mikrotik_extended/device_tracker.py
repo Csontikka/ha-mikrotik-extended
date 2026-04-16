@@ -52,49 +52,55 @@ async def async_add_entities(hass: HomeAssistant, config_entry: ConfigEntry, dis
     for service in services:
         platform.async_register_entity_service(service[0], service[1], service[2])
 
+    async def async_check_exist(obj, uid: str | None = None) -> None:
+        """Check entity exists and add if missing."""
+        entity_registry = er.async_get(hass)
+        entry_id = config_entry.entry_id
+        if uid:
+            unique_id = f"{entry_id}-{obj.entity_description.key}-{slugify(str(obj._data[obj.entity_description.data_reference]).lower())}"
+        else:
+            unique_id = f"{entry_id}-{obj.entity_description.key}"
+
+        entity_id = entity_registry.async_get_entity_id(platform.domain, DOMAIN, unique_id)
+        entity = entity_registry.async_get(entity_id)
+        if entity is None or ((entity_id not in platform.entities) and (entity.disabled is False)):
+            _LOGGER.debug("Add entity %s", entity_id)
+            await platform.async_add_entities([obj])
+
+    async def _process_singleton(coordinator, entity_description, data) -> None:
+        if data.get(entity_description.data_attribute) is None:
+            return
+        func = dispatcher.get(entity_description.func)
+        if func is None:
+            return
+        obj = func(coordinator, entity_description)
+        await async_check_exist(obj)
+
+    async def _process_keyed(coordinator, entity_description, data) -> None:
+        if not isinstance(data, (dict, list)):
+            return
+        for uid in data:
+            if _skip_sensor(config_entry, entity_description, data, uid):
+                continue
+            func = dispatcher.get(entity_description.func)
+            if func is None:
+                continue
+            obj = func(coordinator, entity_description, uid)
+            await async_check_exist(obj, uid)
+
     @callback
     async def async_update_controller(coordinator):
         """Update the values of the controller."""
         if coordinator.data is None:
             return
-
-        async def async_check_exist(obj, uid: str | None = None) -> None:
-            """Check entity exists."""
-            entity_registry = er.async_get(hass)
-            entry_id = config_entry.entry_id
-            if uid:
-                unique_id = f"{entry_id}-{obj.entity_description.key}-{slugify(str(obj._data[obj.entity_description.data_reference]).lower())}"
-            else:
-                unique_id = f"{entry_id}-{obj.entity_description.key}"
-
-            entity_id = entity_registry.async_get_entity_id(platform.domain, DOMAIN, unique_id)
-            entity = entity_registry.async_get(entity_id)
-            if entity is None or ((entity_id not in platform.entities) and (entity.disabled is False)):
-                _LOGGER.debug("Add entity %s", entity_id)
-                await platform.async_add_entities([obj])
-
         for entity_description in descriptions:
             data = coordinator.data.get(entity_description.data_path)
             if data is None:
                 continue
             if not entity_description.data_reference:
-                if data.get(entity_description.data_attribute) is None:
-                    continue
-                func = dispatcher.get(entity_description.func)
-                if func is None:
-                    continue
-                obj = func(coordinator, entity_description)
-                await async_check_exist(obj)
+                await _process_singleton(coordinator, entity_description, data)
             else:
-                if isinstance(data, (dict, list)):
-                    for uid in data:
-                        if _skip_sensor(config_entry, entity_description, data, uid):
-                            continue
-                        func = dispatcher.get(entity_description.func)
-                        if func is None:
-                            continue
-                        obj = func(coordinator, entity_description, uid)
-                        await async_check_exist(obj, uid)
+                await _process_keyed(coordinator, entity_description, data)
 
     await async_update_controller(config_entry.runtime_data.tracker_coordinator)
 
