@@ -219,12 +219,8 @@ async def _mndp_unicast(loop: asyncio.AbstractEventLoop, ip: str, timeout: float
         sock.close()
 
 
-async def _listen_mndp_broadcast(
-    loop: asyncio.AbstractEventLoop,
-    found: dict[str, MndpDevice],
-    timeout: float,
-) -> None:
-    """Listen for periodic MNDP broadcast announcements from routers."""
+def _resolve_broadcast_addrs() -> list[str]:
+    """Return candidate broadcast addresses including subnet-directed where possible."""
     broadcast_addrs: list[str] = ["255.255.255.255"]
     try:
         _tmp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -238,36 +234,56 @@ async def _listen_mndp_broadcast(
                 broadcast_addrs.append(directed)
     except OSError:
         pass
+    return broadcast_addrs
 
+
+def _open_broadcast_socket(broadcast_addrs: list[str]):
+    """Open a UDP broadcast socket and emit the MNDP probe to each address."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setblocking(False)
+    sock.bind(("", MNDP_PORT))
+    for bcast in broadcast_addrs:
+        sock.sendto(_MNDP_PROBE, (bcast, MNDP_PORT))
+    return sock
+
+
+async def _collect_broadcast_replies(loop, sock, found, deadline) -> None:
+    """Read MNDP replies from ``sock`` until ``deadline`` passes or socket errors."""
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            return
+        try:
+            data = await asyncio.wait_for(loop.sock_recv(sock, 4096), timeout=remaining)
+        except TimeoutError:
+            return
+        except OSError:
+            return
+        if data == _MNDP_PROBE:
+            continue  # ignore loopback of our own probe
+        dev = _parse_mndp(data)
+        if dev and dev.ip not in found:
+            found[dev.ip] = dev
+
+
+async def _listen_mndp_broadcast(
+    loop: asyncio.AbstractEventLoop,
+    found: dict[str, MndpDevice],
+    timeout: float,
+) -> None:
+    """Listen for periodic MNDP broadcast announcements from routers."""
+    broadcast_addrs = _resolve_broadcast_addrs()
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.setblocking(False)
-        sock.bind(("", MNDP_PORT))
-        for bcast in broadcast_addrs:
-            sock.sendto(_MNDP_PROBE, (bcast, MNDP_PORT))
+        sock = _open_broadcast_socket(broadcast_addrs)
     except OSError as err:
         _LOGGER.debug("MNDP broadcast failed: %s", err)
         return
 
     deadline = loop.time() + timeout
     try:
-        while True:
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                break
-            try:
-                data = await asyncio.wait_for(loop.sock_recv(sock, 4096), timeout=remaining)
-                if data == _MNDP_PROBE:
-                    continue  # ignore loopback of our own probe
-                dev = _parse_mndp(data)
-                if dev and dev.ip not in found:
-                    found[dev.ip] = dev
-            except TimeoutError:
-                break
-            except OSError:
-                break
+        await _collect_broadcast_replies(loop, sock, found, deadline)
     finally:
         sock.close()
 
@@ -302,6 +318,42 @@ async def _populate_arp_table() -> None:
     await asyncio.sleep(1.0)
 
 
+def _build_probe_list(arp_devices, gateway_ip, arp_ips) -> list[tuple[str, str, bool]]:
+    """Build the (ip, mac, is_known) tuples to probe."""
+    probe_list: list[tuple[str, str, bool]] = [(ip, mac, True) for ip, mac in arp_devices]
+    if gateway_ip and gateway_ip not in arp_ips:
+        probe_list.append((gateway_ip, "", False))
+    return probe_list
+
+
+def _merge_probe_result(found, ip, mac, is_known, mndp_result, snmp_result) -> None:
+    """Merge a single probe (mndp + snmp) pair into ``found``."""
+    snmp_name = snmp_result if isinstance(snmp_result, str) else None
+    if isinstance(mndp_result, MndpDevice):
+        if not mndp_result.identity and snmp_name:
+            mndp_result.identity = snmp_name
+        mndp_result.mac = mndp_result.mac or mac
+        found[mndp_result.ip or ip] = mndp_result
+    elif not isinstance(mndp_result, Exception) and is_known:
+        found[ip] = MndpDevice(ip=ip, mac=mac, identity=snmp_name or "")
+
+
+async def _probe_unicast_batch(loop, probe_list, probe_timeout, found) -> None:
+    """Run MNDP+SNMP probes for ``probe_list`` in parallel and merge into ``found``."""
+    mndp_results, snmp_results = await asyncio.gather(
+        asyncio.gather(
+            *[_mndp_unicast(loop, ip, probe_timeout) for ip, _, _ in probe_list],
+            return_exceptions=True,
+        ),
+        asyncio.gather(
+            *[_snmp_sysname(loop, ip) for ip, _, _ in probe_list],
+            return_exceptions=True,
+        ),
+    )
+    for (ip, mac, is_known), mndp_result, snmp_result in zip(probe_list, mndp_results, snmp_results, strict=False):
+        _merge_probe_result(found, ip, mac, is_known, mndp_result, snmp_result)
+
+
 async def async_scan_mndp(timeout: float = 5.0) -> list[MndpDevice]:
     """Discover MikroTik routers on the local network.
 
@@ -329,31 +381,11 @@ async def async_scan_mndp(timeout: float = 5.0) -> list[MndpDevice]:
     if gateway_ip and gateway_ip not in arp_ips:
         _LOGGER.debug("MNDP: probing default gateway %s", gateway_ip)
 
-    probe_list: list[tuple[str, str, bool]] = [(ip, mac, True) for ip, mac in arp_devices]
-    if gateway_ip and gateway_ip not in arp_ips:
-        probe_list.append((gateway_ip, "", False))
+    probe_list = _build_probe_list(arp_devices, gateway_ip, arp_ips)
 
     if probe_list:
         probe_timeout = min(1.0, timeout * 0.4)
-        mndp_results, snmp_results = await asyncio.gather(
-            asyncio.gather(
-                *[_mndp_unicast(loop, ip, probe_timeout) for ip, _, _ in probe_list],
-                return_exceptions=True,
-            ),
-            asyncio.gather(
-                *[_snmp_sysname(loop, ip) for ip, _, _ in probe_list],
-                return_exceptions=True,
-            ),
-        )
-        for (ip, mac, is_known), mndp_result, snmp_result in zip(probe_list, mndp_results, snmp_results, strict=False):
-            snmp_name = snmp_result if isinstance(snmp_result, str) else None
-            if isinstance(mndp_result, MndpDevice):
-                if not mndp_result.identity and snmp_name:
-                    mndp_result.identity = snmp_name
-                mndp_result.mac = mndp_result.mac or mac
-                found[mndp_result.ip or ip] = mndp_result
-            elif not isinstance(mndp_result, Exception) and is_known:
-                found[ip] = MndpDevice(ip=ip, mac=mac, identity=snmp_name or "")
+        await _probe_unicast_batch(loop, probe_list, probe_timeout, found)
         _LOGGER.debug("MNDP: unicast probe results: %s", list(found.keys()))
 
     # --- Wait for broadcast listener to finish ---
