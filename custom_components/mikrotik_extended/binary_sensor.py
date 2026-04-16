@@ -32,6 +32,26 @@ from .helper import format_attribute
 _LOGGER = getLogger(__name__)
 
 
+def _collect_iface_attributes(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Return formatted iface attributes based on the iface type."""
+    collected: dict[str, Any] = {}
+    iface_type = data["type"]
+    if iface_type == "ether":
+        _add_present_attributes(collected, data, DEVICE_ATTRIBUTES_IFACE_ETHER)
+        if "sfp-shutdown-temperature" in data:
+            _add_present_attributes(collected, data, DEVICE_ATTRIBUTES_IFACE_SFP)
+    elif iface_type == "wlan":
+        _add_present_attributes(collected, data, DEVICE_ATTRIBUTES_IFACE_WIRELESS)
+    return collected
+
+
+def _add_present_attributes(target: dict[str, Any], data: Mapping[str, Any], variables) -> None:
+    """Copy formatted attributes from data into target for each present variable."""
+    for variable in variables:
+        if variable in data:
+            target[format_attribute(variable)] = data[variable]
+
+
 # ---------------------------
 #   async_setup_entry
 # ---------------------------
@@ -116,22 +136,7 @@ class MikrotikPortBinarySensor(MikrotikBinarySensor):
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Return the state attributes."""
         attributes = super().extra_state_attributes
-
-        if self._data["type"] == "ether":
-            for variable in DEVICE_ATTRIBUTES_IFACE_ETHER:
-                if variable in self._data:
-                    attributes[format_attribute(variable)] = self._data[variable]
-
-            if "sfp-shutdown-temperature" in self._data:
-                for variable in DEVICE_ATTRIBUTES_IFACE_SFP:
-                    if variable in self._data:
-                        attributes[format_attribute(variable)] = self._data[variable]
-
-        elif self._data["type"] == "wlan":
-            for variable in DEVICE_ATTRIBUTES_IFACE_WIRELESS:
-                if variable in self._data:
-                    attributes[format_attribute(variable)] = self._data[variable]
-
+        attributes.update(_collect_iface_attributes(self._data))
         return attributes
 
 
