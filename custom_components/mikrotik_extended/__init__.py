@@ -68,12 +68,44 @@ _integration_logger.setLevel(logging.DEBUG)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-# ---------------------------
-#   async_setup
-# ---------------------------
-async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
-    """Register global actions (services) once at integration load time."""
+def _iter_runtime_entries(hass: HomeAssistant, host_filter: str | None = None):
+    """Yield (entry, entry_data, router_host) for every configured router, optionally filtered by host."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if not hasattr(entry, "runtime_data"):
+            continue
+        entry_data = entry.runtime_data
+        router_host = entry_data.data_coordinator.config_entry.data.get("host", "unknown")
+        if host_filter and router_host != host_filter:
+            continue
+        yield entry, entry_data, router_host
 
+
+def _format_coordinator_data(data, limit):
+    """Shape coordinator data into the api_test response structure."""
+    if data is None:
+        return None
+    if isinstance(data, dict):
+        items = list(data.items())[:limit]
+        safe_items = {str(k): {str(ik): str(iv) for ik, iv in v.items()} if isinstance(v, dict) else str(v) for k, v in items}
+        return {"total_keys": len(data), "items": safe_items}
+    return {"value": str(data)}
+
+
+def _format_raw_api_result(raw, limit):
+    """Shape a raw api.query response into the api_test response structure."""
+    if raw is None:
+        return {"error": "No response or not connected"}
+    items = raw[:limit]
+    safe_items = []
+    for item in items:
+        if isinstance(item, dict):
+            safe_items.append({str(k): str(v) for k, v in item.items()})
+        else:
+            safe_items.append(str(item))
+    return {"total_returned": len(raw), "items": safe_items}
+
+
+def _make_send_magic_packet(hass: HomeAssistant):
     async def async_send_magic_packet(call) -> None:
         """Send a WoL magic packet via all connected MikroTik routers."""
         mac = call.data["mac"]
@@ -84,25 +116,19 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
                 translation_placeholders={"mac": mac},
             )
         interface = call.data.get("interface")
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if not hasattr(entry, "runtime_data"):
-                continue
-            entry_data = entry.runtime_data
+        for _entry, entry_data, router_host in _iter_runtime_entries(hass):
             success = await hass.async_add_executor_job(entry_data.data_coordinator.api.wol, mac, interface)
             if not success:
                 _LOGGER.warning(
                     "WoL: failed to send magic packet to %s via router %s",
                     mac,
-                    entry_data.data_coordinator.config_entry.data.get("host", "unknown"),
+                    router_host,
                 )
 
-    hass.services.async_register(
-        DOMAIN,
-        "send_magic_packet",
-        async_send_magic_packet,
-        schema=WOL_SCHEMA,
-    )
+    return async_send_magic_packet
 
+
+def _make_api_test(hass: HomeAssistant):
     async def async_api_test(call):
         """Test a raw Mikrotik API call and return the response."""
         path = call.data["path"]
@@ -111,71 +137,36 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
         use_coordinator_data = call.data.get("coordinator_data", False)
 
         results = {}
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if not hasattr(entry, "runtime_data"):
-                continue
-            entry_data = entry.runtime_data
+        for _entry, entry_data, router_host in _iter_runtime_entries(hass, host_filter):
             coordinator = entry_data.data_coordinator
-            router_host = coordinator.config_entry.data.get("host", "unknown")
-            if host_filter and router_host != host_filter:
-                continue
             try:
                 if use_coordinator_data:
                     data = coordinator.data.get(path) if coordinator.data else None
-                    if data is None:
-                        results[router_host] = {"error": f"No coordinator data for path '{path}'"}
-                    elif isinstance(data, dict):
-                        items = list(data.items())[:limit]
-                        safe_items = {str(k): {str(ik): str(iv) for ik, iv in v.items()} if isinstance(v, dict) else str(v) for k, v in items}
-                        results[router_host] = {"total_keys": len(data), "items": safe_items}
-                    else:
-                        results[router_host] = {"value": str(data)}
+                    formatted = _format_coordinator_data(data, limit)
+                    results[router_host] = formatted if formatted is not None else {"error": f"No coordinator data for path '{path}'"}
                 else:
                     raw = await hass.async_add_executor_job(coordinator.api.query, path)
-                    if raw is None:
-                        results[router_host] = {"error": "No response or not connected"}
-                    else:
-                        items = raw[:limit]
-                        safe_items = []
-                        for item in items:
-                            if isinstance(item, dict):
-                                safe_items.append({str(k): str(v) for k, v in item.items()})
-                            else:
-                                safe_items.append(str(item))
-                        results[router_host] = {"total_returned": len(raw), "items": safe_items}
+                    results[router_host] = _format_raw_api_result(raw, limit)
             except Exception as exc:
                 results[router_host] = {"error": str(exc)}
 
         return {"result": results}
 
-    hass.services.async_register(
-        DOMAIN,
-        "api_test",
-        async_api_test,
-        schema=API_TEST_SCHEMA,
-        supports_response=SupportsResponse.ONLY,
-    )
+    return async_api_test
 
+
+def _make_refresh_data(hass: HomeAssistant):
     async def async_refresh_data(call) -> None:
         """Force an immediate data refresh on all (or a specific) router."""
         host_filter = call.data.get("host")
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if not hasattr(entry, "runtime_data"):
-                continue
-            entry_data = entry.runtime_data
-            router_host = entry_data.data_coordinator.config_entry.data.get("host", "unknown")
-            if host_filter and router_host != host_filter:
-                continue
+        for _entry, entry_data, _router_host in _iter_runtime_entries(hass, host_filter):
             await entry_data.data_coordinator.async_request_refresh()
             await entry_data.tracker_coordinator.async_request_refresh()
 
-    hass.services.async_register(
-        DOMAIN,
-        "refresh_data",
-        async_refresh_data,
-        schema=vol.Schema({vol.Optional("host"): cv.string}),
-    )
+    return async_refresh_data
 
+
+def _make_set_environment(hass: HomeAssistant):
     async def async_set_environment(call) -> None:
         """Set, create or remove a RouterOS script environment variable."""
         name = call.data["name"]
@@ -189,26 +180,12 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
                 translation_key="missing_value",
             )
 
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if not hasattr(entry, "runtime_data"):
-                continue
-            entry_data = entry.runtime_data
+        for _entry, entry_data, router_host in _iter_runtime_entries(hass, host_filter):
             coordinator = entry_data.data_coordinator
-            router_host = coordinator.config_entry.data.get("host", "unknown")
-            if host_filter and router_host != host_filter:
-                continue
-
             if action == "remove":
-                success = await hass.async_add_executor_job(
-                    coordinator.api.remove_env_variable,
-                    name,
-                )
+                success = await hass.async_add_executor_job(coordinator.api.remove_env_variable, name)
             else:  # add or set
-                success = await hass.async_add_executor_job(
-                    coordinator.api.set_env_variable,
-                    name,
-                    value,
-                )
+                success = await hass.async_add_executor_job(coordinator.api.set_env_variable, name, value)
 
             if not success:
                 _LOGGER.warning(
@@ -220,10 +197,40 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
             else:
                 await entry_data.data_coordinator.async_request_refresh()
 
+    return async_set_environment
+
+
+# ---------------------------
+#   async_setup
+# ---------------------------
+async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
+    """Register global actions (services) once at integration load time."""
+    hass.services.async_register(
+        DOMAIN,
+        "send_magic_packet",
+        _make_send_magic_packet(hass),
+        schema=WOL_SCHEMA,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "api_test",
+        _make_api_test(hass),
+        schema=API_TEST_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        "refresh_data",
+        _make_refresh_data(hass),
+        schema=vol.Schema({vol.Optional("host"): cv.string}),
+    )
+
     hass.services.async_register(
         DOMAIN,
         "set_environment",
-        async_set_environment,
+        _make_set_environment(hass),
         schema=vol.Schema(
             {
                 vol.Required("name"): cv.string,
