@@ -6,10 +6,9 @@ import ipaddress
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Network
 
-import pytz
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from mac_vendor_lookup import AsyncMacLookup
@@ -92,6 +91,10 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_TIME_ZONE = None
 
+PATH_INTERFACE_ETHERNET = "/interface/ethernet"
+PATH_IP_KID_CONTROL = "/ip/kid-control"
+PPP_NOT_CONNECTED = "not connected"
+
 
 def _parse_duration_seconds(s: str) -> int:
     """Parse a MikroTik duration string like '3m45s' into total seconds."""
@@ -121,7 +124,7 @@ def is_valid_ip(address):
 
 def utc_from_timestamp(timestamp: float) -> datetime:
     """Return a UTC time from a timestamp."""
-    return pytz.utc.localize(datetime.utcfromtimestamp(timestamp))
+    return datetime.fromtimestamp(timestamp, tz=UTC)
 
 
 def as_local(dattim: datetime) -> datetime:
@@ -129,7 +132,7 @@ def as_local(dattim: datetime) -> datetime:
     if dattim.tzinfo == DEFAULT_TIME_ZONE:
         return dattim
     if dattim.tzinfo is None:
-        dattim = pytz.utc.localize(dattim)
+        dattim = dattim.replace(tzinfo=UTC)
 
     return dattim.astimezone(DEFAULT_TIME_ZONE)
 
@@ -696,9 +699,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         await self.hass.async_add_executor_job(self.get_system_resource)
 
-        # if self.api.connected() and "available" not in self.ds["fw-update"]:
-        #     await self.hass.async_add_executor_job(self.get_firmware_update)
-
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_system_health)
 
@@ -938,7 +938,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         self.ds["interface"] = parse_api(
             data=self.ds["interface"],
-            source=self.api.query("/interface/ethernet"),
+            source=self.api.query(PATH_INTERFACE_ETHERNET),
             key="default-name",
             key_secondary="name",
             vals=[
@@ -975,7 +975,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     self.ds["interface"] = parse_api(
                         data=self.ds["interface"],
                         source=self.api.query(
-                            "/interface/ethernet",
+                            PATH_INTERFACE_ETHERNET,
                             command="monitor",
                             args={".id": vals[".id"], "once": True},
                         ),
@@ -1007,7 +1007,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     self.ds["interface"] = parse_api(
                         data=self.ds["interface"],
                         source=self.api.query(
-                            "/interface/ethernet",
+                            PATH_INTERFACE_ETHERNET,
                             command="monitor",
                             args={".id": vals[".id"], "once": True},
                         ),
@@ -1402,7 +1402,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             # Connected if handshake within last 3 minutes
             peer["connected"] = 0 < peer["last-handshake-seconds"] < 180
 
-            # uniq-id = public-key
             peer["uniq-id"] = peer.get("public-key", uid)
 
             # name = peer-name > comment > first 8 chars of public-key
@@ -1627,7 +1626,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Get Kid-control data from Mikrotik"""
         self.ds["kid-control"] = parse_api(
             data=self.ds["kid-control"],
-            source=self.api.query("/ip/kid-control"),
+            source=self.api.query(PATH_IP_KID_CONTROL),
             key="name",
             vals=[
                 {"name": "name"},
@@ -1710,9 +1709,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 self.ds["ppp_secret"][uid]["encoding"] = self.ds["ppp_active"][uid]["encoding"]
             else:
                 self.ds["ppp_secret"][uid]["connected"] = False
-                self.ds["ppp_secret"][uid]["caller-id"] = "not connected"
-                self.ds["ppp_secret"][uid]["address"] = "not connected"
-                self.ds["ppp_secret"][uid]["encoding"] = "not connected"
+                self.ds["ppp_secret"][uid]["caller-id"] = PPP_NOT_CONNECTED
+                self.ds["ppp_secret"][uid]["address"] = PPP_NOT_CONNECTED
+                self.ds["ppp_secret"][uid]["encoding"] = PPP_NOT_CONNECTED
 
     # ---------------------------
     #   get_netwatch
@@ -2549,9 +2548,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 if key not in self.ds["host"][uid]:
                     self.ds["host"][uid][key] = default
 
-        # if not self.host_tracking_initialized:
-        #     await self.async_ping_tracked_hosts()
-
         # Mark wired hosts available if present in ARP table
         for uid, vals in self.ds["host"].items():
             if vals.get("source") not in ["capsman", "wireless", "restored"] and (uid in self.ds["arp"] and self.ds["arp"][uid].get("address", "unknown") not in ["unknown", ""]):
@@ -2668,13 +2664,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def sync_kid_control_monitoring_profile(self) -> None:
         """Create or remove the ha-monitoring kid-control profile based on integration option."""
-        existing = self.api.query("/ip/kid-control") or []
+        existing = self.api.query(PATH_IP_KID_CONTROL) or []
         has_profile = any(p.get("name") == self._HA_MONITORING_PROFILE for p in existing)
 
         if self.option_sensor_client_traffic:
             if not has_profile:
                 success = self.api.execute(
-                    "/ip/kid-control",
+                    PATH_IP_KID_CONTROL,
                     "add",
                     None,
                     None,
@@ -2704,7 +2700,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     )
         else:
             if has_profile:
-                success = self.api.execute("/ip/kid-control", "remove", "name", self._HA_MONITORING_PROFILE)
+                success = self.api.execute(PATH_IP_KID_CONTROL, "remove", "name", self._HA_MONITORING_PROFILE)
                 if success:
                     _LOGGER.info(
                         "Mikrotik %s: Removed kid-control profile '%s'",
