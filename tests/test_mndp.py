@@ -829,3 +829,52 @@ async def test_async_scan_mndp_unicast_exception_handled() -> None:
 
     # mndp_result is Exception -> the `elif not Exception and is_known` branch skipped
     assert result == []
+
+
+async def test_async_scan_mndp_mndp_without_identity_uses_snmp_name() -> None:
+    """When unicast MNDP returns a device without identity, SNMP name is used as fallback."""
+    mndp_dev = MndpDevice(ip="192.168.88.1", mac="00:0c:42:aa:bb:cc", identity="")
+
+    async def fake_populate():
+        return None
+
+    async def fake_listen(loop, found, timeout):
+        return None
+
+    async def fake_unicast(loop, ip, timeout):
+        return mndp_dev
+
+    async def fake_snmp(loop, ip):
+        return "snmp-identity"
+
+    with (
+        patch(
+            "custom_components.mikrotik_extended.mndp._populate_arp_table",
+            side_effect=fake_populate,
+        ),
+        patch(
+            "custom_components.mikrotik_extended.mndp._listen_mndp_broadcast",
+            side_effect=fake_listen,
+        ),
+        patch(
+            "custom_components.mikrotik_extended.mndp._read_arp_table",
+            return_value=[("192.168.88.1", "00:0c:42:aa:bb:cc")],
+        ),
+        patch(
+            "custom_components.mikrotik_extended.mndp._get_default_gateway",
+            return_value=None,
+        ),
+        patch(
+            "custom_components.mikrotik_extended.mndp._mndp_unicast",
+            side_effect=fake_unicast,
+        ),
+        patch(
+            "custom_components.mikrotik_extended.mndp._snmp_sysname",
+            side_effect=fake_snmp,
+        ),
+    ):
+        result = await async_scan_mndp(timeout=0.1)
+
+    assert len(result) == 1
+    # Line 352: mndp_result.identity is empty + snmp_name present -> identity overwritten
+    assert result[0].identity == "snmp-identity"

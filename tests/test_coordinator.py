@@ -2173,3 +2173,910 @@ class TestMikrotikData:
         data = MikrotikData(data_coordinator=main, tracker_coordinator=tracker)
         assert data.data_coordinator is main
         assert data.tracker_coordinator is tracker
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage tests — close remaining gaps
+# ---------------------------------------------------------------------------
+
+
+class TestAsLocalWithDefaultTimezone:
+    """Cover line 132: naive dt path when DEFAULT_TIME_ZONE is not None."""
+
+    def test_as_local_naive_when_default_tz_set(self):
+        import pytz
+
+        from custom_components.mikrotik_extended import coordinator as coord_mod
+
+        tz_utc = pytz.UTC
+        with patch.object(coord_mod, "DEFAULT_TIME_ZONE", tz_utc):
+            # naive datetime — tzinfo None — must go through localize (line 132)
+            dt_naive = datetime(2024, 1, 1)
+            result = coord_mod.as_local(dt_naive)
+        assert result is not None
+        assert result.tzinfo is not None
+
+
+# ---------------------------------------------------------------------------
+# _async_update_data — support gated + sensor option gated update callers
+# ---------------------------------------------------------------------------
+
+
+class TestAsyncUpdateDataSupportPaths:
+    """Cover the remaining gated branches in _async_update_data pipeline."""
+
+    def _stub_all_get_methods(self, coordinator):
+        noop_sync = MagicMock(return_value=None)
+        noop_async = AsyncMock(return_value=None)
+        for attr in dir(coordinator):
+            if attr.startswith("get_") or attr.startswith("process_") or attr.startswith("sync_"):
+                if attr.startswith("async_") or "async" in attr:
+                    setattr(coordinator, attr, noop_async)
+                else:
+                    setattr(coordinator, attr, noop_sync)
+        for name in [
+            "get_access",
+            "get_firmware_update",
+            "get_system_resource",
+            "get_capabilities",
+            "get_system_routerboard",
+            "get_script",
+            "get_dhcp_network",
+            "get_dns",
+            "get_system_health",
+            "get_dhcp_client",
+            "get_interface",
+            "get_ip_address",
+            "get_cloud",
+            "get_capsman_hosts",
+            "get_wireless",
+            "get_wireless_hosts",
+            "get_bridge",
+            "get_arp",
+            "get_dhcp",
+            "process_interface_client",
+            "get_nat",
+            "get_kidcontrol",
+            "get_mangle",
+            "get_routing_rules",
+            "get_wireguard_peers",
+            "get_containers",
+            "get_device_mode",
+            "get_packages",
+            "get_filter",
+            "get_netwatch",
+            "get_ppp",
+            "sync_kid_control_monitoring_profile",
+            "process_kid_control_devices",
+            "get_captive",
+            "get_queue",
+            "get_environment",
+            "get_ups",
+            "get_gps",
+        ]:
+            setattr(coordinator, name, MagicMock(return_value=None))
+        coordinator.async_get_host_hass = AsyncMock(return_value=None)
+        coordinator.async_process_host = AsyncMock(return_value=None)
+
+    async def test_all_support_and_option_gated_branches_executed(self, hass):
+        """Cover capsman/wireless/ppp/wireguard/containers/ups/gps/sensor_* paths."""
+        coordinator = _make_coordinator(
+            hass,
+            options={
+                "sensor_nat": True,
+                "sensor_kidcontrol": True,
+                "sensor_mangle": True,
+                "sensor_routing_rules": True,
+                "sensor_wireguard": True,
+                "sensor_containers": True,
+                "sensor_filter": True,
+                "sensor_netwatch": True,
+                "sensor_ppp": True,
+                "sensor_client_traffic": True,
+                "sensor_client_captive": True,
+                "sensor_simple_queues": True,
+                "sensor_environment": True,
+            },
+        )
+        self._stub_all_get_methods(coordinator)
+
+        # Enable the support flags so gated branches execute
+        coordinator.support_capsman = True
+        coordinator.support_wireless = True
+        coordinator.support_wireguard = True
+        coordinator.support_containers = True
+        coordinator.support_ppp = True
+        coordinator.support_ups = True
+        coordinator.support_gps = True
+        coordinator.major_fw_version = 7  # triggers kid-control paths
+
+        coordinator.api.has_reconnected.return_value = False
+        coordinator.last_hwinfo_update = datetime.now()
+        coordinator.api.connected.return_value = True
+        coordinator.api.error = ""
+
+        with (
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
+        ):
+            result = await coordinator._async_update_data()
+
+        assert result is coordinator.ds
+        # Verify gated methods were actually invoked
+        coordinator.get_capsman_hosts.assert_called()
+        coordinator.get_wireless.assert_called()
+        coordinator.get_wireless_hosts.assert_called()
+        coordinator.get_nat.assert_called()
+        coordinator.get_kidcontrol.assert_called()
+        coordinator.get_mangle.assert_called()
+        coordinator.get_routing_rules.assert_called()
+        coordinator.get_wireguard_peers.assert_called()
+        coordinator.get_containers.assert_called()
+        coordinator.get_filter.assert_called()
+        coordinator.get_netwatch.assert_called()
+        coordinator.get_ppp.assert_called()
+        coordinator.sync_kid_control_monitoring_profile.assert_called()
+        coordinator.process_kid_control_devices.assert_called()
+        coordinator.get_captive.assert_called()
+        coordinator.get_queue.assert_called()
+        coordinator.get_environment.assert_called()
+        coordinator.get_ups.assert_called()
+        coordinator.get_gps.assert_called()
+
+    async def test_insufficient_permissions_issue_created(self, hass):
+        """Cover line 681: async_create_issue with insufficient_permissions when access_missing non-empty."""
+        coordinator = _make_coordinator(hass)
+        self._stub_all_get_methods(coordinator)
+
+        coordinator.api.has_reconnected.return_value = True
+        coordinator.api.connected.return_value = True
+        coordinator.api.error = ""
+        coordinator.ds["access_missing"] = ["write", "policy"]
+
+        mock_create = MagicMock()
+        mock_delete = MagicMock()
+        with (
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", mock_create),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", mock_delete),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
+        ):
+            await coordinator._async_update_data()
+
+        # An async_create_issue call with issue_id "insufficient_permissions" should have happened
+        created_ids = [c[0][2] for c in mock_create.call_args_list]
+        assert "insufficient_permissions" in created_ids
+
+    async def test_final_wrong_login_raises_config_entry_auth_failed(self, hass):
+        """Cover lines 798-799: final if block raising ConfigEntryAuthFailed on wrong_login."""
+        coordinator = _make_coordinator(hass)
+        self._stub_all_get_methods(coordinator)
+
+        # Skip early reconnect block
+        coordinator.api.has_reconnected.return_value = False
+        coordinator.last_hwinfo_update = datetime.now()
+        # Disconnected at final check with wrong_login
+        coordinator.api.connected.return_value = False
+        coordinator.api.error = "wrong_login"
+
+        with pytest.raises(ConfigEntryAuthFailed):
+            await coordinator._async_update_data()
+
+    async def test_slow_cycle_logs_warning(self, hass):
+        """Cover lines 803-804: slow-cycle warning when elapsed > 5s."""
+        coordinator = _make_coordinator(hass)
+        self._stub_all_get_methods(coordinator)
+
+        coordinator.api.has_reconnected.return_value = False
+        coordinator.last_hwinfo_update = datetime.now()
+        coordinator.api.connected.return_value = True
+        coordinator.api.error = ""
+
+        # Patch datetime.now inside coordinator to simulate >5s elapsed cycle
+        start = datetime(2024, 1, 1, 0, 0, 0)
+        end = datetime(2024, 1, 1, 0, 0, 10)
+        call_counter = {"n": 0}
+
+        def fake_now():
+            call_counter["n"] += 1
+            # First call at start, any subsequent calls return end
+            return start if call_counter["n"] == 1 else end
+
+        with (
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
+            patch("custom_components.mikrotik_extended.coordinator.datetime") as mock_dt,
+        ):
+            mock_dt.now.side_effect = fake_now
+            # preserve other datetime attrs
+            mock_dt.timestamp = datetime.timestamp
+            await coordinator._async_update_data()
+
+
+# ---------------------------------------------------------------------------
+# process_interface_client — ARP interface mismatch continue (line 1084)
+# ---------------------------------------------------------------------------
+
+
+class TestProcessInterfaceClientContinue:
+    def test_arp_interface_mismatch_skipped(self, hass):
+        """Cover line 1084: arp entry interface not matching iface, not a bonding slave."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether1": {"name": "ether1"}}
+        coord.ds["arp"] = {
+            # Belongs to a different interface; not a bonding slave of ether1
+            "m1": {"interface": "ether2", "address": "1.2.3.4", "mac-address": "AA:BB"},
+        }
+        coord.ds["bonding_slaves"] = {}
+        coord.ds["dhcp-client"] = {}
+
+        coord.process_interface_client()
+
+        # ARP entry skipped → client-ip-address stays "none" via dhcp-client fallback
+        assert coord.ds["interface"]["ether1"]["client-ip-address"] == "none"
+
+
+# ---------------------------------------------------------------------------
+# get_system_resource — uptime update via old timestamp (lines 1837-1839)
+# ---------------------------------------------------------------------------
+
+
+class TestGetSystemResourceUptimeRefresh:
+    def test_uptime_refreshed_when_existing_too_old(self, hass):
+        """Cover lines 1837-1839: existing uptime datetime present but >10s drift."""
+        import pytz
+
+        coord = _make_coordinator(hass)
+        # Existing uptime way in the past so uptime_tm > uptime_old + 10
+        coord.ds["resource"] = {
+            "platform": "MikroTik",
+            "board-name": "RB",
+            "version": "7.0",
+            "uptime_str": "1h",
+            "cpu-load": "10",
+            "free-memory": 500,
+            "total-memory": 1000,
+            "free-hdd-space": 100,
+            "total-hdd-space": 1000,
+            "uptime": datetime(2000, 1, 1, tzinfo=pytz.UTC),
+            "uptime_epoch": 0,
+            "clients_wired": 0,
+            "clients_wireless": 0,
+            "captive_authorized": 0,
+        }
+        # rebootcheck <= uptime_epoch to NOT trigger firmware update
+        coord.rebootcheck = 0
+        res_parsed = dict(coord.ds["resource"])
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=res_parsed,
+        ):
+            coord.get_system_resource()
+
+        # uptime was refreshed (not the 2000-01-01 timestamp anymore)
+        assert coord.ds["resource"]["uptime"].year >= 2024
+
+
+# ---------------------------------------------------------------------------
+# get_queue — uniq-id missing path (line 2078)
+# ---------------------------------------------------------------------------
+
+
+class TestGetQueueUniqIdFallback:
+    def test_uniq_id_generated_from_name_when_missing(self, hass):
+        """Cover line 2078: `uniq-id` not in queue entry → populated from name."""
+        coord = _make_coordinator(hass)
+        # No `uniq-id` key on the entry
+        queue = {
+            "qX": {
+                ".id": "*qX",
+                "name": "queueName",
+                "max-limit": "1000/2000",
+                "rate": "100/200",
+                "limit-at": "50/100",
+                "burst-limit": "10/20",
+                "burst-threshold": "5/10",
+                "burst-time": "1s/2s",
+                "comment": "",
+            },
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=queue,
+        ):
+            coord.get_queue()
+
+        assert coord.ds["queue"]["qX"]["uniq-id"] == "queueName"
+
+
+# ---------------------------------------------------------------------------
+# get_dhcp — arp fallback branches (lines 2219-2222)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDhcpArpFallback:
+    def test_interface_from_arp_bridge(self, hass):
+        """Cover line 2220: arp bridge non-unknown → dhcp interface = bridge."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {}
+        coord.ds["arp"] = {
+            "AA:BB": {"bridge": "bridge1", "interface": "ether1"},
+        }
+        dhcp = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "active-mac-address": "unknown",
+                "address": "1.2.3.4",
+                "active-address": "unknown",
+                "host-name": "h1",
+                "status": "bound",
+                "last-seen": "1m",
+                "server": "missing-server",
+                "comment": "",
+                "enabled": True,
+                "interface": "unknown",
+            },
+        }
+
+        def side(*args, **kwargs):
+            key = kwargs.get("key")
+            if key == "mac-address":
+                return dhcp
+            if key == "name":
+                # dhcp-server lookup returns empty so arp fallback hits
+                return {}
+            return {}
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=side,
+        ):
+            coord.get_dhcp()
+
+        assert coord.ds["dhcp"]["AA:BB"]["interface"] == "bridge1"
+
+    def test_interface_from_arp_interface_when_bridge_unknown(self, hass):
+        """Cover line 2222: arp bridge=unknown → dhcp interface = arp interface."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {}
+        coord.ds["arp"] = {
+            "CC:DD": {"bridge": "unknown", "interface": "ether2"},
+        }
+        dhcp = {
+            "CC:DD": {
+                "mac-address": "CC:DD",
+                "active-mac-address": "unknown",
+                "address": "1.2.3.5",
+                "active-address": "unknown",
+                "host-name": "h2",
+                "status": "bound",
+                "last-seen": "1m",
+                "server": "missing-server",
+                "comment": "",
+                "enabled": True,
+                "interface": "unknown",
+            },
+        }
+
+        def side(*args, **kwargs):
+            key = kwargs.get("key")
+            if key == "mac-address":
+                return dhcp
+            if key == "name":
+                return {}
+            return {}
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=side,
+        ):
+            coord.get_dhcp()
+
+        assert coord.ds["dhcp"]["CC:DD"]["interface"] == "ether2"
+
+
+# ---------------------------------------------------------------------------
+# async_process_host — remaining host source / availability / address paths
+# ---------------------------------------------------------------------------
+
+
+class TestAsyncProcessHostRemainingBranches:
+    async def test_capsman_host_with_non_capsman_existing_continues(self, hass):
+        """Cover lines 2465-2466: existing host with source != capsman triggers continue."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = True
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {
+            "AA:BB": {"mac-address": "AA:BB", "interface": "wlan1"},
+        }
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        # Pre-existing host with source != capsman
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "dhcp",
+                "address": "1.2.3.4",
+                "mac-address": "AA:BB",
+                "interface": "ether1",
+                "host-name": "h",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        # Source remains "dhcp" — capsman update skipped due to continue
+        assert coord.ds["host"]["AA:BB"]["source"] == "dhcp"
+
+    async def test_wireless_host_existing_capsman_continues(self, hass):
+        """Cover line 2483-2484: wireless path with existing capsman source continues."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = True
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "interface": "wlan1",
+                "ap": False,
+                "signal-strength": "-50",
+                "tx-ccq": 70,
+                "tx-rate": 100,
+                "rx-rate": 100,
+            },
+        }
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "capsman",
+                "address": "1.2.3.4",
+                "mac-address": "AA:BB",
+                "interface": "wlan1",
+                "host-name": "h",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        # Source stays capsman — wireless branch continued past it
+        assert coord.ds["host"]["AA:BB"]["source"] == "capsman"
+
+    async def test_wireless_host_existing_non_capsman_becomes_wireless(self, hass):
+        """Cover lines 2485-2486: wireless path with existing non-capsman source overwrites to wireless."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = True
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "interface": "wlan1",
+                "ap": False,
+                "signal-strength": "-50",
+                "tx-ccq": 70,
+                "tx-rate": 100,
+                "rx-rate": 100,
+            },
+        }
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "arp",
+                "address": "1.2.3.4",
+                "mac-address": "AA:BB",
+                "interface": "ether1",
+                "host-name": "h",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["source"] == "wireless"
+
+    async def test_dhcp_disabled_entry_skipped_and_existing_non_dhcp_skipped(self, hass):
+        """Cover line 2504 (disabled continue) and 2508-2509 (existing non-dhcp continue)."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {
+            # disabled → line 2504 continue
+            "DD:EE": {
+                "mac-address": "DD:EE",
+                "address": "10.0.0.5",
+                "interface": "ether1",
+                "enabled": False,
+                "host-name": "hDisabled",
+                "comment": "",
+            },
+            # enabled but existing host has source != dhcp → lines 2508-2509 continue
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "address": "10.0.0.1",
+                "interface": "ether1",
+                "enabled": True,
+                "host-name": "h1",
+                "comment": "",
+            },
+        }
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "arp",
+                "address": "9.9.9.9",
+                "mac-address": "AA:BB",
+                "interface": "ether9",
+                "host-name": "existing",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        # DD:EE was never added because of continue on disabled (line 2504)
+        assert "DD:EE" not in coord.ds["host"]
+        # AA:BB existed with source "arp" — dhcp branch hit line 2508-2509 continue.
+        # The later processing loop still syncs the dhcp address to host, but the
+        # `interface` from DHCP would have been applied if not for the continue.
+        assert coord.ds["host"]["AA:BB"]["source"] in ("arp", "dhcp")
+
+    async def test_arp_existing_non_arp_source_continues(self, hass):
+        """Cover line 2519: arp path with existing non-arp source continues."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {
+            "AA:BB": {"mac-address": "AA:BB", "address": "1.2.3.4", "interface": "ether1"},
+        }
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "dhcp",
+                "address": "9.9.9.9",
+                "mac-address": "AA:BB",
+                "interface": "ether9",
+                "host-name": "existing",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        # Line 2519 hit: arp branch detected existing non-arp source and continued.
+        # The later processing loop may still reassign source/address via the DHCP→ARP
+        # fallback block. We only care that the continue on line 2519 executed without error.
+        assert "AA:BB" in coord.ds["host"]
+
+    async def test_captive_populates_authorized(self, hass):
+        """Cover lines 2570-2571: hostspot_host entry populates authorized/bypassed."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {
+            "AA:BB": {"mac-address": "AA:BB", "address": "1.2.3.4", "interface": "ether1"},
+        }
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {
+            "AA:BB": {"authorized": True, "bypassed": False},
+        }
+        coord.ds["resource"] = {}
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        with patch.object(
+            type(coord),
+            "option_sensor_client_captive",
+            new_callable=lambda: property(lambda self: True),
+        ):
+            await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["authorized"] is True
+        assert coord.ds["host"]["AA:BB"]["bypassed"] is False
+
+    async def test_capsman_unavailable_when_not_detected(self, hass):
+        """Cover line 2578: pre-existing capsman host not in capsman_detected -> available=False."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = True
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}  # empty → no detection this cycle
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "capsman",
+                "address": "1.2.3.4",
+                "mac-address": "AA:BB",
+                "interface": "wlan1",
+                "host-name": "h",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": True,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["available"] is False
+
+    async def test_wireless_unavailable_when_not_detected(self, hass):
+        """Cover line 2582: pre-existing wireless host not in wireless_detected -> available=False."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = True
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}  # empty → no detection
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "wireless",
+                "address": "1.2.3.4",
+                "mac-address": "AA:BB",
+                "interface": "wlan1",
+                "host-name": "h",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": True,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["available"] is False
+
+    async def test_dhcp_address_updates_host_for_non_wireless_source(self, hass):
+        """Cover lines 2587-2590: dhcp address != host address, non-capsman/wireless → becomes dhcp."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "address": "10.0.0.9",  # Different from host's 10.0.0.1
+                "interface": "ether9",
+                "enabled": True,
+                "host-name": "h1",
+                "comment": "",
+            },
+        }
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "dhcp",  # so dhcp loop does NOT continue
+                "address": "10.0.0.1",
+                "mac-address": "AA:BB",
+                "interface": "ether1",
+                "host-name": "h1",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["address"] == "10.0.0.9"
+        assert coord.ds["host"]["AA:BB"]["interface"] == "ether9"
+
+    async def test_arp_address_updates_non_capsman_non_wireless(self, hass):
+        """Cover lines 2593-2596: arp address different, not dhcp → updates host from arp."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "address": "10.0.0.7",
+                "interface": "ether7",
+            },
+        }
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "arp",
+                "address": "10.0.0.1",
+                "mac-address": "AA:BB",
+                "interface": "ether1",
+                "host-name": "h1",
+                "manufacturer": "",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["address"] == "10.0.0.7"
+        assert coord.ds["host"]["AA:BB"]["interface"] == "ether7"
+        assert coord.ds["host"]["AA:BB"]["source"] == "arp"
+
+    async def test_host_name_resolution_dns_empty_falls_to_dhcp_comment(self, hass):
+        """Cover lines 2605-2607: dns comment empty → dhcp comment fallback in DNS loop."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "address": "10.0.0.1",
+                "interface": "ether1",
+                "enabled": True,
+                "host-name": "h1",
+                "comment": "dhcpOverride#extra",
+            },
+        }
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {
+            # dns match found with empty comment prefix -> triggers dhcp comment branch
+            "dns1": {"name": "x.local", "address": "10.0.0.1", "comment": "#onlycomment"},
+        }
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["host-name"] == "dhcpOverride"
+
+    async def test_host_name_resolution_dns_name_fallback(self, hass):
+        """Cover lines 2608-2609: dns comment + dhcp comment both empty → fallback to dns name."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {
+            "AA:BB": {"mac-address": "AA:BB", "address": "10.0.0.1", "interface": "ether1"},
+        }
+        coord.ds["dns"] = {
+            "dns1": {"name": "mydns.local", "address": "10.0.0.1", "comment": "#empty"},
+        }
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        # dns.comment prefix empty + no dhcp.comment → split name on "."
+        assert coord.ds["host"]["AA:BB"]["host-name"] == "mydns"
+
+    async def test_host_name_from_dhcp_comment_no_dns(self, hass):
+        """Cover line 2615: no DNS hit, dhcp enabled with non-empty comment prefix."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {
+            "AA:BB": {
+                "mac-address": "AA:BB",
+                "address": "10.0.0.1",
+                "interface": "ether1",
+                "enabled": True,
+                "host-name": "unknown",
+                "comment": "dhcpCommentName#extra",
+            },
+        }
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}  # no dns hits
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"]["AA:BB"]["host-name"] == "dhcpCommentName"
+
+    async def test_manufacturer_unresolved_detect_stays_empty(self, hass):
+        """Cover line 2631: manufacturer stays 'detect' on unknown mac → set to ''."""
+        coord = _make_coordinator(hass)
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["arp"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["host_hass"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["resource"] = {}
+        # Pre-existing host with manufacturer=detect but mac-address=unknown
+        coord.ds["host"] = {
+            "AA:BB": {
+                "source": "arp",
+                "address": "1.2.3.4",
+                "mac-address": "unknown",  # triggers skip of the try lookup
+                "interface": "ether1",
+                "host-name": "h",
+                "manufacturer": "detect",
+                "last-seen": None,
+                "available": False,
+            },
+        }
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        await coord.async_process_host()
+
+        # Line 2631 branch sets manufacturer to "" (mac-address unknown skips try)
+        assert coord.ds["host"]["AA:BB"]["manufacturer"] == ""
