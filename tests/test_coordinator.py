@@ -714,7 +714,12 @@ class TestGetAccess:
             side_effect=[tmp_user, tmp_group],
         ):
             coord.get_access()
-        # no warning logged — just make sure it doesn't raise
+        # already-reported branch: accessrights_reported stays True (no re-log)
+        assert coord.accessrights_reported is True
+        # group lookup succeeded → ds["access"] reflects the resolved policy
+        assert coord.ds["access"] == ["read"]
+        # required rights minus the one granted ("read") → all four are missing
+        assert coord.ds["access_missing"] == ["write", "policy", "reboot", "test"]
 
 
 # ---------------------------------------------------------------------------
@@ -1377,8 +1382,13 @@ class TestFirmwareUpdate:
             "custom_components.mikrotik_extended.coordinator.parse_api",
             return_value=fw,
         ):
-            # no exception
             coord.get_firmware_update()
+        # ds still populated, status is not "New version is available" → available False
+        assert coord.ds["fw-update"]["available"] is False
+        assert coord.ds["fw-update"]["installed-version"] == "abc"
+        # int("ab") raises, handler catches → major/minor stay at their initial 0
+        assert coord.major_fw_version == 0
+        assert coord.minor_fw_version == 0
 
 
 # ---------------------------------------------------------------------------
@@ -1665,12 +1675,15 @@ class TestNetworkGetters:
         assert coord.ds["cloud"]["ddns-hostname"] == "foo.sn.mynetname.net"
         assert coord.ds["cloud"]["ddns-status"] == "updated"
 
-        # Exception path
+        # Exception path: try/except swallows the error; previously-populated
+        # ds["cloud"] from the successful call above is preserved (not cleared).
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
             side_effect=Exception("boom"),
         ):
-            coord.get_cloud()  # does not raise
+            coord.get_cloud()
+        assert coord.ds["cloud"]["ddns-hostname"] == "foo.sn.mynetname.net"
+        assert coord.ds["cloud"]["ddns-status"] == "updated"
 
     def test_get_dhcp_client(self, hass):
         coord = _make_coordinator(hass)
