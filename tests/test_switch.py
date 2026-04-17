@@ -148,6 +148,9 @@ async def test_mikrotik_switch_async_turn_on_off_access_gated(hass):
     await sw2.async_turn_on()
     await sw2.async_turn_off()
     assert coord2.set_value.call_count == 2
+    # turn_on passes False to the `disabled` mod_param; turn_off passes True
+    assert coord2.set_value.call_args_list[0].args[4] is False
+    assert coord2.set_value.call_args_list[1].args[4] is True
     coord2.async_refresh.assert_awaited()
 
 
@@ -276,6 +279,8 @@ async def test_nat_switch_async_turn_on_off(hass):
     await sw.async_turn_on()
     await sw.async_turn_off()
     assert coord.set_value.call_count == 2
+    assert coord.set_value.call_args_list[0].args[4] is False
+    assert coord.set_value.call_args_list[1].args[4] is True
 
 
 async def test_mangle_switch_async_turn_on_off(hass):
@@ -308,6 +313,8 @@ async def test_mangle_switch_async_turn_on_off(hass):
     await sw.async_turn_on()
     await sw.async_turn_off()
     assert coord.set_value.call_count == 2
+    assert coord.set_value.call_args_list[0].args[4] is False
+    assert coord.set_value.call_args_list[1].args[4] is True
 
 
 async def test_routing_rules_switch_async_turn_on_off(hass):
@@ -337,6 +344,8 @@ async def test_routing_rules_switch_async_turn_on_off(hass):
     await sw.async_turn_on()
     await sw.async_turn_off()
     assert coord.set_value.call_count == 2
+    assert coord.set_value.call_args_list[0].args[4] is False
+    assert coord.set_value.call_args_list[1].args[4] is True
 
 
 async def test_filter_switch_async_turn_on_off(hass):
@@ -374,6 +383,8 @@ async def test_filter_switch_async_turn_on_off(hass):
     await sw.async_turn_on()
     await sw.async_turn_off()
     assert coord.set_value.call_count == 2
+    assert coord.set_value.call_args_list[0].args[4] is False
+    assert coord.set_value.call_args_list[1].args[4] is True
 
 
 async def test_queue_switch_async_turn_on_off(hass):
@@ -390,6 +401,8 @@ async def test_queue_switch_async_turn_on_off(hass):
     await sw.async_turn_on()
     await sw.async_turn_off()
     assert coord.set_value.call_count == 2
+    assert coord.set_value.call_args_list[0].args[4] is False
+    assert coord.set_value.call_args_list[1].args[4] is True
 
 
 async def test_kidcontrol_pause_switch_async_turn_on_off(hass):
@@ -423,6 +436,8 @@ async def test_wireguard_peer_switch_async_turn_on_off(hass):
     await sw.async_turn_on()
     await sw.async_turn_off()
     assert coord.set_value.call_count == 2
+    assert coord.set_value.call_args_list[0].args[4] is False
+    assert coord.set_value.call_args_list[1].args[4] is True
 
 
 async def test_container_switch_is_on_icon_and_turn_on_off(hass):
