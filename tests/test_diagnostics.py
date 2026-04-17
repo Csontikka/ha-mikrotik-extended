@@ -24,6 +24,12 @@ async def test_diagnostics_redacts_and_returns_shape(hass):
     assert set(result.keys()) == {"entry", "data", "tracker", "logs"}
     assert "data" in result["entry"]
     assert "options" in result["entry"]
-    # password in entry.data should be redacted
-    assert result["entry"]["data"]["password"] != "secret"
+    # password in both entry.data and entry.options must be replaced with the
+    # HA redaction marker, not just "different from the original"
+    assert result["entry"]["data"]["password"] == "**REDACTED**"
+    assert result["entry"]["options"]["password"] == "**REDACTED**"
+    # logs is a list of formatted string entries (ring-buffer of LogRecord
+    # messages formatted via logging.Formatter, not a list of dicts)
     assert isinstance(result["logs"], list)
+    for entry_line in result["logs"]:
+        assert isinstance(entry_line, str)
