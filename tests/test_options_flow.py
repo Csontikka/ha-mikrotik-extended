@@ -129,7 +129,10 @@ async def test_options_flow_updates_scan_interval(hass):
     assert entry.options[CONF_SCAN_INTERVAL] == 60
     assert entry.options[CONF_TRACK_HOSTS_TIMEOUT] == 300
     assert entry.options[CONF_ZONE] == "away"
-    assert entry.options[CONF_SENSOR_MANGLE] is True
+    # Full round-trip: every flag submitted on sensor_select must land verbatim
+    # in entry.options (not just CONF_SENSOR_MANGLE).
+    for flag, expected in SENSOR_SELECT_INPUT.items():
+        assert entry.options[flag] is expected, f"{flag} did not round-trip: got {entry.options.get(flag)!r}, expected {expected!r}"
 
 
 async def test_options_flow_sensor_toggle(hass):
@@ -160,5 +163,6 @@ async def test_options_flow_sensor_toggle(hass):
 
     result = await hass.config_entries.options.async_configure(result["flow_id"], disabled_sensors)
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert entry.options[CONF_SENSOR_NAT] is False
-    assert entry.options[CONF_SENSOR_FILTER] is False
+    # Every flag submitted must round-trip: all False, except CONF_SENSOR_PORT_TRACKER
+    for flag, expected in disabled_sensors.items():
+        assert entry.options[flag] is expected, f"{flag} did not round-trip: got {entry.options.get(flag)!r}, expected {expected!r}"
