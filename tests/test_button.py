@@ -81,12 +81,19 @@ async def test_async_setup_entry_invokes_add_entities(hass):
 
 
 async def test_mikrotik_button_press_is_noop(hass):
-    """Base MikrotikButton's async_press is a noop that doesn't raise."""
+    """Base MikrotikButton.async_press truly does nothing: no coordinator/API calls."""
     desc = _make_description(func="MikrotikButton")
     coord = _make_coordinator(hass, data={"resource": {"x": "y"}})
+    coord.execute = MagicMock()
+    coord.api = MagicMock()
+    coord.async_refresh = AsyncMock()
     button = MikrotikButton(coord, desc)
     await button.async_update()
-    await button.async_press()  # no exception, no side effect
+    await button.async_press()
+    # Base class press must not touch coordinator or API
+    coord.execute.assert_not_called()
+    coord.api.assert_not_called()
+    coord.async_refresh.assert_not_awaited()
 
 
 async def test_reboot_button_aborts_without_access(hass):
