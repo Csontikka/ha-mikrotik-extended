@@ -28,25 +28,3 @@ jobs:
           asset_name: mikrotik_extended.zip
           tag: ${{ github.ref }}
           overwrite: true
-
-  releasenotes:
-    name: Prepare releasenotes
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install requirements
-        run: |
-          python3 -m pip install setuptools wheel PyGithub
-
-      - name: Update release notes
-        run: |
-          python3 ${{ github.workspace }}/.github/generate_releasenotes.py --token ${{ secrets.GITHUB_TOKEN }} --release yes --tag ${{ github.ref }}
