@@ -44,6 +44,22 @@ def test_sensor_types_definitions():
         seen_keys.add(desc.key)
 
 
+def test_sfp_temperature_sensor_defined():
+    # SFP temperature is reported by "/system/health" on optical devices
+    # (e.g. CRS317-1G-16S+) and must be exposed like the other health temps.
+    # See issue #2.
+    from homeassistant.components.sensor import SensorDeviceClass
+
+    desc = next(
+        (d for d in sensor_types.SENSOR_TYPES if d.key == "system_sfp-temperature"),
+        None,
+    )
+    assert desc is not None, "system_sfp-temperature sensor is missing"
+    assert desc.data_path == "health"
+    assert desc.data_attribute == "sfp-temperature"
+    assert desc.device_class == SensorDeviceClass.TEMPERATURE
+
+
 def test_switch_types_definitions():
     assert switch_types.SENSOR_TYPES
     for desc in switch_types.SENSOR_TYPES:
