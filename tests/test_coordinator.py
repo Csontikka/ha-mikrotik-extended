@@ -1418,6 +1418,21 @@ class TestMiscSensorGetters:
             coord.get_ups()
         assert coord.ds["ups"]["load"] == 50
 
+    def test_get_ups_no_unit_skips_monitor(self, hass):
+        # UPS package installed but no unit attached: "/system/ups" returns [].
+        # The getter must bail out without parsing or querying the monitor
+        # endpoint, leaving an empty dict so no UPS entity is created. See
+        # issue #1.
+        coord = _make_coordinator(hass)
+        coord.api.query = MagicMock(return_value=[])
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+        ) as mock_parse:
+            coord.get_ups()
+        coord.api.query.assert_called_once_with("/system/ups")
+        mock_parse.assert_not_called()
+        assert coord.ds["ups"] == {}
+
     def test_get_gps(self, hass):
         coord = _make_coordinator(hass)
         gps = {"valid": True, "latitude": "1", "longitude": "2"}

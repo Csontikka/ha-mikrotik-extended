@@ -1971,9 +1971,18 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_ups(self) -> None:
         """Get UPS info from Mikrotik"""
+        ups_data = self.api.query("/system/ups")
+        if not ups_data:
+            # The UPS package is installed but no UPS unit is configured or
+            # attached. Bail out so we never issue "/system/ups monitor" for a
+            # non-existent unit, which fails repeatedly and breaks the update
+            # cycle on setup. With an empty dict the singleton guard in
+            # entity.py skips creating the UPS entity. See issue #1.
+            self.ds["ups"] = {}
+            return
         self.ds["ups"] = parse_api(
             data=self.ds["ups"],
-            source=self.api.query("/system/ups"),
+            source=ups_data,
             vals=[
                 {"name": "name", "default": "unknown"},
                 {"name": "offline-time", "default": "unknown"},
