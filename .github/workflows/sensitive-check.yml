@@ -13,13 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # Full history so the PR base commit is available for the diff below.
+          fetch-depth: 0
 
       - name: Get changed files
         id: changed
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+            # Diff against the explicit base SHA GitHub provides; the
+            # "origin/<branch>" ref is not guaranteed to exist on the runner.
+            FILES=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)
           else
             FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git ls-files)
           fi
