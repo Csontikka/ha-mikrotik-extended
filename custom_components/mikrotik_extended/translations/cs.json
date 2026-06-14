@@ -249,6 +249,9 @@
       "system_cpu_temperature": {
         "name": "Teplota CPU"
       },
+      "system_sfp_temperature": {
+        "name": "Teplota SFP"
+      },
       "system_switch_temperature": {
         "name": "Teplota switche"
       },

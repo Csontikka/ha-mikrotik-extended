@@ -249,6 +249,9 @@
       "system_cpu_temperature": {
         "name": "CPU hitastig"
       },
+      "system_sfp_temperature": {
+        "name": "SFP hitastig"
+      },
       "system_switch_temperature": {
         "name": "Switch hitastig"
       },

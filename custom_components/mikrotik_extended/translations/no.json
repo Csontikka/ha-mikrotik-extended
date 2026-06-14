@@ -249,6 +249,9 @@
       "system_cpu_temperature": {
         "name": "CPU-temperatur"
       },
+      "system_sfp_temperature": {
+        "name": "SFP-temperatur"
+      },
       "system_switch_temperature": {
         "name": "Switch-temperatur"
       },
