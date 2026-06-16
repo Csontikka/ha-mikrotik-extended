@@ -67,6 +67,8 @@ Detailed rule information available per entity (chain, action, protocol, address
 
 ARP-based network host presence tracking. Configurable timeout (default 180s). Shows MAC address, IP, and connected interface as attributes.
 
+**What the client counts mean:** *Wireless clients* are hosts seen in the router's WiFi/CAPsMAN registration table. *Wired clients* are all other active ARP hosts — i.e. everything in the ARP table **minus** the WiFi-registered MACs. The count is by unique MAC across **all routed subnets/VLANs** the router sees (not per physical port), so it can be higher than the number of devices on a single LAN. A wireless device connected through a separate AP/mesh (not registered on this router) appears only in ARP and is therefore counted as wired. Container `veth` endpoints are excluded.
+
 ![Device Tracker](docs/assets/images/screenshots/device_tracker.png)
 
 ### WireGuard (RouterOS 7+)
