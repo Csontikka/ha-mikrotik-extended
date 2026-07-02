@@ -841,6 +841,87 @@ class TestGetInterface:
         # default-name fixup
         assert coord.ds["interface"]["bond1"]["default-name"] == "bond1"
 
+    @staticmethod
+    def _raw_interface_rows():
+        """Raw /interface rows as the API returns them (exercises the real parse_api skip list)."""
+        return [
+            {
+                ".id": "*1",
+                "name": "ether1",
+                "default-name": "ether1",
+                "type": "ether",
+                "running": True,
+                "disabled": False,
+                "mac-address": "AA:BB:CC:DD:EE:01",
+                "comment": "",
+                "rx-byte": 10,
+                "tx-byte": 20,
+            },
+            {
+                ".id": "*2",
+                "name": "br-lan",
+                "type": "bridge",
+                "running": True,
+                "disabled": False,
+                # bridges inherit a member port MAC
+                "mac-address": "AA:BB:CC:DD:EE:01",
+                "comment": "",
+                "rx-byte": 100,
+                "tx-byte": 200,
+            },
+            {
+                ".id": "*3",
+                "name": "lo",
+                "type": "loopback",
+                "running": True,
+                "disabled": False,
+                "mac-address": "00:00:00:00:00:00",
+                "comment": "",
+            },
+            {
+                ".id": "*4",
+                "name": "l2tp-in1",
+                "type": "l2tp-in",
+                "running": False,
+                "disabled": False,
+                "comment": "",
+            },
+        ]
+
+    def test_get_interface_includes_bridge_excludes_templates(self, hass):
+        """Bridge interfaces are parsed (#9); loopback and dial-in templates stay skipped."""
+        coord = _make_coordinator(hass)
+        rows = self._raw_interface_rows()
+
+        def fake_query(path, *args, **kwargs):
+            return rows if path == "/interface" else []
+
+        coord.api.query = MagicMock(side_effect=fake_query)
+        coord.get_interface()
+
+        assert "br-lan" in coord.ds["interface"]
+        assert coord.ds["interface"]["br-lan"]["type"] == "bridge"
+        assert coord.ds["interface"]["br-lan"]["running"] is True
+        assert "lo" not in coord.ds["interface"]
+        assert "l2tp-in1" not in coord.ds["interface"]
+
+    def test_get_interface_bridge_mac_gets_name_suffix(self, hass):
+        """A bridge inherits a member port MAC; the virtual-iface fixup must de-duplicate it."""
+        coord = _make_coordinator(hass)
+        rows = self._raw_interface_rows()
+
+        def fake_query(path, *args, **kwargs):
+            return rows if path == "/interface" else []
+
+        coord.api.query = MagicMock(side_effect=fake_query)
+        coord.get_interface()
+
+        # bridge has no default-name -> name is used, MAC gets a name suffix
+        assert coord.ds["interface"]["br-lan"]["default-name"] == "br-lan"
+        assert coord.ds["interface"]["br-lan"]["port-mac-address"] == "AA:BB:CC:DD:EE:01-br-lan"
+        # the physical port keeps its bare MAC, so no device-registry collision
+        assert coord.ds["interface"]["ether1"]["port-mac-address"] == "AA:BB:CC:DD:EE:01"
+
 
 # ---------------------------------------------------------------------------
 # get_bridge

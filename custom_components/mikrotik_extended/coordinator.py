@@ -988,7 +988,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "tx-total", "default": 0.0},
             ],
             skip=[
-                {"name": "type", "value": "bridge"},
                 {"name": "type", "value": "loopback"},
                 {"name": "type", "value": "ppp-in"},
                 {"name": "type", "value": "pptp-in"},
