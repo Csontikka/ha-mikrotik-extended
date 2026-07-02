@@ -72,14 +72,28 @@ class MikrotikRouterOSUpdate(MikrotikEntity, UpdateEntity):
         return self._data[self.entity_description.data_attribute]
 
     @property
-    def installed_version(self) -> str:
+    def installed_version(self) -> str | None:
         """Version installed and in use."""
-        return self._data["installed-version"]
+        installed = self._data.get("installed-version", "unknown")
+        if not installed or installed == "unknown":
+            return None
+        return installed
 
     @property
-    def latest_version(self) -> str:
-        """Latest version available for install."""
-        return self._data["latest-version"]
+    def latest_version(self) -> str | None:
+        """Latest version available for install.
+
+        Return ``None`` when the router could not report a real target
+        version. Passing the literal ``"unknown"`` on to Home Assistant
+        makes it compare ``installed != "unknown"`` and wrongly flag an
+        update as available (the version compare raises and falls back to
+        "not equal -> update"). ``None`` maps to an unknown/uncheckable
+        state instead, which is the correct signal here.
+        """
+        latest = self._data.get("latest-version", "unknown")
+        if not latest or latest == "unknown":
+            return None
+        return latest
 
     async def options_updated(self) -> None:
         """No action needed."""
@@ -92,12 +106,18 @@ class MikrotikRouterOSUpdate(MikrotikEntity, UpdateEntity):
 
         self.coordinator.execute("/system/package/update", "install", None, None)
 
-    async def async_release_notes(self) -> str:
+    async def async_release_notes(self) -> str | None:
         """Return the release notes."""
+        installed = self._data.get("installed-version", "unknown")
+        latest = self._data.get("latest-version", "unknown")
+        if not installed or installed == "unknown" or not latest or latest == "unknown":
+            # No real target version -> nothing to fetch, don't surface a
+            # spurious "Error fetching release notes".
+            return None
         try:
             session = async_get_clientsession(self.hass)
             """Get concatenated changelogs from installed_version to latest_version in reverse order."""
-            versions_to_fetch = generate_version_list(self._data["installed-version"], self._data["latest-version"])
+            versions_to_fetch = generate_version_list(installed, latest)
 
             tasks = [fetch_changelog(session, version) for version in versions_to_fetch]
             changelogs = await asyncio.gather(*tasks)

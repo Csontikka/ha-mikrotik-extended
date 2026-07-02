@@ -203,6 +203,50 @@ async def test_router_os_release_notes_success_and_failure(hass):
         assert "Error fetching" in notes_err
 
 
+async def test_router_os_update_unknown_latest_version_is_none(hass):
+    """latest-version 'unknown' → latest_version None so HA doesn't flag a spurious update."""
+    desc = _make_description(func="MikrotikRouterOSUpdate", data_attribute="available")
+    firmware = {"available": False, "installed-version": "7.23.1", "latest-version": "unknown"}
+    coord = _make_coordinator(hass, {"firmware": firmware})
+    entity = MikrotikRouterOSUpdate(coord, desc)
+
+    assert entity.installed_version == "7.23.1"
+    assert entity.latest_version is None
+
+
+async def test_router_os_update_unknown_installed_version_is_none(hass):
+    """installed-version 'unknown' → installed_version None."""
+    desc = _make_description(func="MikrotikRouterOSUpdate", data_attribute="available")
+    firmware = {"available": False, "installed-version": "unknown", "latest-version": "unknown"}
+    coord = _make_coordinator(hass, {"firmware": firmware})
+    entity = MikrotikRouterOSUpdate(coord, desc)
+
+    assert entity.installed_version is None
+    assert entity.latest_version is None
+
+
+async def test_router_os_update_missing_fw_keys_no_keyerror(hass):
+    """Empty fw-update store (no update access) → properties return None, no KeyError."""
+    desc = _make_description(func="MikrotikRouterOSUpdate", data_attribute="available")
+    coord = _make_coordinator(hass, {"firmware": {}})
+    entity = MikrotikRouterOSUpdate(coord, desc)
+
+    assert entity.installed_version is None
+    assert entity.latest_version is None
+
+
+async def test_router_os_release_notes_skipped_when_unknown(hass):
+    """No real target version → async_release_notes returns None, not an error string."""
+    desc = _make_description(func="MikrotikRouterOSUpdate", data_attribute="available")
+    firmware = {"available": False, "installed-version": "7.23.1", "latest-version": "unknown"}
+    coord = _make_coordinator(hass, {"firmware": firmware})
+    entity = MikrotikRouterOSUpdate(coord, desc)
+    entity.hass = hass
+
+    notes = await entity.async_release_notes()
+    assert notes is None
+
+
 async def test_router_board_fw_update_properties_and_install(hass):
     """MikrotikRouterBoardFWUpdate: is_on, install runs upgrade+reboot, matching versions → False."""
     desc = _make_description(func="MikrotikRouterBoardFWUpdate", data_path="routerboard", data_attribute="enabled")
