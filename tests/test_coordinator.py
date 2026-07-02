@@ -2099,6 +2099,74 @@ class TestAsyncProcessHost:
         assert coord.ds["host"]["AA:BB"]["available"] is True
         assert coord.ds["resource"]["clients_wired"] == 1
 
+    async def test_wifi_bridge_port_host_counted_wireless(self, hass):
+        """ARP-only host learned on a wifi-type bridge port → counted wireless, not wired."""
+        coord = _make_coordinator(hass)
+        self._minimal_host_ds(coord)
+        coord.ds["arp"] = {
+            "AA:BB": {"mac-address": "AA:BB", "address": "10.0.0.1", "interface": "bridge", "status": "reachable"},
+        }
+        coord.ds["bridge_host"] = {
+            "AA:BB": {"mac-address": "AA:BB", "interface": "wifi2-iot", "bridge": "bridge"},
+        }
+        # renamed port: keyed by default-name, matched via name field
+        coord.ds["interface"] = {
+            "wifi2": {"name": "wifi2-iot", "type": "wifi"},
+        }
+
+        await coord.async_process_host()
+
+        assert coord.ds["resource"]["clients_wireless"] == 1
+        assert coord.ds["resource"]["clients_wired"] == 0
+        assert coord.ds["resource"]["wireless_clients_list"][0]["mac"] == "AA:BB"
+
+
+# ---------------------------------------------------------------------------
+# _is_wifi_bridge_port_host
+# ---------------------------------------------------------------------------
+
+
+class TestIsWifiBridgePortHost:
+    def test_no_bridge_host_entry(self, hass):
+        coord = _make_coordinator(hass)
+        assert coord._is_wifi_bridge_port_host("AA:BB") is False
+
+    def test_direct_key_wifi_type(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "wifi1", "bridge": "bridge"}}
+        coord.ds["interface"] = {"wifi1": {"name": "wifi1", "type": "wifi"}}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is True
+
+    def test_renamed_port_matched_by_name(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "wifi2-iot", "bridge": "bridge"}}
+        coord.ds["interface"] = {"wifi2": {"name": "wifi2-iot", "type": "wifi"}}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is True
+
+    def test_wlan_and_cap_types(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "wlan1", "bridge": "bridge"}}
+        coord.ds["interface"] = {"wlan1": {"name": "wlan1", "type": "wlan"}}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is True
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "cap1", "bridge": "bridge"}}
+        coord.ds["interface"] = {"cap1": {"name": "cap1", "type": "cap"}}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is True
+
+    def test_ether_port_not_wireless(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "ether3", "bridge": "bridge"}}
+        coord.ds["interface"] = {"ether3": {"name": "ether3", "type": "ether"}}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is False
+
+    def test_unknown_port_or_interface(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "unknown", "bridge": "bridge"}}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is False
+        coord.ds["bridge_host"] = {"AA:BB": {"interface": "wifi9", "bridge": "bridge"}}
+        coord.ds["interface"] = {}
+        assert coord._is_wifi_bridge_port_host("AA:BB") is False
+
+
 # ---------------------------------------------------------------------------
 # _get_iface_from_entry
 # ---------------------------------------------------------------------------

@@ -2738,7 +2738,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     "host_name": vals.get("host-name", "unknown"),
                     "interface": vals.get("interface", "unknown"),
                 }
-                if vals["source"] in ["capsman", "wireless"]:
+                if vals["source"] in ["capsman", "wireless"] or self._is_wifi_bridge_port_host(uid):
                     self.ds["resource"]["clients_wireless"] += 1
                     _wireless_clients.append(client_info)
                 else:
@@ -2747,6 +2747,36 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         self.ds["resource"]["wired_clients_list"] = _wired_clients
         self.ds["resource"]["wireless_clients_list"] = _wireless_clients
+
+    # ---------------------------
+    #   _is_wifi_bridge_port_host
+    # ---------------------------
+    def _is_wifi_bridge_port_host(self, uid: str) -> bool:
+        """Return True if host ``uid`` was learned on a wifi-type bridge port.
+
+        A wireless device behind a separate AP or repeater is absent from
+        this router's registration table, so by source alone it would be
+        bucketed as wired. The bridge host table still knows which port its
+        MAC was learned on — a wifi-type port means the device is wireless.
+        """
+        port = self.ds["bridge_host"].get(uid, {}).get("interface", "unknown")
+        if port in ["unknown", ""]:
+            return False
+
+        iface = self.ds["interface"].get(port)
+        if iface is None:
+            # ds["interface"] is keyed by default-name; renamed ports
+            # (e.g. wifi2 -> wifi2-iot) only match on the name field.
+            for vals in self.ds["interface"].values():
+                if vals.get("name") == port:
+                    iface = vals
+                    break
+
+        if iface is None:
+            return False
+
+        iface_type = str(iface.get("type", ""))
+        return iface_type.startswith(("wifi", "wlan")) or iface_type == "cap"
 
     # ---------------------------
     #   _get_iface_from_entry
