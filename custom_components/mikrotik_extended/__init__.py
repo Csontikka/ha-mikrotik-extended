@@ -62,7 +62,11 @@ _log_handler.setLevel(logging.DEBUG)
 _log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
 _integration_logger = logging.getLogger("custom_components.mikrotik_extended")
 _integration_logger.addHandler(_log_handler)
-_integration_logger.setLevel(logging.DEBUG)
+# Never force the logger level here: doing so pushed every debug record
+# through the root handlers and flooded the journal and home-assistant.log
+# regardless of the user's logger configuration (#11). The ring buffer
+# simply captures whatever level the user has enabled, e.g. via the
+# "Enable debug logging" button or the logger integration.
 
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)

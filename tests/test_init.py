@@ -798,3 +798,25 @@ async def test_remove_entry_query_returns_none_handled(hass):
 
     mock_api.execute.assert_not_called()
     mock_api.disconnect.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# diagnostics log capture (ring buffer)
+# ---------------------------------------------------------------------------
+
+
+def test_integration_logger_level_not_forced():
+    """The integration must not force its logger to DEBUG (#11).
+
+    Forcing the level pushed every debug record through the root handlers
+    and flooded the journal and home-assistant.log regardless of the user's
+    logger configuration. The ring-buffer diagnostics handler stays
+    attached, but the logger level is inherited from the user's config.
+    """
+    import logging
+
+    from custom_components.mikrotik_extended import _RingBufferHandler
+
+    integration_logger = logging.getLogger("custom_components.mikrotik_extended")
+    assert integration_logger.level == logging.NOTSET
+    assert any(isinstance(h, _RingBufferHandler) for h in integration_logger.handlers)
