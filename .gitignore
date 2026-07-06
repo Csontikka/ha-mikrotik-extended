@@ -6,10 +6,6 @@ __pycache__/
 .coverage
 coverage.xml
 
-# Development tools
-.claude/
-.omc/
-
 # Scripts
 create_icon.py
 
