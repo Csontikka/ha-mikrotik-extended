@@ -787,3 +787,39 @@ class TestArpPing:
         self.api._connection.path.return_value = mock_path
         assert self.api.arp_ping("1.2.3.4", "ether1") is False
         assert self.api.connected() is False
+
+
+class TestScheduleEnvCreate:
+    def setup_method(self):
+        self.api = MikrotikAPI("192.168.88.1", "admin", "pass")
+        self.api._connection = MagicMock()
+
+    def test_rejects_unsafe_name(self):
+        """A non-identifier name is refused and never reaches the scheduler."""
+        for bad in ("x; /system reset", "a b", "1abc", 'v"; :global y', "na-me"):
+            assert self.api._schedule_env_create(bad, "v", "_ha_env_set") is False
+        self.api._connection.path.assert_not_called()
+
+    def test_escapes_dollar_in_value(self):
+        """The RouterOS command-substitution dollar sign is escaped in the script."""
+        sched = MagicMock()
+        sched.return_value = iter(())
+        self.api._connection.path.return_value = sched
+
+        ok = self.api._schedule_env_create("myVar", "$[/system reset]", "_ha_env_set")
+
+        assert ok is True
+        on_event = sched.call_args.kwargs["on-event"]
+        # every dollar is escaped, so no live substitution remains
+        assert "\\$" in on_event
+        assert on_event.count("$") == on_event.count("\\$")
+
+    def test_escapes_quote_and_backslash(self):
+        """Backslash and double quote stay escaped alongside the dollar handling."""
+        sched = MagicMock()
+        sched.return_value = iter(())
+        self.api._connection.path.return_value = sched
+
+        assert self.api._schedule_env_create("v", r'a"b\c$d', "_ha_env_set") is True
+        on_event = sched.call_args.kwargs["on-event"]
+        assert '\\"' in on_event and "\\\\" in on_event and "\\$" in on_event

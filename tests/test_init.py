@@ -614,6 +614,30 @@ async def test_set_environment_requires_value_on_set(hass):
         )
 
 
+async def test_set_environment_rejects_unsafe_name(hass):
+    """A name that is not a plain identifier is rejected before reaching the router."""
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    mock_api = MagicMock()
+    coord = MagicMock()
+    coord.api = mock_api
+    coord.config_entry = entry
+    coord.async_request_refresh = AsyncMock()
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    for bad in ("x; /system reset-configuration", "a b", "1abc", 'v"; :global y'):
+        with pytest.raises(ServiceValidationError):
+            await hass.services.async_call(
+                DOMAIN,
+                "set_environment",
+                {"name": bad, "value": "v", "action": "set"},
+                blocking=True,
+            )
+    # the router API is never touched for a rejected name
+    mock_api.set_env_variable.assert_not_called()
+
+
 async def test_set_environment_set_success(hass):
     """set_environment(action=set) calls set_env_variable and refreshes the coordinator."""
     await async_setup(hass, {})

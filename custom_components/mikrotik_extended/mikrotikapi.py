@@ -2,6 +2,7 @@
 
 import contextlib
 import logging
+import re
 import ssl
 from threading import Lock
 from time import sleep, time
@@ -434,7 +435,15 @@ class MikrotikAPI:
         return True
 
     def _schedule_env_create(self, name, value, sched_name) -> bool:
-        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        # Defense in depth: name is interpolated into the scheduler script
+        # unquoted, so it must be a plain identifier. The service layer already
+        # validates this, but guard here too in case of other callers.
+        if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", str(name)):
+            _LOGGER.error("Mikrotik %s refused to create env variable with unsafe name", self._host)
+            return False
+        # Escape backslash, double quote and the RouterOS command-substitution
+        # dollar sign so the value cannot break out of its quoted context.
+        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$")
         on_event = f':global {name} "{escaped}"; /system/scheduler/remove [find name={sched_name}]'
         try:
             sched = self._connection.path("/system/scheduler")

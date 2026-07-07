@@ -15,6 +15,10 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry
 
 _MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$")
+# RouterOS script environment variable names are identifiers. Restricting the
+# name to this charset keeps it from being interpolated into the scheduler
+# script that creates the variable.
+_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME
 
@@ -177,6 +181,13 @@ def _make_set_environment(hass: HomeAssistant):
         value = call.data.get("value")
         action = call.data.get("action", "set")
         host_filter = call.data.get("host")
+
+        if not _ENV_NAME_RE.match(name):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_env_name",
+                translation_placeholders={"name": name},
+            )
 
         if action in ("add", "set") and value is None:
             raise ServiceValidationError(

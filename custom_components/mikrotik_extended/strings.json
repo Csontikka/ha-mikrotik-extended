@@ -234,6 +234,9 @@
     "invalid_mac": {
       "message": "Invalid MAC address format: {mac}. Expected format: AA:BB:CC:DD:EE:FF"
     },
+    "invalid_env_name": {
+      "message": "Invalid environment variable name: {name}. Use letters, digits and underscores only, starting with a letter or underscore."
+    },
     "missing_value": {
       "message": "A value is required for add or set actions."
     }
