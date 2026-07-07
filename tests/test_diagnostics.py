@@ -33,3 +33,29 @@ async def test_diagnostics_redacts_and_returns_shape(hass):
     assert isinstance(result["logs"], list)
     for entry_line in result["logs"]:
         assert isinstance(entry_line, str)
+
+
+async def test_diagnostics_masks_addresses_in_logs(hass):
+    """Captured log lines have their network identifiers masked (SEC-02)."""
+    from custom_components.mikrotik_extended import _LOG_BUFFER
+
+    entry = MagicMock()
+    entry.data = {"host": "192.168.88.1", "password": "secret", "username": "admin"}
+    entry.options = {}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(data={}),
+        tracker_coordinator=SimpleNamespace(data={}),
+    )
+
+    _LOG_BUFFER.clear()
+    _LOG_BUFFER.append("API query /ip/arp raw response: [{'address':'192.168.1.42','mac-address':'AA:BB:CC:DD:EE:01'}]")
+    try:
+        result = await async_get_config_entry_diagnostics(hass, entry)
+    finally:
+        _LOG_BUFFER.clear()
+
+    joined = "\n".join(result["logs"])
+    assert "192.168.1.42" not in joined
+    assert "AA:BB:CC:DD:EE:01" not in joined
+    # structure preserved: the message text is still there
+    assert "API query /ip/arp raw response" in joined
