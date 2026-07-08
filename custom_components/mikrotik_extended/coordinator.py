@@ -42,6 +42,7 @@ from homeassistant.const import (
     STATE_HOME,
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -899,8 +900,30 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             len(self.ds.get("host", {})),
             len(self.ds.get("routing_rules", {})),
         )
+        self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
         return self.ds
+
+    # ---------------------------
+    #   _refresh_core_device_sw_version
+    # ---------------------------
+    def _refresh_core_device_sw_version(self) -> None:
+        """Keep the router Core device's firmware version in sync.
+
+        DeviceInfo.sw_version is only read by HA when the device is created,
+        so after a RouterOS upgrade the device page keeps showing the old
+        version until a reload. Push the current version into the device
+        registry whenever it changes.
+        """
+        serial = self.ds.get("routerboard", {}).get("serial-number", "unknown")
+        version = self.ds.get("resource", {}).get("version", "unknown")
+        if serial in ("unknown", "", "N/A") or version in ("unknown", ""):
+            return
+
+        registry = dr.async_get(self.hass)
+        device = registry.async_get_device(identifiers={(DOMAIN, f"{self.config_entry.entry_id}-{serial}")})
+        if device is not None and device.sw_version != version:
+            registry.async_update_device(device.id, sw_version=version)
 
     # ---------------------------
     #   get_access

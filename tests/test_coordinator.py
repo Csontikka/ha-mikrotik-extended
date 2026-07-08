@@ -3419,3 +3419,58 @@ class TestWiredHostExpiry:
             coord.get_arp()
         assert "AA:BB" not in coord.ds["arp"]
         assert "CC:DD" in coord.ds["arp"]
+
+
+# ---------------------------------------------------------------------------
+# _refresh_core_device_sw_version
+# ---------------------------------------------------------------------------
+
+
+class TestRefreshCoreDeviceSwVersion:
+    def _register_core(self, hass, coord, sw_version, serial="ABC123"):
+        from homeassistant.helpers import device_registry as dr
+
+        registry = dr.async_get(hass)
+        device = registry.async_get_or_create(
+            config_entry_id=coord.config_entry.entry_id,
+            identifiers={(DOMAIN, f"{coord.config_entry.entry_id}-{serial}")},
+            name="Router Core",
+            sw_version=sw_version,
+        )
+        return registry, device, serial
+
+    async def test_updates_sw_version_on_change(self, hass):
+        coord = _make_coordinator(hass)
+        registry, device, serial = self._register_core(hass, coord, "7.23.1")
+        coord.ds["routerboard"] = {"serial-number": serial}
+        coord.ds["resource"] = {"version": "7.23.2"}
+
+        coord._refresh_core_device_sw_version()
+
+        assert registry.async_get(device.id).sw_version == "7.23.2"
+
+    async def test_no_change_when_version_equal(self, hass):
+        coord = _make_coordinator(hass)
+        registry, device, serial = self._register_core(hass, coord, "7.23.2")
+        coord.ds["routerboard"] = {"serial-number": serial}
+        coord.ds["resource"] = {"version": "7.23.2"}
+
+        coord._refresh_core_device_sw_version()
+
+        assert registry.async_get(device.id).sw_version == "7.23.2"
+
+    async def test_skips_unknown_serial_or_version(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {"serial-number": "unknown"}
+        coord.ds["resource"] = {"version": "7.23.2"}
+        coord._refresh_core_device_sw_version()  # no device, must not raise
+
+        coord.ds["routerboard"] = {"serial-number": "ABC"}
+        coord.ds["resource"] = {"version": "unknown"}
+        coord._refresh_core_device_sw_version()  # must not raise
+
+    async def test_no_device_registered_is_safe(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {"serial-number": "NOPE"}
+        coord.ds["resource"] = {"version": "7.23.2"}
+        coord._refresh_core_device_sw_version()  # device absent -> no-op, no raise
