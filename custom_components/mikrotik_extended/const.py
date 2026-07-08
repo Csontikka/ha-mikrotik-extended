@@ -18,6 +18,15 @@ ATTRIBUTION = "Data provided by Mikrotik"
 DEFAULT_ENCODING = "ISO-8859-1"
 DEFAULT_LOGIN_METHOD = "plain"
 
+# Fallback codepage for free-text fields (comments, host names, SSIDs) that are
+# not valid UTF-8. The API connection itself always reads bytes as latin-1
+# (lossless); text is then re-interpreted as UTF-8 when possible, otherwise
+# with this codepage. RouterOS stores such text as raw bytes in whatever
+# encoding the writing client used, and does not report the encoding.
+CONF_TEXT_ENCODING = "text_encoding"
+DEFAULT_TEXT_ENCODING = "ISO-8859-1"
+TEXT_ENCODING_OPTIONS = ["ISO-8859-1", "UTF-8", "Windows-1251", "KOI8-R"]
+
 DEFAULT_HOST = "192.168.88.1"  # NOSONAR
 DEFAULT_USERNAME = "admin"
 DEFAULT_PORT = 0

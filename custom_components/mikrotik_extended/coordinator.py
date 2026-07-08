@@ -66,6 +66,7 @@ from .const import (
     CONF_SENSOR_SCRIPTS,
     CONF_SENSOR_SIMPLE_QUEUES,
     CONF_SENSOR_WIREGUARD,
+    CONF_TEXT_ENCODING,
     CONF_TRACK_HOSTS,
     CONF_TRACK_HOSTS_TIMEOUT,
     DEFAULT_SCAN_INTERVAL,
@@ -84,6 +85,7 @@ from .const import (
     DEFAULT_SENSOR_SCRIPTS,
     DEFAULT_SENSOR_SIMPLE_QUEUES,
     DEFAULT_SENSOR_WIREGUARD,
+    DEFAULT_TEXT_ENCODING,
     DEFAULT_TRACK_HOST_TIMEOUT,
     DEFAULT_TRACK_HOSTS,
     DOMAIN,
@@ -900,9 +902,60 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             len(self.ds.get("host", {})),
             len(self.ds.get("routing_rules", {})),
         )
+        self._decode_text_fields()
         self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
         return self.ds
+
+    # ---------------------------
+    #   text encoding
+    # ---------------------------
+    @property
+    def option_text_encoding(self):
+        """Fallback codepage for free-text fields that are not valid UTF-8."""
+        return self.config_entry.options.get(CONF_TEXT_ENCODING, DEFAULT_TEXT_ENCODING)
+
+    # Free-text fields that a user may fill with non-ASCII characters. The API
+    # connection reads bytes as latin-1 (lossless), so these hold the raw bytes.
+    _TEXT_FIELDS = {
+        "dhcp": ("comment", "host-name"),
+        "dns": ("comment",),
+        "interface": ("comment",),
+        "nat": ("comment",),
+        "mangle": ("comment",),
+        "filter": ("comment",),
+        "routing_rules": ("comment",),
+        "host": ("host-name",),
+    }
+
+    def _decode_text(self, value):
+        """Re-interpret a latin-1 passthrough string as UTF-8, else fallback codepage."""
+        if not isinstance(value, str):
+            return value
+        try:
+            raw = value.encode("latin-1")
+        except UnicodeEncodeError:
+            return value
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            fallback = self.option_text_encoding
+            if fallback in ("ISO-8859-1", "latin-1", "latin1"):
+                return value
+            try:
+                return raw.decode(fallback, errors="replace")
+            except (LookupError, UnicodeDecodeError):
+                return value
+
+    def _decode_text_fields(self) -> None:
+        """Decode the known free-text fields across the data stores in place."""
+        for store, fields in self._TEXT_FIELDS.items():
+            for entry in self.ds.get(store, {}).values():
+                if not isinstance(entry, dict):
+                    continue
+                for field in fields:
+                    if field in entry:
+                        entry[field] = self._decode_text(entry[field])
 
     # ---------------------------
     #   _refresh_core_device_sw_version

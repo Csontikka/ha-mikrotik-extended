@@ -3474,3 +3474,46 @@ class TestRefreshCoreDeviceSwVersion:
         coord.ds["routerboard"] = {"serial-number": "NOPE"}
         coord.ds["resource"] = {"version": "7.23.2"}
         coord._refresh_core_device_sw_version()  # device absent -> no-op, no raise
+
+
+# ---------------------------------------------------------------------------
+# text encoding (free-text decode)
+# ---------------------------------------------------------------------------
+
+
+class TestDecodeText:
+    def test_utf8_is_autodetected(self, hass):
+        coord = _make_coordinator(hass)
+        # UTF-8 "café" arrived latin-1-decoded (byte passthrough)
+        latin1_passthrough = "café".encode().decode("latin-1")
+        assert coord._decode_text(latin1_passthrough) == "café"
+
+    def test_cp1251_via_fallback(self, hass):
+        coord = _make_coordinator(hass, options={"text_encoding": "Windows-1251"})
+        latin1_passthrough = "апартамент".encode("cp1251").decode("latin-1")
+        assert coord._decode_text(latin1_passthrough) == "апартамент"
+
+    def test_default_latin1_is_identity(self, hass):
+        coord = _make_coordinator(hass)  # default ISO-8859-1
+        # a latin-1 value that is not valid UTF-8 stays unchanged
+        value = "café"  # é = 0xE9, not valid standalone UTF-8
+        assert coord._decode_text(value) == "café"
+
+    def test_non_string_untouched(self, hass):
+        coord = _make_coordinator(hass)
+        assert coord._decode_text(123) == 123
+        assert coord._decode_text(None) is None
+
+    def test_decode_text_fields_pass(self, hass):
+        coord = _make_coordinator(hass, options={"text_encoding": "Windows-1251"})
+        coord.ds["dhcp"] = {"01": {"comment": "апартамент".encode("cp1251").decode("latin-1"), "host-name": "meter"}}
+        coord.ds["dns"] = {"d1": {"comment": "café".encode().decode("latin-1")}}
+        coord._decode_text_fields()
+        assert coord.ds["dhcp"]["01"]["comment"] == "апартамент"
+        assert coord.ds["dhcp"]["01"]["host-name"] == "meter"
+        assert coord.ds["dns"]["d1"]["comment"] == "café"
+
+    def test_decode_text_fields_missing_store_safe(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds.pop("dhcp", None)
+        coord._decode_text_fields()  # must not raise

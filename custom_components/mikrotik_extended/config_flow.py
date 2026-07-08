@@ -45,6 +45,7 @@ from .const import (
     CONF_SENSOR_SCRIPTS,
     CONF_SENSOR_SIMPLE_QUEUES,
     CONF_SENSOR_WIREGUARD,
+    CONF_TEXT_ENCODING,
     CONF_TRACK_HOSTS,
     CONF_TRACK_HOSTS_TIMEOUT,
     DEFAULT_DEVICE_NAME,
@@ -68,11 +69,13 @@ from .const import (
     DEFAULT_SENSOR_SIMPLE_QUEUES,
     DEFAULT_SENSOR_WIREGUARD,
     DEFAULT_SSL,
+    DEFAULT_TEXT_ENCODING,
     DEFAULT_TRACK_HOST_TIMEOUT,
     DEFAULT_TRACK_HOSTS,
     DEFAULT_USERNAME,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
+    TEXT_ENCODING_OPTIONS,
 )
 from .mikrotikapi import MikrotikAPI
 from .mndp import MndpDevice, async_scan_mndp
@@ -552,6 +555,15 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                         CONF_ZONE,
                         default=self._config_entry.options.get(CONF_ZONE, STATE_HOME),
                     ): str,
+                    vol.Optional(
+                        CONF_TEXT_ENCODING,
+                        default=self._config_entry.options.get(CONF_TEXT_ENCODING, DEFAULT_TEXT_ENCODING),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[SelectOptionDict(value=e, label=e) for e in TEXT_ENCODING_OPTIONS],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
                 }
             ),
         )
