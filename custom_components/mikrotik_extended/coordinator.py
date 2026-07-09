@@ -709,15 +709,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Update Mikrotik data"""
         _cycle_start = datetime.now()
         _LOGGER.debug("Mikrotik %s starting data update cycle", self.host)
+        # Fetch resource once per cycle, up front, so it is fresh every cycle
+        # and already populated before get_system_routerboard (which reads its
+        # board-name) runs inside the hardware-info block below.
+        await self.hass.async_add_executor_job(self.get_system_resource)
         delta = datetime.now().replace(microsecond=0) - self.last_hwinfo_update
         if self.api.has_reconnected() or delta.total_seconds() > 60 * 60 * 4:
             await self.hass.async_add_executor_job(self.get_access)
 
             if self.api.connected():
                 await self.hass.async_add_executor_job(self.get_firmware_update)
-
-            if self.api.connected():
-                await self.hass.async_add_executor_job(self.get_system_resource)
 
             if self.api.connected():
                 await self.hass.async_add_executor_job(self.get_capabilities)
@@ -783,8 +784,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                         )
                     else:
                         async_delete_issue(self.hass, DOMAIN, "insufficient_permissions")
-
-        await self.hass.async_add_executor_job(self.get_system_resource)
 
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_system_health)
