@@ -3517,3 +3517,18 @@ class TestDecodeText:
         coord = _make_coordinator(hass)
         coord.ds.pop("dhcp", None)
         coord._decode_text_fields()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# force_hwinfo_refresh
+# ---------------------------------------------------------------------------
+
+
+class TestForceHwinfoRefresh:
+    def test_resets_last_hwinfo_update(self, hass):
+        from datetime import datetime
+
+        coord = _make_coordinator(hass)
+        coord.last_hwinfo_update = datetime(2026, 7, 9, 12, 0, 0)
+        coord.force_hwinfo_refresh()
+        assert coord.last_hwinfo_update == datetime(1970, 1, 1)

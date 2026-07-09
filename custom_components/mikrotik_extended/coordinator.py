@@ -979,6 +979,18 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             registry.async_update_device(device.id, sw_version=version)
 
     # ---------------------------
+    #   force_hwinfo_refresh
+    # ---------------------------
+    def force_hwinfo_refresh(self) -> None:
+        """Make the next update cycle re-fetch firmware and hardware info.
+
+        Firmware and update-availability info is only refreshed every few
+        hours (the "check for updates" call is slow). Resetting the marker
+        lets the refresh_data action pull the current versions on demand.
+        """
+        self.last_hwinfo_update = datetime(1970, 1, 1)
+
+    # ---------------------------
     #   get_access
     # ---------------------------
     def get_access(self) -> None:

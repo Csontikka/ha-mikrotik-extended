@@ -562,6 +562,7 @@ async def test_refresh_data_requests_refresh_on_both_coordinators(hass):
 
     await hass.services.async_call(DOMAIN, "refresh_data", {}, blocking=True)
 
+    data_coord.force_hwinfo_refresh.assert_called_once()
     data_coord.async_request_refresh.assert_awaited_once()
     tracker_coord.async_request_refresh.assert_awaited_once()
 

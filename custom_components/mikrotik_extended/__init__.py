@@ -168,6 +168,7 @@ def _make_refresh_data(hass: HomeAssistant):
         """Force an immediate data refresh on all (or a specific) router."""
         host_filter = call.data.get("host")
         for _entry, entry_data, _router_host in _iter_runtime_entries(hass, host_filter):
+            entry_data.data_coordinator.force_hwinfo_refresh()
             await entry_data.data_coordinator.async_request_refresh()
             await entry_data.tracker_coordinator.async_request_refresh()
 
