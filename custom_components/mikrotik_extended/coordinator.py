@@ -925,6 +925,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         "filter": ("comment",),
         "routing_rules": ("comment",),
         "host": ("host-name",),
+        "client_traffic": ("host-name",),
     }
 
     def _decode_text(self, value):

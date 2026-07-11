@@ -3508,10 +3508,14 @@ class TestDecodeText:
         coord = _make_coordinator(hass, options={"text_encoding": "Windows-1251"})
         coord.ds["dhcp"] = {"01": {"comment": "апартамент".encode("cp1251").decode("latin-1"), "host-name": "meter"}}
         coord.ds["dns"] = {"d1": {"comment": "café".encode().decode("latin-1")}}
+        # client_traffic holds a separate copy of host-name used for the traffic
+        # sensor entities; it must be decoded too (#14).
+        coord.ds["client_traffic"] = {"01": {"host-name": "кухня".encode("cp1251").decode("latin-1")}}
         coord._decode_text_fields()
         assert coord.ds["dhcp"]["01"]["comment"] == "апартамент"
         assert coord.ds["dhcp"]["01"]["host-name"] == "meter"
         assert coord.ds["dns"]["d1"]["comment"] == "café"
+        assert coord.ds["client_traffic"]["01"]["host-name"] == "кухня"
 
     def test_decode_text_fields_missing_store_safe(self, hass):
         coord = _make_coordinator(hass)
