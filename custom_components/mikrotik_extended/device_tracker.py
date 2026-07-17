@@ -9,8 +9,7 @@ from datetime import timedelta
 from logging import getLogger
 from typing import Any
 
-from homeassistant.components.device_tracker.config_entry import ScannerEntity
-from homeassistant.components.device_tracker.const import SourceType
+from homeassistant.components.device_tracker import ScannerEntity, SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_NOT_HOME
 from homeassistant.core import HomeAssistant, callback
