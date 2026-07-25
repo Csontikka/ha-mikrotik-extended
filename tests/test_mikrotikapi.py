@@ -398,6 +398,17 @@ class TestSetValue:
         assert result is False
         assert self.api.connected() is False
 
+    def test_set_value_iteration_exception_disconnects(self):
+        """A malformed RouterOS response must invalidate the connection."""
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=ValueError("not enough values to unpack (expected 3, got 2)"))
+        self.api._connection.path.return_value = mock_path
+
+        result = self.api.set_value("/interface", "name", "eth0", "disabled", True)
+
+        assert result is False
+        assert self.api.connected() is False
+
 
 class TestExecute:
     def setup_method(self):

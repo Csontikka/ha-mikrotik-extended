@@ -272,31 +272,32 @@ class MikrotikAPI:
         if not self.connection_check():
             return False
 
-        response = self.query(path, return_list=False)
-        if response is None:
-            return False
-
-        for tmp in response:
-            if param not in tmp:
-                continue
-
-            if tmp[param] != value:
-                continue
-
-            entry_found = tmp[".id"]
-
-        if not entry_found:
-            _LOGGER.warning(
-                "Mikrotik %s set_value parameter %s with value %s not found",
-                self._host,
-                param,
-                value,
-            )
-            return False
-
-        params = {".id": entry_found, mod_param: mod_value}
         with self.lock:
             try:
+                _LOGGER.debug("API query: %s", path)
+                response = self._connection.path(path)
+                if not response:
+                    return False
+
+                for tmp in response:
+                    if param not in tmp:
+                        continue
+
+                    if tmp[param] != value:
+                        continue
+
+                    entry_found = tmp[".id"]
+
+                if not entry_found:
+                    _LOGGER.warning(
+                        "Mikrotik %s set_value parameter %s with value %s not found",
+                        self._host,
+                        param,
+                        value,
+                    )
+                    return False
+
+                params = {".id": entry_found, mod_param: mod_value}
                 response.update(**params)
             except Exception as e:
                 self.disconnect("set_value", e)
