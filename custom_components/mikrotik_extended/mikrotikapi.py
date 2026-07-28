@@ -316,37 +316,38 @@ class MikrotikAPI:
         if not self.connection_check():
             return False
 
-        response = self.query(path, return_list=False)
-        if response is None:
-            return False
-
-        if param:
-            for tmp in response:
-                if param not in tmp:
-                    continue
-
-                if tmp[param] != value:
-                    continue
-
-                entry_found = tmp[".id"]
-
-            if not entry_found:
-                _LOGGER.warning(
-                    "Mikrotik %s Execute %s parameter %s with value %s not found",
-                    self._host,
-                    command,
-                    param,
-                    value,
-                )
-                return False
-
-            params = {".id": entry_found}
-
-        if attributes:
-            params.update(attributes)
-
         with self.lock:
             try:
+                _LOGGER.debug("API query: %s", path)
+                response = self._connection.path(path)
+                if not response:
+                    return False
+
+                if param:
+                    for tmp in response:
+                        if param not in tmp:
+                            continue
+
+                        if tmp[param] != value:
+                            continue
+
+                        entry_found = tmp[".id"]
+
+                    if not entry_found:
+                        _LOGGER.warning(
+                            "Mikrotik %s Execute %s parameter %s with value %s not found",
+                            self._host,
+                            command,
+                            param,
+                            value,
+                        )
+                        return False
+
+                    params = {".id": entry_found}
+
+                if attributes:
+                    params.update(attributes)
+
                 tuple(response(command, **params))
             except Exception as e:
                 self.disconnect("execute", e)
@@ -390,27 +391,27 @@ class MikrotikAPI:
         if not self.connection_check():
             return False
 
-        response = self.query("/system/script", return_list=False)
-        if response is None:
-            return False
-
         with self.lock:
-            for tmp in response:
-                if "name" not in tmp:
-                    continue
-
-                if tmp["name"] != name:
-                    continue
-
-                entry_found = tmp[".id"]
-
-            if not entry_found:
-                _LOGGER.error("Mikrotik %s Script %s not found", self._host, name)
-                return False
-
             try:
-                run = response("run", **{".id": entry_found})
-                tuple(run)
+                _LOGGER.debug("API query: %s", "/system/script")
+                response = self._connection.path("/system/script")
+                if not response:
+                    return False
+
+                for tmp in response:
+                    if "name" not in tmp:
+                        continue
+
+                    if tmp["name"] != name:
+                        continue
+
+                    entry_found = tmp[".id"]
+
+                if not entry_found:
+                    _LOGGER.error("Mikrotik %s Script %s not found", self._host, name)
+                    return False
+
+                tuple(response("run", **{".id": entry_found}))
             except Exception as e:
                 self.disconnect("run_script", e)
                 return False

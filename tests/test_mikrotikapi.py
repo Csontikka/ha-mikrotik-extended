@@ -487,6 +487,17 @@ class TestExecute:
         assert result is False
         assert self.api.connected() is False
 
+    def test_execute_iteration_exception_disconnects(self):
+        """A malformed RouterOS response must invalidate the connection."""
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=ValueError("not enough values to unpack (expected 3, got 2)"))
+        self.api._connection.path.return_value = mock_path
+
+        result = self.api.execute("/system/script", "run", "name", "script1")
+
+        assert result is False
+        assert self.api.connected() is False
+
 
 class TestWol:
     def setup_method(self):
@@ -579,6 +590,15 @@ class TestRunScript:
         mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "myscript"}]))
         mock_path.side_effect = Exception("run failed")
         self.api._connection.path.return_value = mock_path
+        assert self.api.run_script("myscript") is False
+        assert self.api.connected() is False
+
+    def test_run_script_iteration_exception_disconnects(self):
+        """A malformed RouterOS response must invalidate the connection."""
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=ValueError("not enough values to unpack (expected 3, got 2)"))
+        self.api._connection.path.return_value = mock_path
+
         assert self.api.run_script("myscript") is False
         assert self.api.connected() is False
 
