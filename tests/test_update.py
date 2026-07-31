@@ -155,6 +155,7 @@ async def test_router_os_update_properties_and_install(hass):
     firmware = {"available": True, "installed-version": "7.10", "latest-version": "7.12"}
     coord = _make_coordinator(hass, {"firmware": firmware})
     entity = MikrotikRouterOSUpdate(coord, desc)
+    entity.hass = hass
 
     assert entity.is_on is True
     assert entity.installed_version == "7.10"
@@ -253,6 +254,7 @@ async def test_router_board_fw_update_properties_and_install(hass):
     rb = {"current-firmware": "7.10", "upgrade-firmware": "7.12"}
     coord = _make_coordinator(hass, {"routerboard": rb})
     entity = MikrotikRouterBoardFWUpdate(coord, desc)
+    entity.hass = hass
 
     assert entity.is_on is True
     assert entity.installed_version == "7.10"
