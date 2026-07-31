@@ -139,12 +139,14 @@ async def test_mikrotik_switch_async_turn_on_off_access_gated(hass):
 
     coord = _make_coordinator(hass, {"resource": {"enabled": True, "name": "ether1"}, "access": set()})
     sw = MikrotikSwitch(coord, desc)
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
 
     coord2 = _make_coordinator(hass, {"resource": {"enabled": True, "name": "ether1"}, "access": {"write"}})
     sw2 = MikrotikSwitch(coord2, desc)
+    sw2.hass = hass
     await sw2.async_turn_on()
     await sw2.async_turn_off()
     assert coord2.set_value.call_count == 2
@@ -219,6 +221,7 @@ async def test_port_switch_async_turn_on_and_off(hass):
     coord = _make_coordinator(hass, {"interface": iface, "access": {"write"}})
     coord.config_entry.runtime_data = MagicMock(tracker_coordinator=tracker)
     sw = MikrotikPortSwitch(coord, desc, uid="ether1")
+    sw.hass = hass
 
     # access missing → noop
     coord.data["access"] = set()
@@ -271,6 +274,7 @@ async def test_nat_switch_async_turn_on_off(hass):
     }
     coord = _make_coordinator(hass, {"nat": nat_data, "access": set()})
     sw = MikrotikNATSwitch(coord, desc, uid="r1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
@@ -305,6 +309,7 @@ async def test_mangle_switch_async_turn_on_off(hass):
     }
     coord = _make_coordinator(hass, {"mangle": mangle_data, "access": set()})
     sw = MikrotikMangleSwitch(coord, desc, uid="m1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
@@ -336,6 +341,7 @@ async def test_routing_rules_switch_async_turn_on_off(hass):
     }
     coord = _make_coordinator(hass, {"routing_rules": rr_data, "access": set()})
     sw = MikrotikRoutingRulesSwitch(coord, desc, uid="rr1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
@@ -375,6 +381,7 @@ async def test_filter_switch_async_turn_on_off(hass):
     }
     coord = _make_coordinator(hass, {"filter": fd, "access": set()})
     sw = MikrotikFilterSwitch(coord, desc, uid="f1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
@@ -393,6 +400,7 @@ async def test_queue_switch_async_turn_on_off(hass):
     queue_data = {"q1": {".id": "*q", "name": "myqueue", "enabled": True}}
     coord = _make_coordinator(hass, {"queue": queue_data, "access": set()})
     sw = MikrotikQueueSwitch(coord, desc, uid="q1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
@@ -411,6 +419,7 @@ async def test_kidcontrol_pause_switch_async_turn_on_off(hass):
     kc = {"kid1": {"name": "kid1", "enabled": True}}
     coord = _make_coordinator(hass, {"kidcontrol": kc, "access": set()})
     sw = MikrotikKidcontrolPauseSwitch(coord, desc, uid="kid1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.execute.assert_not_called()
@@ -428,6 +437,7 @@ async def test_wireguard_peer_switch_async_turn_on_off(hass):
     wg = {"p1": {".id": "*p1", "enabled": True}}
     coord = _make_coordinator(hass, {"wireguard_peer": wg, "access": set()})
     sw = MikrotikWireguardPeerSwitch(coord, desc, uid="p1")
+    sw.hass = hass
     await sw.async_turn_on()
     await sw.async_turn_off()
     coord.set_value.assert_not_called()
@@ -446,6 +456,7 @@ async def test_container_switch_is_on_icon_and_turn_on_off(hass):
     cont = {"c1": {".id": "*c1", "status": "running"}}
     coord = _make_coordinator(hass, {"container": cont, "access": set()})
     sw = MikrotikContainerSwitch(coord, desc, uid="c1")
+    sw.hass = hass
 
     assert sw.is_on is True
     assert sw.icon == "mdi:on"
