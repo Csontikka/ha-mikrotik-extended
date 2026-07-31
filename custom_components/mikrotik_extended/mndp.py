@@ -277,9 +277,9 @@ async def _listen_mndp_broadcast(
     timeout: float,
 ) -> None:
     """Listen for periodic MNDP broadcast announcements from routers."""
-    broadcast_addrs = _resolve_broadcast_addrs()
+    broadcast_addrs = await loop.run_in_executor(None, _resolve_broadcast_addrs)
     try:
-        sock = _open_broadcast_socket(broadcast_addrs)
+        sock = await loop.run_in_executor(None, _open_broadcast_socket, broadcast_addrs)
     except OSError as err:
         _LOGGER.debug("MNDP broadcast failed: %s", err)
         return
@@ -291,19 +291,19 @@ async def _listen_mndp_broadcast(
         sock.close()
 
 
-async def _populate_arp_table() -> None:
-    """Send pings across the local subnet to populate the ARP table."""
+def _send_arp_probes() -> bool:
+    """Send UDP probes across the local subnet; return True if probes were sent."""
     try:
         _tmp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         _tmp.connect(("8.8.8.8", 80))  # NOSONAR — no data sent, used to determine local IP
         local_ip = _tmp.getsockname()[0]
         _tmp.close()
     except OSError:
-        return
+        return False
 
     parts = local_ip.split(".")
     if len(parts) != 4 or local_ip == "127.0.0.1":
-        return
+        return False
 
     # Build subnet scan — send UDP to common IPs to trigger ARP resolution
     base = f"{parts[0]}.{parts[1]}.{parts[2]}"
@@ -316,6 +316,14 @@ async def _populate_arp_table() -> None:
         with contextlib.suppress(OSError):
             sock.sendto(b"\x00", (target, 9))
     sock.close()
+    return True
+
+
+async def _populate_arp_table() -> None:
+    """Send pings across the local subnet to populate the ARP table."""
+    loop = asyncio.get_event_loop()
+    if not await loop.run_in_executor(None, _send_arp_probes):
+        return
 
     # Give ARP time to resolve
     await asyncio.sleep(1.0)
@@ -375,12 +383,12 @@ async def async_scan_mndp(timeout: float = 5.0) -> list[MndpDevice]:
     broadcast_task = asyncio.ensure_future(_listen_mndp_broadcast(loop, found, timeout))
 
     # --- ARP table scan + unicast probes (runs in parallel with broadcast) ---
-    arp_devices = _read_arp_table()
+    arp_devices = await loop.run_in_executor(None, _read_arp_table)
     _LOGGER.debug("MNDP: ARP table found %d MikroTik device(s)", len(arp_devices))
 
     arp_ips = {ip for ip, _ in arp_devices}
 
-    gateway_ip = _get_default_gateway()
+    gateway_ip = await loop.run_in_executor(None, _get_default_gateway)
     if gateway_ip and gateway_ip not in arp_ips:
         _LOGGER.debug("MNDP: probing default gateway %s", gateway_ip)
 
