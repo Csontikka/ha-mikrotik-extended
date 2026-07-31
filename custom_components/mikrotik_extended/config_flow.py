@@ -195,7 +195,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 use_ssl=reauth_entry.data.get(CONF_SSL, False),
                 ssl_verify=reauth_entry.data.get(CONF_VERIFY_SSL, False),
             )
-            if not api.connect():
+            if not await self.hass.async_add_executor_job(api.connect):
                 errors[CONF_PASSWORD] = api.error
             else:
                 self.hass.config_entries.async_update_entry(
@@ -330,7 +330,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 use_ssl=user_input[CONF_SSL],
                 ssl_verify=user_input[CONF_VERIFY_SSL],
             )
-            if not api.connect():
+            if not await self.hass.async_add_executor_job(api.connect):
                 errors[CONF_HOST] = api.error
 
             # Save instance
@@ -457,7 +457,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 use_ssl=user_input[CONF_SSL],
                 ssl_verify=user_input[CONF_VERIFY_SSL],
             )
-            if not api.connect():
+            if not await self.hass.async_add_executor_job(api.connect):
                 errors[CONF_HOST] = api.error
 
             if not errors:
