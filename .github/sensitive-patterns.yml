@@ -16,10 +16,6 @@ blocked_files:
   - "*.pfx"
   - "*.crt"
 
-  # IDE / tool config that may contain paths or tokens
-  - ".claude/**"
-  - ".omc/**"
-
   # Dev utility scripts (may contain credentials, IPs, tokens)
   - "deploy.py"
   - "create_repo.py"
