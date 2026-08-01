@@ -4,6 +4,7 @@ from datetime import datetime
 
 from custom_components.mikrotik_extended.apiparser import (
     can_skip,
+    duration_to_ms,
     fill_defaults,
     fill_ensure_vals,
     fill_vals,
@@ -728,6 +729,70 @@ class TestFillVals:
         ]
         result = fill_vals(data, entry, "*1", vals)
         assert result["*1"]["ts"] == 0
+
+    def test_fill_vals_ms_duration_with_uid(self):
+        """ms_from_duration convert turns RouterOS durations into ms floats."""
+        data = {"*1": {}}
+        entry = {"rtt-avg": "11ms687us"}
+        vals = [{"name": "rtt-avg", "convert": "ms_from_duration"}]
+        result = fill_vals(data, entry, "*1", vals)
+        assert result["*1"]["rtt-avg"] == 11.687
+
+    def test_fill_vals_ms_duration_missing_field_stays_default(self):
+        """Missing source field stays an empty string after conversion."""
+        data = {"*1": {}}
+        vals = [{"name": "rtt-avg", "convert": "ms_from_duration"}]
+        result = fill_vals(data, {}, "*1", vals)
+        assert result["*1"]["rtt-avg"] == ""
+
+    def test_fill_vals_int_convert_strips_percent(self):
+        """int convert handles plain numbers and % suffixed values."""
+        data = {}
+        entry = {"loss-percent": "17%", "sent-count": "123"}
+        vals = [
+            {"name": "loss-percent", "convert": "int"},
+            {"name": "sent-count", "convert": "int"},
+        ]
+        result = fill_vals(data, entry, None, vals)
+        assert result["loss-percent"] == 17
+        assert result["sent-count"] == 123
+
+    def test_fill_vals_int_convert_non_numeric_kept(self):
+        """Unparseable values are left untouched."""
+        data = {}
+        entry = {"loss-percent": "n/a"}
+        vals = [{"name": "loss-percent", "convert": "int"}]
+        result = fill_vals(data, entry, None, vals)
+        assert result["loss-percent"] == "n/a"
+
+
+# ---- duration_to_ms ----
+
+
+class TestDurationToMs:
+    def test_ms_and_us(self):
+        assert duration_to_ms("11ms687us") == 11.687
+
+    def test_us_only(self):
+        assert duration_to_ms("276us") == 0.276
+
+    def test_seconds_and_ms(self):
+        assert duration_to_ms("1s2ms") == 1002.0
+
+    def test_minutes_and_seconds(self):
+        assert duration_to_ms("1m30s") == 90000.0
+
+    def test_empty_string_unchanged(self):
+        assert duration_to_ms("") == ""
+
+    def test_garbage_unchanged(self):
+        assert duration_to_ms("never") == "never"
+
+    def test_partial_parse_unchanged(self):
+        assert duration_to_ms("12ms!") == "12ms!"
+
+    def test_non_string_unchanged(self):
+        assert duration_to_ms(5) == 5
 
 
 # ---- fill_ensure_vals ----

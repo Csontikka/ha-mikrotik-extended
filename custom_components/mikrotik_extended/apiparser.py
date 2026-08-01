@@ -1,5 +1,7 @@
 """API parser for JSON APIs."""
 
+import contextlib
+import re
 from datetime import UTC, datetime
 from logging import DEBUG, getLogger
 
@@ -43,6 +45,41 @@ def _coerce_typed(ret):
 def utc_from_timestamp(timestamp: float) -> datetime:
     """Return a UTC time from a timestamp."""
     return datetime.fromtimestamp(timestamp, tz=UTC)
+
+
+# ---------------------------
+#   duration_to_ms
+# ---------------------------
+_DURATION_UNITS_MS = {
+    "d": 86400000.0,
+    "h": 3600000.0,
+    "m": 60000.0,
+    "s": 1000.0,
+    "ms": 1.0,
+    "us": 0.001,
+}
+
+_DURATION_RE = re.compile(r"(\d+)(us|ms|[dhms])")
+
+
+def duration_to_ms(raw):
+    """Convert a RouterOS duration string like ``11ms687us`` to milliseconds.
+
+    Returns the input unchanged when it is not a fully parseable duration,
+    so unexpected router output stays visible instead of disappearing.
+    """
+    if not isinstance(raw, str) or not raw:
+        return raw
+    pos = 0
+    total = 0.0
+    for match in _DURATION_RE.finditer(raw):
+        if match.start() != pos:
+            return raw
+        total += int(match.group(1)) * _DURATION_UNITS_MS[match.group(2)]
+        pos = match.end()
+    if pos != len(raw):
+        return raw
+    return round(total, 3)
 
 
 # ---------------------------
@@ -309,6 +346,22 @@ def _convert_utc_timestamp(data, uid, name) -> None:
     target[name] = utc_from_timestamp(raw)
 
 
+def _convert_ms_duration(data, uid, name) -> None:
+    """Convert a RouterOS duration string in data[uid][name] / data[name] to ms in place."""
+    target = data[uid] if uid else data
+    if name in target:
+        target[name] = duration_to_ms(target[name])
+
+
+def _convert_int(data, uid, name) -> None:
+    """Convert a numeric string (optionally with a % suffix) in place to int."""
+    target = data[uid] if uid else data
+    raw = target.get(name)
+    if isinstance(raw, str) and raw:
+        with contextlib.suppress(ValueError):
+            target[name] = int(raw.rstrip("%"))
+
+
 def fill_vals(data, entry, uid, vals) -> dict:
     """Fill all data."""
     for val in vals:
@@ -326,6 +379,10 @@ def fill_vals(data, entry, uid, vals) -> dict:
 
         if _convert == "utc_from_timestamp":
             _convert_utc_timestamp(data, uid, _name)
+        elif _convert == "ms_from_duration":
+            _convert_ms_duration(data, uid, _name)
+        elif _convert == "int":
+            _convert_int(data, uid, _name)
 
     return data
 
