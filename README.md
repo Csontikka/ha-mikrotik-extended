@@ -3,7 +3,7 @@
 ![MikroTik Extended](https://raw.githubusercontent.com/Csontikka/ha-mikrotik-extended/master/images/banner.svg)
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/Csontikka/ha-mikrotik-extended?style=plastic)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=plastic)](https://github.com/hacs/integration)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=plastic)](https://github.com/hacs/integration)
 [![Apache 2.0 License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=plastic)](https://github.com/Csontikka/ha-mikrotik-extended/blob/master/LICENSE)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-extended&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-extended)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Csontikka_ha-mikrotik-extended&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=Csontikka_ha-mikrotik-extended)
@@ -342,12 +342,13 @@ automation:
 
 ## Installation
 
-This integration is distributed via [HACS](https://hacs.xyz/) as a custom repository.
+This integration is available in the [HACS](https://hacs.xyz/) default store.
 
-1. Open HACS -> three-dot menu -> **Custom repositories**
-2. URL: `https://github.com/Csontikka/ha-mikrotik-extended`
-3. Category: **Integration**
-4. Search and install **MikroTik Extended**
+1. Open **HACS** in Home Assistant
+2. Search for **MikroTik Extended** and install it
+3. Restart Home Assistant
+
+> If you previously added this repository as a HACS custom repository, no action is needed: updates continue to work, and the custom repository entry can stay as it is.
 
 ### Requirements
 
