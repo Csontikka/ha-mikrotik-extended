@@ -121,7 +121,7 @@ Without the required backend, sensors show "unavailable" instead of 0.
 - **Simple Queues** — enable/disable queue rules (note: FastTracked packets bypass queues)
 - **Captive Portal** — track hotspot/guest portal authorized clients
 - **Scripts** — execute RouterOS scripts via button entities
-- **Netwatch** — monitor host reachability (binary sensor per watched host)
+- **Netwatch** — monitor host reachability (binary sensor per watched host, with probe statistics such as RTT and packet loss as attributes)
 - **Environment Variables** — read RouterOS script environment variable values
 - **DHCP Leases** — sensor showing total DHCP lease count, with bound count and per-lease details (MAC, IP, hostname, status, server, interface) as attributes
 - **IP Cloud** — public IP address sensor via MikroTik cloud service
@@ -129,6 +129,34 @@ Without the required backend, sensors show "unavailable" instead of 0.
 - **CAPsMAN** (v6) / **WiFi** (v7) — wireless client detection (auto-detected)
 
 ![Packages Details](docs/assets/images/screenshots/packages_attributes.png)
+
+### Netwatch probe statistics
+
+For `icmp` type netwatch entries the binary sensor exposes the probe measurements as attributes: `rtt_avg`, `rtt_min`, `rtt_max`, `rtt_jitter`, `rtt_stdev` (all in milliseconds), `loss_percent`, `sent_count`, `response_count` and `since`. Other probe types report only the fields the router provides for them. The values can be used directly in automations:
+
+```yaml
+automation:
+  - alias: "Warn on high WAN latency"
+    trigger:
+      - platform: numeric_state
+        entity_id: binary_sensor.mikrotik_myrouter_netwatch_wan_probe
+        attribute: rtt_avg
+        above: 100
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "WAN latency is above 100 ms"
+```
+
+The statistic attributes are intentionally excluded from the recorder, so they do not grow the Home Assistant database. If you want to chart one of them, create a template sensor for it:
+
+```yaml
+template:
+  - sensor:
+      - name: "WAN probe RTT"
+        unit_of_measurement: "ms"
+        state: "{{ state_attr('binary_sensor.mikrotik_myrouter_netwatch_wan_probe', 'rtt_avg') }}"
+```
 
 ### Firmware Updates
 
