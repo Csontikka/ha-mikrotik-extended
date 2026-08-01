@@ -63,6 +63,7 @@ async def async_setup_entry(
     """Set up entry for component"""
     dispatcher = {
         "MikrotikBinarySensor": MikrotikBinarySensor,
+        "MikrotikNetwatchBinarySensor": MikrotikNetwatchBinarySensor,
         "MikrotikPPPSecretBinarySensor": MikrotikPPPSecretBinarySensor,
         "MikrotikPortBinarySensor": MikrotikPortBinarySensor,
         "MikrotikWireguardPeerBinarySensor": MikrotikWireguardPeerBinarySensor,
@@ -89,6 +90,29 @@ class MikrotikBinarySensor(MikrotikEntity, BinarySensorEntity):
                 return self.entity_description.icon_enabled
             else:
                 return self.entity_description.icon_disabled
+
+
+# ---------------------------
+#   MikrotikNetwatchBinarySensor
+# ---------------------------
+class MikrotikNetwatchBinarySensor(MikrotikBinarySensor):
+    """Representation of a netwatch probe."""
+
+    # Probe statistics change on every poll while the up/down state does not;
+    # keeping them out of the recorder avoids a database write per cycle.
+    _unrecorded_attributes = frozenset(
+        {
+            "since",
+            "loss_percent",
+            "sent_count",
+            "response_count",
+            "rtt_avg",
+            "rtt_min",
+            "rtt_max",
+            "rtt_jitter",
+            "rtt_stdev",
+        }
+    )
 
 
 # ---------------------------

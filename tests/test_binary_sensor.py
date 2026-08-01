@@ -15,16 +15,19 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mikrotik_extended.binary_sensor import (
     MikrotikBinarySensor,
+    MikrotikNetwatchBinarySensor,
     MikrotikPortBinarySensor,
     MikrotikPPPSecretBinarySensor,
     MikrotikWireguardPeerBinarySensor,
     async_setup_entry,
 )
+from custom_components.mikrotik_extended.binary_sensor_types import DEVICE_ATTRIBUTES_NETWATCH
 from custom_components.mikrotik_extended.const import (
     CONF_SENSOR_PORT_TRACKER,
     CONF_SENSOR_PPP,
     DOMAIN,
 )
+from custom_components.mikrotik_extended.helper import format_attribute
 
 ENTRY_DATA = {
     CONF_HOST: "192.168.88.1",
@@ -85,13 +88,14 @@ def _make_coordinator(hass, data, options=None):
 
 
 async def test_async_setup_entry_dispatcher(hass):
-    """async_setup_entry forwards dispatcher with all 4 binary sensor classes."""
+    """async_setup_entry forwards dispatcher with all 5 binary sensor classes."""
     entry = MagicMock()
     with patch("custom_components.mikrotik_extended.binary_sensor.async_add_entities", new=AsyncMock()) as mock_add:
         await async_setup_entry(hass, entry, MagicMock())
     _, _, dispatcher = mock_add.await_args.args
     assert set(dispatcher.keys()) == {
         "MikrotikBinarySensor",
+        "MikrotikNetwatchBinarySensor",
         "MikrotikPPPSecretBinarySensor",
         "MikrotikPortBinarySensor",
         "MikrotikWireguardPeerBinarySensor",
@@ -113,6 +117,56 @@ async def test_binary_sensor_is_on_and_icon(hass):
     coord2 = _make_coordinator(hass, {"resource": {"enabled": True}})
     bs2 = MikrotikBinarySensor(coord2, desc2)
     assert bs2.icon is None
+
+
+async def test_netwatch_sensor_attributes_and_unrecorded(hass):
+    """Netwatch sensor exposes probe statistics; the statistics stay out of the recorder."""
+    desc = _make_description(
+        func="MikrotikNetwatchBinarySensor",
+        data_path="netwatch",
+        data_attribute="status",
+        data_reference="host",
+        data_name="host",
+    )
+    desc.data_attributes_list = DEVICE_ATTRIBUTES_NETWATCH
+    nw = {
+        "host": "1.1.1.1",
+        "type": "icmp",
+        "interval": "10s",
+        "port": "",
+        "http-codes": "",
+        "status": True,
+        "comment": "dns probe",
+        "since": "2026-08-01 10:00:00",
+        "loss-percent": 0,
+        "sent-count": 120,
+        "response-count": 120,
+        "rtt-avg": 11.687,
+        "rtt-min": 9.2,
+        "rtt-max": 20.0,
+        "rtt-jitter": 1.5,
+        "rtt-stdev": 0.8,
+    }
+    coord = _make_coordinator(hass, {"netwatch": nw})
+    bs = MikrotikNetwatchBinarySensor(coord, desc)
+
+    assert bs.is_on is True
+    attrs = bs.extra_state_attributes
+    assert attrs["rtt_avg"] == 11.687
+    assert attrs["rtt_stdev"] == 0.8
+    assert attrs["loss_percent"] == 0
+    assert attrs["sent_count"] == 120
+    assert attrs["since"] == "2026-08-01 10:00:00"
+    assert attrs["host"] == "1.1.1.1"
+
+    # Every statistic attribute must be excluded from the recorder,
+    # while the static fields stay recorded.
+    stat_keys = {
+        format_attribute(a)
+        for a in DEVICE_ATTRIBUTES_NETWATCH
+        if a not in ("host", "type", "interval", "port", "http-codes", "status", "comment")
+    }
+    assert stat_keys == MikrotikNetwatchBinarySensor._unrecorded_attributes
 
 
 async def test_ppp_secret_is_on_respects_option(hass):
