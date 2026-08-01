@@ -2286,12 +2286,37 @@ class TestKidControl:
         coord.api.execute.return_value = False
         coord.sync_kid_control_monitoring_profile()
 
-    def test_sync_removes_profile_when_traffic_disabled(self, hass):
+    def test_sync_keeps_foreign_profile_when_traffic_disabled(self, hass):
+        """Regression: with the option off from the start, an existing profile
+        (possibly owned by another instance on the same router) must survive."""
         coord = _make_coordinator(hass, options={"sensor_client_traffic": False})
         coord.api.query.return_value = [{"name": coord._HA_MONITORING_PROFILE}]
         coord.api.execute.return_value = True
         coord.sync_kid_control_monitoring_profile()
-        coord.api.execute.assert_called_with("/ip/kid-control", "remove", "name", coord._HA_MONITORING_PROFILE)
+        coord.sync_kid_control_monitoring_profile()
+        coord.api.execute.assert_not_called()
+
+    def test_sync_never_removes_even_when_option_off(self, hass):
+        """The periodic sync must not remove the profile under any option state."""
+        coord = _make_coordinator(hass, options={"sensor_client_traffic": True})
+        coord.api.query.return_value = [{"name": coord._HA_MONITORING_PROFILE}]
+        coord.sync_kid_control_monitoring_profile()
+        hass.config_entries.async_update_entry(coord.config_entry, options={"sensor_client_traffic": False})
+        coord.sync_kid_control_monitoring_profile()
+        coord.api.execute.assert_not_called()
+
+    def test_remove_profile_helper_removes_existing(self, hass):
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [{"name": coord._HA_MONITORING_PROFILE}]
+        coord.api.execute.return_value = True
+        coord.remove_kid_control_monitoring_profile()
+        coord.api.execute.assert_called_once_with("/ip/kid-control", "remove", "name", coord._HA_MONITORING_PROFILE)
+
+    def test_remove_profile_helper_noop_when_absent(self, hass):
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
+        coord.remove_kid_control_monitoring_profile()
+        coord.api.execute.assert_not_called()
 
     def test_sync_noop_when_aligned(self, hass):
         coord = _make_coordinator(hass, options={"sensor_client_traffic": False})

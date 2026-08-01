@@ -473,3 +473,59 @@ async def test_options_flow_sensor_mode_preset_creates_entry(hass):
     # Recommended preset enables NAT + port tracker
     assert result["data"][CONF_SENSOR_PORT_TRACKER] is True
     assert result["data"][CONF_SENSOR_NAT] is True
+
+
+def _make_traffic_entry(hass, traffic_enabled):
+    """Config entry with a mocked runtime coordinator for profile cleanup tests."""
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_CLIENT_TRAFFIC
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=ENTRY_DATA,
+        options={CONF_SENSOR_CLIENT_TRAFFIC: traffic_enabled},
+        unique_id="192.168.88.1",
+    )
+    entry.add_to_hass(hass)
+    coordinator = MagicMock()
+    entry.runtime_data = MagicMock(data_coordinator=coordinator)
+    return entry, coordinator
+
+
+async def _options_flow_to_sensor_mode(hass, entry):
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    while result["type"] == FlowResultType.FORM and result["step_id"] != "sensor_mode":
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    return result
+
+
+async def test_options_flow_turning_traffic_off_removes_profile(hass):
+    """Turning the client traffic option off triggers a one-time profile removal."""
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_CLIENT_TRAFFIC
+
+    entry, coordinator = _make_traffic_entry(hass, traffic_enabled=True)
+    result = await _options_flow_to_sensor_mode(hass, entry)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"sensor_preset": "custom"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SENSOR_CLIENT_TRAFFIC: False})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    coordinator.remove_kid_control_monitoring_profile.assert_called_once()
+
+
+async def test_options_flow_preset_turning_traffic_off_removes_profile(hass):
+    """A preset that disables client traffic also triggers the removal."""
+    entry, coordinator = _make_traffic_entry(hass, traffic_enabled=True)
+    result = await _options_flow_to_sensor_mode(hass, entry)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"sensor_preset": "recommended"})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    coordinator.remove_kid_control_monitoring_profile.assert_called_once()
+
+
+async def test_options_flow_traffic_stays_off_no_removal(hass):
+    """No removal when the option was already off before the flow."""
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_CLIENT_TRAFFIC
+
+    entry, coordinator = _make_traffic_entry(hass, traffic_enabled=False)
+    result = await _options_flow_to_sensor_mode(hass, entry)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"sensor_preset": "custom"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SENSOR_CLIENT_TRAFFIC: False})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    coordinator.remove_kid_control_monitoring_profile.assert_not_called()

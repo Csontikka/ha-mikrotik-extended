@@ -2893,50 +2893,71 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     _HA_MONITORING_PROFILE = "ha-monitoring"
 
     def sync_kid_control_monitoring_profile(self) -> None:
-        """Create or remove the ha-monitoring kid-control profile based on integration option."""
-        existing = self.api.query(PATH_IP_KID_CONTROL) or []
-        has_profile = any(p.get("name") == self._HA_MONITORING_PROFILE for p in existing)
+        """Ensure the ha-monitoring kid-control profile exists when client traffic is enabled.
 
-        if self.option_sensor_client_traffic:
-            if not has_profile:
-                success = self.api.execute(
-                    PATH_IP_KID_CONTROL,
-                    "add",
-                    None,
-                    None,
-                    attributes={
-                        "name": self._HA_MONITORING_PROFILE,
-                        "mon": "0s-1d",
-                        "tue": "0s-1d",
-                        "wed": "0s-1d",
-                        "thu": "0s-1d",
-                        "fri": "0s-1d",
-                        "sat": "0s-1d",
-                        "sun": "0s-1d",
-                    },
-                )
-                if success:
-                    _LOGGER.info(
-                        "Mikrotik %s: Created kid-control profile '%s' for device traffic monitoring",
-                        self.host,
-                        self._HA_MONITORING_PROFILE,
-                    )
-                else:
-                    _LOGGER.warning(
-                        "Mikrotik %s: Could not create kid-control profile '%s'. Create it manually: /ip/kid-control/add name=%s mon=0s-1d tue=0s-1d wed=0s-1d thu=0s-1d fri=0s-1d sat=0s-1d sun=0s-1d",
-                        self.host,
-                        self._HA_MONITORING_PROFILE,
-                        self._HA_MONITORING_PROFILE,
-                    )
+        The periodic sync never removes the profile. Another Home Assistant
+        instance or entry pointing at the same router may rely on it, and an
+        instance with the option disabled would otherwise fight the owner in
+        an endless add and remove loop. Removal happens exactly once, from
+        the options flow, when the option is turned off on this entry.
+        """
+        if not self.option_sensor_client_traffic:
+            return
+
+        existing = self.api.query(PATH_IP_KID_CONTROL) or []
+        if any(p.get("name") == self._HA_MONITORING_PROFILE for p in existing):
+            return
+
+        success = self.api.execute(
+            PATH_IP_KID_CONTROL,
+            "add",
+            None,
+            None,
+            attributes={
+                "name": self._HA_MONITORING_PROFILE,
+                "mon": "0s-1d",
+                "tue": "0s-1d",
+                "wed": "0s-1d",
+                "thu": "0s-1d",
+                "fri": "0s-1d",
+                "sat": "0s-1d",
+                "sun": "0s-1d",
+            },
+        )
+        if success:
+            _LOGGER.info(
+                "Mikrotik %s: Created kid-control profile '%s' for device traffic monitoring",
+                self.host,
+                self._HA_MONITORING_PROFILE,
+            )
         else:
-            if has_profile:
-                success = self.api.execute(PATH_IP_KID_CONTROL, "remove", "name", self._HA_MONITORING_PROFILE)
-                if success:
-                    _LOGGER.info(
-                        "Mikrotik %s: Removed kid-control profile '%s'",
-                        self.host,
-                        self._HA_MONITORING_PROFILE,
-                    )
+            _LOGGER.warning(
+                "Mikrotik %s: Could not create kid-control profile '%s'. Create it manually: /ip/kid-control/add name=%s mon=0s-1d tue=0s-1d wed=0s-1d thu=0s-1d fri=0s-1d sat=0s-1d sun=0s-1d",
+                self.host,
+                self._HA_MONITORING_PROFILE,
+                self._HA_MONITORING_PROFILE,
+            )
+
+    # ---------------------------
+    #   remove_kid_control_monitoring_profile
+    # ---------------------------
+    def remove_kid_control_monitoring_profile(self) -> None:
+        """Remove the ha-monitoring kid-control profile from the router.
+
+        Called from the options flow when the client traffic option is
+        turned off on this entry.
+        """
+        existing = self.api.query(PATH_IP_KID_CONTROL) or []
+        if not any(p.get("name") == self._HA_MONITORING_PROFILE for p in existing):
+            return
+
+        success = self.api.execute(PATH_IP_KID_CONTROL, "remove", "name", self._HA_MONITORING_PROFILE)
+        if success:
+            _LOGGER.info(
+                "Mikrotik %s: Removed kid-control profile '%s'",
+                self.host,
+                self._HA_MONITORING_PROFILE,
+            )
 
     # ---------------------------
     #   process_kid_control

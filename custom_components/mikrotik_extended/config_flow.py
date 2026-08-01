@@ -568,6 +568,23 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
             ),
         )
 
+    async def _async_finish_options(self):
+        """Finish the flow, removing the monitoring profile when client traffic was turned off.
+
+        The periodic coordinator sync never removes the ha-monitoring
+        kid-control profile (another instance on the same router may own it),
+        so the one-time cleanup happens here, tied to the actual option
+        change on this entry.
+        """
+        old_enabled = self._config_entry.options.get(CONF_SENSOR_CLIENT_TRAFFIC, DEFAULT_SENSOR_CLIENT_TRAFFIC)
+        new_enabled = self.options.get(CONF_SENSOR_CLIENT_TRAFFIC, DEFAULT_SENSOR_CLIENT_TRAFFIC)
+        if old_enabled and not new_enabled:
+            runtime = getattr(self._config_entry, "runtime_data", None)
+            coordinator = getattr(runtime, "data_coordinator", None)
+            if coordinator is not None:
+                await self.hass.async_add_executor_job(coordinator.remove_kid_control_monitoring_profile)
+        return self.async_create_entry(title="", data=self.options)
+
     async def async_step_sensor_mode(self, user_input=None):
         """Handle sensor mode/preset selection in options flow."""
         if user_input is not None:
@@ -575,7 +592,7 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
             if mode == "custom":
                 return await self.async_step_sensor_select()
             self.options.update(_SENSOR_PRESETS[mode])
-            return self.async_create_entry(title="", data=self.options)
+            return await self._async_finish_options()
 
         return self.async_show_form(
             step_id="sensor_mode",
@@ -601,7 +618,7 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
         """Manage the sensor select options."""
         if user_input is not None:
             self.options.update(user_input)
-            return self.async_create_entry(title="", data=self.options)
+            return await self._async_finish_options()
 
         return self.async_show_form(
             step_id="sensor_select",
