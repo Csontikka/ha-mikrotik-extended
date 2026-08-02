@@ -1718,6 +1718,7 @@ class TestNetworkGetters:
 
     def test_get_ip_address_with_iface_and_removal(self, hass):
         coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
         coord.ds["interface"] = {
             "ether1": {"name": "ether1", "port-mac-address": "AA:BB"},
         }
@@ -1754,6 +1755,43 @@ class TestNetworkGetters:
         assert coord.ds["ip_address"]["ip1"]["ip"] == "10.0.0.1"
         assert coord.ds["ip_address"]["ip1"]["port-mac-address"] == "AA:BB"
         assert "ip2" not in coord.ds["ip_address"]  # pruned
+
+    def test_get_ip_address_uid_stable_across_reconnect(self, hass):
+        """Regression for issue 20: a new RouterOS list id must not spawn a new uid."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {
+            "pppoe-wan": {"name": "pppoe-wan", "port-mac-address": "AA:BB"},
+        }
+
+        coord.api.query.return_value = [
+            {".id": "*21", "address": "203.0.113.10/24", "network": "203.0.113.0", "interface": "pppoe-wan"},
+        ]
+        coord.get_ip_address()
+        assert list(coord.ds["ip_address"].keys()) == ["pppoe-wan"]
+        assert coord.ds["ip_address"]["pppoe-wan"]["ip"] == "203.0.113.10"
+
+        # reconnect: same interface, new list id and new address
+        coord.api.query.return_value = [
+            {".id": "*22", "address": "203.0.113.25/24", "network": "203.0.113.0", "interface": "pppoe-wan"},
+        ]
+        coord.get_ip_address()
+        assert list(coord.ds["ip_address"].keys()) == ["pppoe-wan"]
+        assert coord.ds["ip_address"]["pppoe-wan"]["ip"] == "203.0.113.25"
+
+    def test_get_ip_address_multi_address_deterministic_suffix(self, hass):
+        """Two addresses on one interface get stable, address-sorted suffixes."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {
+            "vlan-lan": {"name": "vlan-lan", "port-mac-address": "AA:CC"},
+        }
+        coord.api.query.return_value = [
+            {".id": "*8", "address": "172.16.12.2/24", "network": "172.16.12.0", "interface": "vlan-lan"},
+            {".id": "*7", "address": "172.16.12.1/24", "network": "172.16.12.0", "interface": "vlan-lan"},
+        ]
+        coord.get_ip_address()
+        assert sorted(coord.ds["ip_address"].keys()) == ["vlan-lan", "vlan-lan-2"]
+        assert coord.ds["ip_address"]["vlan-lan"]["ip"] == "172.16.12.1"
+        assert coord.ds["ip_address"]["vlan-lan-2"]["ip"] == "172.16.12.2"
 
     def test_get_cloud_success_and_exception(self, hass):
         coord = _make_coordinator(hass)

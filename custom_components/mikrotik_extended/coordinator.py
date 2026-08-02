@@ -2435,11 +2435,24 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_ip_address(self) -> None:
         """Get IP address data from Mikrotik"""
+        source = self.api.query("/ip/address") or []
+        # The RouterOS list id is not stable: dynamic addresses (PPPoE, DHCP)
+        # are re-created with a new id on every reconnect, which would spawn a
+        # new entity each time (issue #20). Key entries by interface instead,
+        # with a deterministic suffix when an interface holds more addresses.
+        seen_per_iface: dict = {}
+        for entry in sorted(source, key=lambda e: (str(e.get("interface", "")), str(e.get("address", "")))):
+            iface = str(entry.get("interface", "")) or "unknown"
+            count = seen_per_iface.get(iface, 0) + 1
+            seen_per_iface[iface] = count
+            entry["uid-ref"] = iface if count == 1 else f"{iface}-{count}"
+
         self.ds["ip_address"] = parse_api(
             data=self.ds["ip_address"],
-            source=self.api.query("/ip/address"),
-            key=".id",
+            source=source,
+            key="uid-ref",
             vals=[
+                {"name": "uid-ref"},
                 {"name": ".id"},
                 {"name": "address", "default": ""},
                 {"name": "network", "default": ""},
