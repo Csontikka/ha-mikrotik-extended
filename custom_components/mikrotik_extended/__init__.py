@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry
+from homeassistant.helpers import entity_registry as er
 
 _MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$")
 # RouterOS script environment variable names are identifiers. Restricting the
@@ -394,6 +395,17 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
         new_data = {**config_entry.data}
         new_data[CONF_VERIFY_SSL] = DEFAULT_VERIFY_SSL
         hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+
+    if config_entry.version < 3:
+        # IP address sensors were keyed on the unstable RouterOS list id and
+        # duplicated on every PPPoE or DHCP reconnect (issue #20). Drop their
+        # registry entries once so they re-register under the interface based
+        # unique_id and the clean entity ids are reclaimed by live entities.
+        registry = er.async_get(hass)
+        for entity in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+            if entity.unique_id.startswith(f"{config_entry.entry_id}-ip_address-"):
+                registry.async_remove(entity.entity_id)
+        hass.config_entries.async_update_entry(config_entry, version=3)
 
     _LOGGER.debug(
         "Migration to configuration version %s.%s successful",

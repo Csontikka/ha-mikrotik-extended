@@ -205,15 +205,39 @@ async def test_migrate_entry_v1_adds_verify_ssl(hass):
     result = await async_migrate_entry(hass, entry)
     assert result is True
     assert CONF_VERIFY_SSL in entry.data
-    assert entry.version == 2
+    assert entry.version == 3
 
 
 async def test_migrate_entry_already_current_version(hass):
-    """Migration on a v2 entry is a no-op but still returns True."""
-    entry = _make_entry(hass, version=2)
+    """Migration on a v3 entry is a no-op but still returns True."""
+    entry = _make_entry(hass, version=3)
     result = await async_migrate_entry(hass, entry)
     assert result is True
-    assert entry.version == 2
+    assert entry.version == 3
+
+
+async def test_migrate_entry_v2_cleans_ip_address_registry(hass):
+    """v2 -> v3 removes old ip_address registry entries but nothing else (issue 20)."""
+    from homeassistant.helpers import entity_registry as er
+
+    entry = _make_entry(hass, version=2)
+    registry = er.async_get(hass)
+    stale = registry.async_get_or_create(
+        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-21", config_entry=entry
+    )
+    stale2 = registry.async_get_or_create(
+        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-22", config_entry=entry
+    )
+    keep = registry.async_get_or_create(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}-netwatch-1-1-1-1", config_entry=entry
+    )
+
+    result = await async_migrate_entry(hass, entry)
+    assert result is True
+    assert entry.version == 3
+    assert registry.async_get(stale.entity_id) is None
+    assert registry.async_get(stale2.entity_id) is None
+    assert registry.async_get(keep.entity_id) is not None
 
 
 # ---------------------------------------------------------------------------
