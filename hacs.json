@@ -1,5 +1,7 @@
 {
     "name": "MikroTik Extended",
     "homeassistant": "2024.3.0",
-    "render_readme": true
+    "render_readme": true,
+    "zip_release": true,
+    "filename": "mikrotik_extended.zip"
 }
