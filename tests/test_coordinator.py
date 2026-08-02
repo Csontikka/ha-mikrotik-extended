@@ -1188,6 +1188,7 @@ class TestMiscResourceGetters:
 
     def test_get_containers(self, hass):
         coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
         containers = {
             "c1": {
                 ".id": "*c1",
@@ -1214,6 +1215,39 @@ class TestMiscResourceGetters:
         assert coord.ds["containers"]["c1"]["status"] == "running"
         assert coord.ds["containers"]["c2"]["display-name"] == "tag2"
         assert coord.ds["containers"]["c2"]["status"] == "stopped"
+
+    def test_get_containers_uid_stable_across_recreate(self, hass):
+        """A re-created container (new list id, same veth) keeps its uid."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [
+            {".id": "*c1", "name": "app", "tag": "app:1.0", "interface": "veth1", "root-dir": "disk1/app"},
+        ]
+        coord.get_containers()
+        assert list(coord.ds["containers"].keys()) == ["veth1"]
+        assert coord.ds["containers"]["veth1"]["tag"] == "app:1.0"
+
+        # upgrade: remove + add with a new image and a new list id
+        coord.api.query.return_value = [
+            {".id": "*c9", "name": "app", "tag": "app:2.0", "interface": "veth1", "root-dir": "disk1/app"},
+        ]
+        coord.get_containers()
+        assert list(coord.ds["containers"].keys()) == ["veth1"]
+        assert coord.ds["containers"]["veth1"]["tag"] == "app:2.0"
+        assert coord.ds["containers"]["veth1"][".id"] == "*c9"
+
+    def test_get_containers_uid_fallback_and_dedup(self, hass):
+        """Entries without an interface fall back to the list id; shared veths get suffixes."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [
+            {".id": "*a", "tag": "one", "interface": "veth2", "root-dir": "disk1/b"},
+            {".id": "*b", "tag": "two", "interface": "veth2", "root-dir": "disk1/a"},
+            {".id": "*c", "tag": "three", "interface": "", "root-dir": "disk1/c"},
+        ]
+        coord.get_containers()
+        assert sorted(coord.ds["containers"].keys()) == ["*c", "veth2", "veth2-2"]
+        # deterministic: root-dir sorted, disk1/a first
+        assert coord.ds["containers"]["veth2"]["tag"] == "two"
+        assert coord.ds["containers"]["veth2-2"]["tag"] == "one"
 
     def test_get_kidcontrol(self, hass):
         coord = _make_coordinator(hass)

@@ -1661,11 +1661,25 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def get_containers(self) -> None:
         """Get Container data from Mikrotik"""
         _LOGGER.debug("Mikrotik %s fetching containers", self.host)
+        source = self.api.query("/container") or []
+        # The RouterOS list id changes when a container is re-created, which
+        # is the standard container upgrade workflow and would spawn duplicate
+        # entities (same pattern as issue #20). Key entries by the veth
+        # interface instead: every container has one and it survives
+        # re-creation. Entries without an interface keep the list id.
+        seen_per_iface: dict = {}
+        for entry in sorted(source, key=lambda e: (str(e.get("interface", "")), str(e.get("root-dir", "")))):
+            ref = str(entry.get("interface", "")) or str(entry.get(".id", "")) or "unknown"
+            count = seen_per_iface.get(ref, 0) + 1
+            seen_per_iface[ref] = count
+            entry["uid-ref"] = ref if count == 1 else f"{ref}-{count}"
+
         self.ds["containers"] = parse_api(
             data=self.ds["containers"],
-            source=self.api.query("/container"),
-            key=".id",
+            source=source,
+            key="uid-ref",
             vals=[
+                {"name": "uid-ref"},
                 {"name": ".id"},
                 {"name": "name", "default": ""},
                 {"name": "tag", "default": ""},
