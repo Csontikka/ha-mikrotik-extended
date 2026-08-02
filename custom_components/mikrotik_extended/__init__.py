@@ -407,6 +407,20 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
                 registry.async_remove(entity.entity_id)
         hass.config_entries.async_update_entry(config_entry, version=3)
 
+    if config_entry.version < 4:
+        # Container entities were keyed on the unstable RouterOS list id and
+        # duplicated when a container was re-created (the standard upgrade
+        # workflow). Same cleanup as the IP address migration above.
+        registry = er.async_get(hass)
+        prefixes = (
+            f"{config_entry.entry_id}-container-",
+            f"{config_entry.entry_id}-container_status-",
+        )
+        for entity in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+            if entity.unique_id.startswith(prefixes):
+                registry.async_remove(entity.entity_id)
+        hass.config_entries.async_update_entry(config_entry, version=4)
+
     _LOGGER.debug(
         "Migration to configuration version %s.%s successful",
         config_entry.version,

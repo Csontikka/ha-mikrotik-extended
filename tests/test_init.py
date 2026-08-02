@@ -205,15 +205,15 @@ async def test_migrate_entry_v1_adds_verify_ssl(hass):
     result = await async_migrate_entry(hass, entry)
     assert result is True
     assert CONF_VERIFY_SSL in entry.data
-    assert entry.version == 3
+    assert entry.version == 4
 
 
 async def test_migrate_entry_already_current_version(hass):
-    """Migration on a v3 entry is a no-op but still returns True."""
-    entry = _make_entry(hass, version=3)
+    """Migration on a v4 entry is a no-op but still returns True."""
+    entry = _make_entry(hass, version=4)
     result = await async_migrate_entry(hass, entry)
     assert result is True
-    assert entry.version == 3
+    assert entry.version == 4
 
 
 async def test_migrate_entry_v2_cleans_ip_address_registry(hass):
@@ -234,9 +234,33 @@ async def test_migrate_entry_v2_cleans_ip_address_registry(hass):
 
     result = await async_migrate_entry(hass, entry)
     assert result is True
-    assert entry.version == 3
+    assert entry.version == 4
     assert registry.async_get(stale.entity_id) is None
     assert registry.async_get(stale2.entity_id) is None
+    assert registry.async_get(keep.entity_id) is not None
+
+
+async def test_migrate_entry_v3_cleans_container_registry(hass):
+    """v3 -> v4 removes old container registry entries but nothing else."""
+    from homeassistant.helpers import entity_registry as er
+
+    entry = _make_entry(hass, version=3)
+    registry = er.async_get(hass)
+    stale_switch = registry.async_get_or_create(
+        "switch", DOMAIN, f"{entry.entry_id}-container-c1", config_entry=entry
+    )
+    stale_sensor = registry.async_get_or_create(
+        "sensor", DOMAIN, f"{entry.entry_id}-container_status-c1", config_entry=entry
+    )
+    keep = registry.async_get_or_create(
+        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-veth1", config_entry=entry
+    )
+
+    result = await async_migrate_entry(hass, entry)
+    assert result is True
+    assert entry.version == 4
+    assert registry.async_get(stale_switch.entity_id) is None
+    assert registry.async_get(stale_sensor.entity_id) is None
     assert registry.async_get(keep.entity_id) is not None
 
 
