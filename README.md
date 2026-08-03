@@ -64,6 +64,8 @@ Detailed rule information available per entity (chain, action, protocol, address
 
 ![Firewall Filter Details](docs/assets/images/screenshots/firewall_filter_attributes.png)
 
+> **Give your rules a comment.** When a rule has a comment, the integration identifies its entity by that comment, so editing the rule on the router (changing a port, an address or an interface) keeps the same entity and your automations keep working. Rules without a comment are identified by their contents instead, which means editing such a rule replaces its entity. The same applies to simple queues.
+
 ### Device Tracking
 
 ARP-based network host presence tracking. Configurable timeout (default 180s). Shows MAC address, IP, and connected interface as attributes.
