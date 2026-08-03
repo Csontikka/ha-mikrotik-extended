@@ -222,15 +222,9 @@ async def test_migrate_entry_v2_cleans_ip_address_registry(hass):
 
     entry = _make_entry(hass, version=2)
     registry = er.async_get(hass)
-    stale = registry.async_get_or_create(
-        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-21", config_entry=entry
-    )
-    stale2 = registry.async_get_or_create(
-        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-22", config_entry=entry
-    )
-    keep = registry.async_get_or_create(
-        "binary_sensor", DOMAIN, f"{entry.entry_id}-interface-connection-ether1", config_entry=entry
-    )
+    stale = registry.async_get_or_create("sensor", DOMAIN, f"{entry.entry_id}-ip_address-21", config_entry=entry)
+    stale2 = registry.async_get_or_create("sensor", DOMAIN, f"{entry.entry_id}-ip_address-22", config_entry=entry)
+    keep = registry.async_get_or_create("binary_sensor", DOMAIN, f"{entry.entry_id}-interface-connection-ether1", config_entry=entry)
 
     result = await async_migrate_entry(hass, entry)
     assert result is True
@@ -246,12 +240,8 @@ async def test_migrate_entry_v4_cleans_netwatch_registry(hass):
 
     entry = _make_entry(hass, version=4)
     registry = er.async_get(hass)
-    stale = registry.async_get_or_create(
-        "binary_sensor", DOMAIN, f"{entry.entry_id}-netwatch-1-1-1-1", config_entry=entry
-    )
-    keep = registry.async_get_or_create(
-        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-veth1", config_entry=entry
-    )
+    stale = registry.async_get_or_create("binary_sensor", DOMAIN, f"{entry.entry_id}-netwatch-1-1-1-1", config_entry=entry)
+    keep = registry.async_get_or_create("sensor", DOMAIN, f"{entry.entry_id}-ip_address-veth1", config_entry=entry)
 
     result = await async_migrate_entry(hass, entry)
     assert result is True
@@ -266,15 +256,9 @@ async def test_migrate_entry_v3_cleans_container_registry(hass):
 
     entry = _make_entry(hass, version=3)
     registry = er.async_get(hass)
-    stale_switch = registry.async_get_or_create(
-        "switch", DOMAIN, f"{entry.entry_id}-container-c1", config_entry=entry
-    )
-    stale_sensor = registry.async_get_or_create(
-        "sensor", DOMAIN, f"{entry.entry_id}-container_status-c1", config_entry=entry
-    )
-    keep = registry.async_get_or_create(
-        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-veth1", config_entry=entry
-    )
+    stale_switch = registry.async_get_or_create("switch", DOMAIN, f"{entry.entry_id}-container-c1", config_entry=entry)
+    stale_sensor = registry.async_get_or_create("sensor", DOMAIN, f"{entry.entry_id}-container_status-c1", config_entry=entry)
+    keep = registry.async_get_or_create("sensor", DOMAIN, f"{entry.entry_id}-ip_address-veth1", config_entry=entry)
 
     result = await async_migrate_entry(hass, entry)
     assert result is True

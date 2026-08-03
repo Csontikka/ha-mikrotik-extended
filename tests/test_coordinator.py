@@ -1029,9 +1029,7 @@ class TestRuleUniqueIdMigration:
         coord = _make_coordinator(hass)
         registry = er.async_get(hass)
         entry_id = coord.config_entry.entry_id
-        existing = registry.async_get_or_create(
-            "switch", DOMAIN, f"{entry_id}-nat-dstnat_tcp_80", config_entry=coord.config_entry
-        )
+        existing = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-nat-dstnat_tcp_80", config_entry=coord.config_entry)
         registry.async_update_entity(existing.entity_id, name="My port forward")
 
         coord.ds["nat"] = {
@@ -1051,13 +1049,9 @@ class TestRuleUniqueIdMigration:
         coord = _make_coordinator(hass)
         registry = er.async_get(hass)
         entry_id = coord.config_entry.entry_id
-        registry.async_get_or_create(
-            "switch", DOMAIN, f"{entry_id}-filter-old_ref", config_entry=coord.config_entry
-        )
+        registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-filter-old_ref", config_entry=coord.config_entry)
         # an entity already carries the new id, so the legacy one must be left alone
-        registry.async_get_or_create(
-            "switch", DOMAIN, f"{entry_id}-filter-block_iot", config_entry=coord.config_entry
-        )
+        registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-filter-block_iot", config_entry=coord.config_entry)
         coord.ds["filter"] = {
             "f1": {"uniq-id": "block iot", "legacy-uniq-id": "old ref", "comment": "block iot"},
         }
@@ -3706,16 +3700,20 @@ class TestWiredHostExpiry:
 
     def test_get_arp_prunes_departed_entries(self, hass):
         coord = _make_coordinator(hass)
-        coord.api.query = MagicMock(return_value=[
-            {"mac-address": "AA:BB", "address": "10.0.0.5", "interface": "ether1"},
-        ])
+        coord.api.query = MagicMock(
+            return_value=[
+                {"mac-address": "AA:BB", "address": "10.0.0.5", "interface": "ether1"},
+            ]
+        )
         coord.get_arp()
         assert "AA:BB" in coord.ds["arp"]
 
         # Device gone; a non-empty ARP without it prunes after 3 strikes.
-        coord.api.query = MagicMock(return_value=[
-            {"mac-address": "CC:DD", "address": "10.0.0.9", "interface": "ether1"},
-        ])
+        coord.api.query = MagicMock(
+            return_value=[
+                {"mac-address": "CC:DD", "address": "10.0.0.9", "interface": "ether1"},
+            ]
+        )
         for _ in range(3):
             coord.get_arp()
         assert "AA:BB" not in coord.ds["arp"]

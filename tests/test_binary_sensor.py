@@ -161,11 +161,7 @@ async def test_netwatch_sensor_attributes_and_unrecorded(hass):
 
     # Every statistic attribute must be excluded from the recorder,
     # while the static fields stay recorded.
-    stat_keys = {
-        format_attribute(a)
-        for a in DEVICE_ATTRIBUTES_NETWATCH
-        if a not in ("host", "type", "interval", "port", "http-codes", "status", "comment")
-    }
+    stat_keys = {format_attribute(a) for a in DEVICE_ATTRIBUTES_NETWATCH if a not in ("host", "type", "interval", "port", "http-codes", "status", "comment")}
     assert stat_keys == MikrotikNetwatchBinarySensor._unrecorded_attributes
 
 
