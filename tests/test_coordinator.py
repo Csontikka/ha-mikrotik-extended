@@ -1088,6 +1088,29 @@ class TestRuleUniqueIdMigration:
         # the customisation is preserved, which is why we rewrite instead of delete
         assert moved.name == "My port forward"
 
+    def test_rewrites_unique_id_built_from_undecoded_comment(self, hass):
+        """A key generated before decoding must also be carried over."""
+        from homeassistant.helpers import entity_registry as er
+
+        coord = _make_coordinator(hass)
+        registry = er.async_get(hass)
+        entry_id = coord.config_entry.entry_id
+        existing = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-filter-oanoiaue_oeeuod", config_entry=coord.config_entry)
+
+        coord.ds["filter"] = {
+            "f1": {
+                "uniq-id": "Тестовый фильтр",
+                "legacy-uniq-id": "forward,accept,tcp:65001",
+                "comment-raw": "Òåñòîâûé ôèëüòð",
+                "comment": "Тестовый фильтр",
+            },
+        }
+        coord._migrate_rule_unique_ids()
+
+        moved = registry.async_get(existing.entity_id)
+        assert moved is not None
+        assert moved.unique_id == f"{entry_id}-filter-testovyi_filtr"
+
     def test_runs_once_and_skips_when_target_exists(self, hass):
         from homeassistant.helpers import entity_registry as er
 

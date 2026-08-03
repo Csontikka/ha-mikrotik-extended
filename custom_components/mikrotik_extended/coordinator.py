@@ -478,21 +478,30 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         entry_id = self.config_entry.entry_id
         for key in self._COMMENT_KEYED_RULES:
             for vals in self.ds.get(key, {}).values():
-                legacy = str(vals.get("legacy-uniq-id", ""))
                 current = str(vals.get("uniq-id", ""))
-                if not legacy or legacy == current:
+                if not current:
                     continue
-                old_uid = f"{entry_id}-{key}-{slugify(legacy.lower())}"
                 new_uid = f"{entry_id}-{key}-{slugify(current.lower())}"
-                entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
-                if entity_id is None or registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid):
+                if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid):
                     continue
-                registry.async_update_entity(entity_id, new_unique_id=new_uid)
-                _LOGGER.debug(
-                    "Mikrotik %s moved %s to the comment based unique_id",
-                    self.host,
-                    entity_id,
-                )
+                # Two earlier schemes can be in place: the reference generated
+                # from the rule contents, and the one built from the comment
+                # before it was decoded.
+                for legacy in (vals.get("legacy-uniq-id"), vals.get(f"comment{RAW_SUFFIX}")):
+                    legacy = str(legacy or "")
+                    if not legacy or legacy == current:
+                        continue
+                    old_uid = f"{entry_id}-{key}-{slugify(legacy.lower())}"
+                    entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
+                    if entity_id is None:
+                        continue
+                    registry.async_update_entity(entity_id, new_unique_id=new_uid)
+                    _LOGGER.debug(
+                        "Mikrotik %s moved %s to the comment based unique_id",
+                        self.host,
+                        entity_id,
+                    )
+                    break
 
     def _get_stale_counters(self, key: str) -> dict:
         """Get or create stale counter dict for a data path."""
