@@ -6,9 +6,9 @@ recover on the next update, but the entity id does not: Home Assistant assigns
 it once, at registration time, and never revisits it.
 
 The detection below is deliberately narrow. An entity is only offered for
-renaming when its id ends with the slug built from the *misdecoded* text, which
-means the user has never touched that id. Anything renamed by the user no
-longer matches and is therefore left alone.
+renaming when its id still contains the slug built from the *misdecoded* text,
+matched on a word boundary, which means the user has never touched that id.
+Anything renamed by the user no longer matches and is therefore left alone.
 """
 
 from __future__ import annotations
@@ -20,6 +20,25 @@ from homeassistant.util import slugify
 # Suffix used by the coordinator to keep the undecoded value next to the
 # decoded one, so the previously generated slug can be reconstructed.
 RAW_SUFFIX = "-raw"
+
+
+def _replace_slug(object_id: str, old: str, new: str) -> str | None:
+    """Swap ``old`` for ``new`` in an object id, but only on a word boundary.
+
+    The misdecoded text is not always at the end: entity names often carry a
+    type suffix, as in ``..._netwatch_<slug>_netwatch``. Matching on boundaries
+    keeps the replacement from firing inside an unrelated word.
+    """
+    if object_id == old:
+        return new
+    if object_id.startswith(f"{old}_"):
+        return f"{new}{object_id[len(old) :]}"
+    if object_id.endswith(f"_{old}"):
+        return f"{object_id[: -len(old)]}{new}"
+    middle = f"_{old}_"
+    if middle in object_id:
+        return object_id.replace(middle, f"_{new}_", 1)
+    return None
 
 
 def collect_renames(hass: HomeAssistant, entry_id: str, stores: dict, text_fields: dict) -> list[dict]:
@@ -51,9 +70,13 @@ def collect_renames(hass: HomeAssistant, entry_id: str, stores: dict, text_field
                     continue
 
                 for entity in entities:
-                    if entity.entity_id in handled or not entity.entity_id.endswith(old_slug):
+                    if entity.entity_id in handled:
                         continue
-                    new_entity_id = entity.entity_id[: -len(old_slug)] + new_slug
+                    domain, _, object_id = entity.entity_id.partition(".")
+                    replaced = _replace_slug(object_id, old_slug, new_slug)
+                    if replaced is None:
+                        continue
+                    new_entity_id = f"{domain}.{replaced}"
                     if new_entity_id == entity.entity_id:
                         continue
                     handled.add(entity.entity_id)

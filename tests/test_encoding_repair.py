@@ -192,3 +192,36 @@ async def test_coordinator_creates_and_clears_the_issue(hass):
     ):
         coord._check_encoding_entity_ids()
     delete.assert_called_once()
+
+
+async def test_collect_matches_slug_before_a_type_suffix(hass):
+    """Netwatch style ids carry a type suffix after the text, and must still match."""
+    entry = _entry(hass)
+    registry = er.async_get(hass)
+    created = registry.async_get_or_create(
+        "binary_sensor",
+        DOMAIN,
+        f"{entry.entry_id}-netwatch-x",
+        config_entry=entry,
+        suggested_object_id=f"mikrotik_router_netwatch_{OLD_SLUG}_netwatch",
+    )
+    stores = {"netwatch": {"n1": {"comment": DECODED, "comment-raw": RAW}}}
+
+    renames = collect_renames(hass, entry.entry_id, stores, {"netwatch": ("comment",)})
+    assert len(renames) == 1
+    assert renames[0]["entity_id"] == created.entity_id
+    assert renames[0]["new_entity_id"].endswith(f"{NEW_SLUG}_netwatch")
+
+
+async def test_collect_does_not_match_inside_a_word(hass):
+    """A slug embedded in a longer word is not a boundary match."""
+    entry = _entry(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "switch",
+        DOMAIN,
+        f"{entry.entry_id}-filter-x",
+        config_entry=entry,
+        suggested_object_id=f"mikrotik_filter_prefix{OLD_SLUG}suffix",
+    )
+    assert collect_renames(hass, entry.entry_id, _stores(), TEXT_FIELDS) == []
