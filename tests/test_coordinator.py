@@ -1190,19 +1190,19 @@ class TestMiscResourceGetters:
         coord = _make_coordinator(hass)
         coord.api.query.return_value = []
         containers = {
-            "c1": {
+            "veth1": {
                 ".id": "*c1",
-                "name": "mycont",
-                "tag": "latest",
-                "comment": "note",
-                "running": True,
+                "name": "43915e42-uuid",
+                "repo": "library/nginx:1.25",
+                "comment": "web",
+                "status": "running",
             },
-            "c2": {
+            "veth2": {
                 ".id": "*c2",
-                "name": "",
-                "tag": "tag2",
+                "name": "9a1b2c3d-uuid",
+                "repo": "library/redis:7",
                 "comment": "",
-                "running": False,
+                "status": "stopped",
             },
         }
         with patch(
@@ -1211,10 +1211,46 @@ class TestMiscResourceGetters:
         ):
             coord.get_containers()
 
-        assert coord.ds["containers"]["c1"]["display-name"] == "mycont"
-        assert coord.ds["containers"]["c1"]["status"] == "running"
-        assert coord.ds["containers"]["c2"]["display-name"] == "tag2"
-        assert coord.ds["containers"]["c2"]["status"] == "stopped"
+        # comment wins over the image, the generated uuid name is last resort
+        assert coord.ds["containers"]["veth1"]["display-name"] == "web"
+        assert coord.ds["containers"]["veth2"]["display-name"] == "library/redis:7"
+
+    def test_get_containers_running_derived_from_status(self, hass):
+        """The router reports state in 'status'; 'running' must follow it (no boolean field)."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
+        containers = {
+            "veth1": {".id": "*c1", "name": "uuid-1", "status": "running", "comment": "app"},
+            "veth2": {".id": "*c2", "name": "uuid-2", "status": "stopped", "comment": "db"},
+            "veth3": {".id": "*c3", "name": "uuid-3", "status": "error", "comment": "broken"},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=containers,
+        ):
+            coord.get_containers()
+
+        assert coord.ds["containers"]["veth1"]["running"] is True
+        assert coord.ds["containers"]["veth1"]["status"] == "running"
+        assert coord.ds["containers"]["veth2"]["running"] is False
+        assert coord.ds["containers"]["veth3"]["running"] is False
+        # the raw router state stays visible instead of being flattened
+        assert coord.ds["containers"]["veth3"]["status"] == "error"
+
+    def test_get_containers_legacy_tag_fallback(self, hass):
+        """Older RouterOS builds report the image in 'tag' instead of 'repo'."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
+        containers = {
+            "veth1": {".id": "*c1", "name": "uuid-1", "tag": "library/busybox:1.36", "status": "stopped"},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=containers,
+        ):
+            coord.get_containers()
+
+        assert coord.ds["containers"]["veth1"]["display-name"] == "library/busybox:1.36"
 
     def test_get_containers_uid_stable_across_recreate(self, hass):
         """A re-created container (new list id, same veth) keeps its uid."""

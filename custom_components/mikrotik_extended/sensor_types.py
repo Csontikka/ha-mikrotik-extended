@@ -167,6 +167,7 @@ DEVICE_ATTRIBUTES_PACKAGES = [
 
 DEVICE_ATTRIBUTES_CONTAINER_SENSOR = [
     "tag",
+    "repo",
     "os",
     "arch",
     "interface",

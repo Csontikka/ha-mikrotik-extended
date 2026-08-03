@@ -214,6 +214,7 @@ DEVICE_ATTRIBUTES_WIREGUARD_PEER = [
 
 DEVICE_ATTRIBUTES_CONTAINER = [
     "tag",
+    "repo",
     "os",
     "arch",
     "interface",

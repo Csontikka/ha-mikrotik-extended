@@ -1683,6 +1683,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": ".id"},
                 {"name": "name", "default": ""},
                 {"name": "tag", "default": ""},
+                {"name": "repo", "default": ""},
                 {"name": "os", "default": ""},
                 {"name": "arch", "default": ""},
                 {"name": "interface", "default": ""},
@@ -1690,7 +1691,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "mounts", "default": ""},
                 {"name": "comment", "default": ""},
                 {"name": "start-on-boot", "default": "false"},
-                {"name": "running", "type": "bool", "default": False},
+                {"name": "status", "default": "stopped"},
                 {"name": "memory-current", "default": ""},
                 {"name": "cpu-usage", "default": ""},
             ],
@@ -1701,11 +1702,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for uid in self.ds["containers"]:
             container = self.ds["containers"][uid]
             container["uniq-id"] = uid
-            cname = str(container.get("name", "")).strip()
             comment = str(container.get("comment", "")).strip()
-            tag = str(container.get("tag", "")).strip()
-            container["display-name"] = cname or comment or tag or uid
-            container["status"] = "running" if container.get("running", False) else "stopped"
+            # RouterOS 7.18 reports the image in "repo", older builds in "tag".
+            image = str(container.get("repo", "")).strip() or str(container.get("tag", "")).strip()
+            # "name" is a generated UUID that changes on every re-creation, so
+            # it is only the last resort for a human readable label.
+            cname = str(container.get("name", "")).strip()
+            container["display-name"] = comment or image or cname or uid
+            # The router reports the state in "status" as text; there is no
+            # boolean "running" field, so derive it here.
+            container["running"] = str(container.get("status", "")).lower() == "running"
 
     # ---------------------------
     #   get_filter
