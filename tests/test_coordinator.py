@@ -1020,11 +1020,68 @@ class TestProcessInterfaceClient:
 # ---------------------------------------------------------------------------
 
 
+class TestRuleUniqueIdMigration:
+    """The one time move of existing entities to the comment based unique_id."""
+
+    def test_rewrites_unique_id_and_keeps_the_entity(self, hass):
+        from homeassistant.helpers import entity_registry as er
+
+        coord = _make_coordinator(hass)
+        registry = er.async_get(hass)
+        entry_id = coord.config_entry.entry_id
+        existing = registry.async_get_or_create(
+            "switch", DOMAIN, f"{entry_id}-nat-dstnat_tcp_80", config_entry=coord.config_entry
+        )
+        registry.async_update_entity(existing.entity_id, name="My port forward")
+
+        coord.ds["nat"] = {
+            "r1": {"uniq-id": "web server", "legacy-uniq-id": "dstnat_tcp_80", "comment": "web server"},
+        }
+        coord._migrate_rule_unique_ids()
+
+        moved = registry.async_get(existing.entity_id)
+        assert moved is not None, "the entity must survive the migration"
+        assert moved.unique_id == f"{entry_id}-nat-web_server"
+        # the customisation is preserved, which is why we rewrite instead of delete
+        assert moved.name == "My port forward"
+
+    def test_runs_once_and_skips_when_target_exists(self, hass):
+        from homeassistant.helpers import entity_registry as er
+
+        coord = _make_coordinator(hass)
+        registry = er.async_get(hass)
+        entry_id = coord.config_entry.entry_id
+        registry.async_get_or_create(
+            "switch", DOMAIN, f"{entry_id}-filter-old_ref", config_entry=coord.config_entry
+        )
+        # an entity already carries the new id, so the legacy one must be left alone
+        registry.async_get_or_create(
+            "switch", DOMAIN, f"{entry_id}-filter-block_iot", config_entry=coord.config_entry
+        )
+        coord.ds["filter"] = {
+            "f1": {"uniq-id": "block iot", "legacy-uniq-id": "old ref", "comment": "block iot"},
+        }
+        coord._migrate_rule_unique_ids()
+        assert registry.async_get_entity_id("switch", DOMAIN, f"{entry_id}-filter-old_ref") is not None
+
+        # second call is a no-op
+        coord.ds["filter"] = {
+            "f1": {"uniq-id": "other", "legacy-uniq-id": "old ref", "comment": "other"},
+        }
+        coord._migrate_rule_unique_ids()
+        assert registry.async_get_entity_id("switch", DOMAIN, f"{entry_id}-filter-old_ref") is not None
+
+    def test_noop_without_legacy_reference(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["queue"] = {"q1": {"uniq-id": "same", "legacy-uniq-id": "same", "comment": "same"}}
+        coord._migrate_rule_unique_ids()  # must not raise
+
+
 class TestFirewallRules:
     def test_get_nat_populates_and_dedup(self, hass):
         coord = _make_coordinator(hass)
         nat = {
-            "r1": {".id": "*1", "uniq-id": "dupe", "name": "rule1", "comment": 1},
+            "r1": {".id": "*1", "uniq-id": "dupe", "name": "rule1", "comment": ""},
             "r2": {".id": "*2", "uniq-id": "dupe", "name": "rule2", "comment": ""},
             "r3": {".id": "*3", "uniq-id": "unique", "name": "rule3", "comment": ""},
         }
@@ -1042,20 +1099,55 @@ class TestFirewallRules:
         assert coord.ds["nat"]["r3"]["uniq-id"] == "unique"
         assert "dupe" in coord.nat_removed
 
-    def test_dedup_prefers_comments_and_ignores_router_id(self, hass):
-        """Distinct comments disambiguate; the unstable RouterOS id is never used."""
+    def test_comment_becomes_the_reference(self, hass):
+        """A commented rule is keyed on its comment, not on the rule contents."""
         coord = _make_coordinator(hass)
         nat = {
-            "r1": {".id": "*1", "uniq-id": "dupe", "name": "rule1", "comment": "web"},
-            "r2": {".id": "*2", "uniq-id": "dupe", "name": "rule2", "comment": "mail"},
+            "r1": {".id": "*1", "uniq-id": "srcnat,masq,tcp:80", "name": "rule1", "comment": "web"},
+            "r2": {".id": "*2", "uniq-id": "srcnat,masq,tcp:25", "name": "rule2", "comment": ""},
         }
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
             return_value=nat,
         ):
             coord.get_nat()
-        assert coord.ds["nat"]["r1"]["uniq-id"] == "dupe (web)"
-        assert coord.ds["nat"]["r2"]["uniq-id"] == "dupe (mail)"
+        assert coord.ds["nat"]["r1"]["uniq-id"] == "web"
+        assert coord.ds["nat"]["r1"]["legacy-uniq-id"] == "srcnat,masq,tcp:80"
+        # without a comment the generated reference is kept
+        assert coord.ds["nat"]["r2"]["uniq-id"] == "srcnat,masq,tcp:25"
+
+    def test_comment_reference_survives_rule_edit(self, hass):
+        """Editing the rule changes the generated reference but not the entity key."""
+        coord = _make_coordinator(hass)
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"r1": {".id": "*1", "uniq-id": "dstnat,tcp:80", "name": "r", "comment": "web server"}},
+        ):
+            coord.get_nat()
+        before = coord.ds["nat"]["r1"]["uniq-id"]
+
+        # the port was changed on the router, so the generated reference differs
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"r1": {".id": "*1", "uniq-id": "dstnat,tcp:8080", "name": "r", "comment": "web server"}},
+        ):
+            coord.get_nat()
+        assert coord.ds["nat"]["r1"]["uniq-id"] == before == "web server"
+
+    def test_identical_comments_still_disambiguated(self, hass):
+        """Two rules sharing a comment fall back to a positional suffix."""
+        coord = _make_coordinator(hass)
+        nat = {
+            "r1": {".id": "*1", "uniq-id": "a", "name": "rule1", "comment": "same"},
+            "r2": {".id": "*2", "uniq-id": "b", "name": "rule2", "comment": "same"},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=nat,
+        ):
+            coord.get_nat()
+        assert coord.ds["nat"]["r1"]["uniq-id"] == "same #1"
+        assert coord.ds["nat"]["r2"]["uniq-id"] == "same #2"
 
     def test_dedup_stable_when_router_ids_change(self, hass):
         """Re-created rules get new RouterOS ids; the uniq-id must not follow them."""
@@ -1716,7 +1808,7 @@ class TestMiscSensorGetters:
                 "burst-limit": "10/20",
                 "burst-threshold": "5/10",
                 "burst-time": "1s/2s",
-                "comment": 3,
+                "comment": "",
             },
             "q2": {
                 ".id": "*q2",

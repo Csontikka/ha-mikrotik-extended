@@ -9,8 +9,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Network
 
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from homeassistant.util import slugify
 from mac_vendor_lookup import AsyncMacLookup
 
 try:
@@ -133,6 +136,22 @@ def _percent_usage(total, free):
 def _package_enabled(packages: dict, name: str) -> bool:
     """Return True when ``name`` is present and enabled in the packages dict."""
     return name in packages and packages[name]["enabled"]
+
+
+def _prefer_comment_uniq_id(store: dict) -> None:
+    """Use the comment as the entity reference when the rule has one.
+
+    The generated reference is built from the rule contents, so editing the rule
+    on the router (a port, an address) changes it and Home Assistant registers a
+    new entity while the old one is left behind. The comment survives such
+    edits. The previous reference is kept as legacy-uniq-id so entities created
+    under the old scheme can be pointed at the new one.
+    """
+    for vals in store.values():
+        vals["legacy-uniq-id"] = str(vals.get("uniq-id", ""))
+        comment = str(vals.get("comment", "")).strip()
+        if comment:
+            vals["uniq-id"] = comment
 
 
 def _disambiguate_uniq_ids(store: dict) -> list[str]:
@@ -450,6 +469,42 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         self.last_hwinfo_update = datetime(1970, 1, 1)
         self.rebootcheck = 0
+        self._rule_uids_migrated = False
+
+    # Entity keys whose reference moved from the rule contents to the comment.
+    _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "queue")
+
+    def _migrate_rule_unique_ids(self) -> None:
+        """Point entities created under the content based scheme at the new id.
+
+        Rewrites the unique_id in place instead of dropping the registry entry,
+        so renames, area, icon and enabled state survive. Runs once per start
+        and is idempotent: once an entity carries the new id there is nothing
+        left to look up.
+        """
+        if self._rule_uids_migrated:
+            return
+        self._rule_uids_migrated = True
+
+        registry = er.async_get(self.hass)
+        entry_id = self.config_entry.entry_id
+        for key in self._COMMENT_KEYED_RULES:
+            for vals in self.ds.get(key, {}).values():
+                legacy = str(vals.get("legacy-uniq-id", ""))
+                current = str(vals.get("uniq-id", ""))
+                if not legacy or legacy == current:
+                    continue
+                old_uid = f"{entry_id}-{key}-{slugify(legacy.lower())}"
+                new_uid = f"{entry_id}-{key}-{slugify(current.lower())}"
+                entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
+                if entity_id is None or registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid):
+                    continue
+                registry.async_update_entity(entity_id, new_unique_id=new_uid)
+                _LOGGER.debug(
+                    "Mikrotik %s moved %s to the comment based unique_id",
+                    self.host,
+                    entity_id,
+                )
 
     def _get_stale_counters(self, key: str) -> dict:
         """Get or create stale counter dict for a data path."""
@@ -929,6 +984,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             len(self.ds.get("routing_rules", {})),
         )
         self._decode_text_fields()
+        self._migrate_rule_unique_ids()
         self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
         return self.ds
@@ -1376,6 +1432,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate NAT entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["nat"]:
             self.ds["nat"][uid]["comment"] = str(self.ds["nat"][uid]["comment"])
+        _prefer_comment_uniq_id(self.ds["nat"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["nat"]):
             if tmp_name not in self.nat_removed:
@@ -1459,6 +1516,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate Mangle entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["mangle"]:
             self.ds["mangle"][uid]["comment"] = str(self.ds["mangle"][uid]["comment"])
+        _prefer_comment_uniq_id(self.ds["mangle"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"]):
             if tmp_name not in self.mangle_removed:
@@ -1533,6 +1591,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate Routing Rules entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["routing_rules"]:
             self.ds["routing_rules"][uid]["comment"] = str(self.ds["routing_rules"][uid]["comment"])
+        _prefer_comment_uniq_id(self.ds["routing_rules"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"]):
             if tmp_name not in self.routing_rules_removed:
@@ -1800,6 +1859,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate filter entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["filter"]:
             self.ds["filter"][uid]["comment"] = str(self.ds["filter"][uid]["comment"])
+        _prefer_comment_uniq_id(self.ds["filter"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["filter"]):
             if tmp_name not in self.filter_removed:
@@ -2278,6 +2338,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _dedupe_queue_uniq_ids(self) -> None:
         """Add a stable suffix to uniq-id when multiple queues share a name."""
+        _prefer_comment_uniq_id(self.ds["queue"])
         for tmp_name in _disambiguate_uniq_ids(self.ds["queue"]):
             if tmp_name not in self.queue_removed:
                 self.queue_removed[tmp_name] = 1
