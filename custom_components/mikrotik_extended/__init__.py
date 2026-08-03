@@ -421,6 +421,16 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
                 registry.async_remove(entity.entity_id)
         hass.config_entries.async_update_entry(config_entry, version=4)
 
+    if config_entry.version < 5:
+        # Netwatch entities were keyed on the watched host alone, so several
+        # probes for the same address collapsed into one entity. They are now
+        # keyed on host, type and port, which changes every unique_id once.
+        registry = er.async_get(hass)
+        for entity in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+            if entity.unique_id.startswith(f"{config_entry.entry_id}-netwatch-"):
+                registry.async_remove(entity.entity_id)
+        hass.config_entries.async_update_entry(config_entry, version=5)
+
     _LOGGER.debug(
         "Migration to configuration version %s.%s successful",
         config_entry.version,

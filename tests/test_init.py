@@ -205,15 +205,15 @@ async def test_migrate_entry_v1_adds_verify_ssl(hass):
     result = await async_migrate_entry(hass, entry)
     assert result is True
     assert CONF_VERIFY_SSL in entry.data
-    assert entry.version == 4
+    assert entry.version == 5
 
 
 async def test_migrate_entry_already_current_version(hass):
-    """Migration on a v4 entry is a no-op but still returns True."""
-    entry = _make_entry(hass, version=4)
+    """Migration on a v5 entry is a no-op but still returns True."""
+    entry = _make_entry(hass, version=5)
     result = await async_migrate_entry(hass, entry)
     assert result is True
-    assert entry.version == 4
+    assert entry.version == 5
 
 
 async def test_migrate_entry_v2_cleans_ip_address_registry(hass):
@@ -229,14 +229,34 @@ async def test_migrate_entry_v2_cleans_ip_address_registry(hass):
         "sensor", DOMAIN, f"{entry.entry_id}-ip_address-22", config_entry=entry
     )
     keep = registry.async_get_or_create(
-        "binary_sensor", DOMAIN, f"{entry.entry_id}-netwatch-1-1-1-1", config_entry=entry
+        "binary_sensor", DOMAIN, f"{entry.entry_id}-interface-connection-ether1", config_entry=entry
     )
 
     result = await async_migrate_entry(hass, entry)
     assert result is True
-    assert entry.version == 4
+    assert entry.version == 5
     assert registry.async_get(stale.entity_id) is None
     assert registry.async_get(stale2.entity_id) is None
+    assert registry.async_get(keep.entity_id) is not None
+
+
+async def test_migrate_entry_v4_cleans_netwatch_registry(hass):
+    """v4 -> v5 removes old netwatch registry entries but nothing else."""
+    from homeassistant.helpers import entity_registry as er
+
+    entry = _make_entry(hass, version=4)
+    registry = er.async_get(hass)
+    stale = registry.async_get_or_create(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}-netwatch-1-1-1-1", config_entry=entry
+    )
+    keep = registry.async_get_or_create(
+        "sensor", DOMAIN, f"{entry.entry_id}-ip_address-veth1", config_entry=entry
+    )
+
+    result = await async_migrate_entry(hass, entry)
+    assert result is True
+    assert entry.version == 5
+    assert registry.async_get(stale.entity_id) is None
     assert registry.async_get(keep.entity_id) is not None
 
 
@@ -258,7 +278,7 @@ async def test_migrate_entry_v3_cleans_container_registry(hass):
 
     result = await async_migrate_entry(hass, entry)
     assert result is True
-    assert entry.version == 4
+    assert entry.version == 5
     assert registry.async_get(stale_switch.entity_id) is None
     assert registry.async_get(stale_sensor.entity_id) is None
     assert registry.async_get(keep.entity_id) is not None
