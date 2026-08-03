@@ -135,6 +135,33 @@ def _package_enabled(packages: dict, name: str) -> bool:
     return name in packages and packages[name]["enabled"]
 
 
+def _disambiguate_uniq_ids(store: dict) -> list[str]:
+    """Give colliding uniq-id values a stable suffix; return the collided bases.
+
+    The comment is used when it tells the entries apart, otherwise a positional
+    index. The RouterOS list id is deliberately not used: it changes whenever an
+    entry is removed and re-added, which would register a new entity instead of
+    updating the existing one.
+    """
+    seen: dict[str, list[str]] = {}
+    for uid, vals in store.items():
+        seen.setdefault(str(vals.get("uniq-id", uid)), []).append(uid)
+
+    collided = []
+    for base, uids in seen.items():
+        if len(uids) < 2:
+            continue
+        collided.append(base)
+        comments = [str(store[uid].get("comment", "")).strip() for uid in uids]
+        if all(comments) and len(set(comments)) == len(comments):
+            for uid, comment in zip(uids, comments, strict=False):
+                store[uid]["uniq-id"] = f"{base} ({comment})"
+        else:
+            for index, uid in enumerate(uids, start=1):
+                store[uid]["uniq-id"] = f"{base} #{index}"
+    return collided
+
+
 def _split_queue_fields(entry: dict, vals: dict) -> None:
     """Populate upload/download split fields on a queue entry in place."""
     entry["comment"] = str(entry["comment"])
@@ -1347,27 +1374,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
 
         # Handle duplicate NAT entries - suffix uniq-id with RouterOS ID to keep all rules
-        nat_seen = {}
         for uid in self.ds["nat"]:
             self.ds["nat"][uid]["comment"] = str(self.ds["nat"][uid]["comment"])
-            tmp_name = self.ds["nat"][uid]["uniq-id"]
-            if tmp_name not in nat_seen:
-                nat_seen[tmp_name] = [uid]
-            else:
-                nat_seen[tmp_name].append(uid)
 
-        for tmp_name, uids in nat_seen.items():
-            if len(uids) > 1:
-                for uid in uids:
-                    router_id = self.ds["nat"][uid].get(".id", uid)
-                    self.ds["nat"][uid]["uniq-id"] = f"{tmp_name} ({router_id})"
-                if tmp_name not in self.nat_removed:
-                    self.nat_removed[tmp_name] = 1
-                    _LOGGER.info(
-                        "Mikrotik %s duplicate NAT rule '%s' — RouterOS ID suffix added. Add unique comments to the rules to remove this warning.",
-                        self.host,
-                        self.ds["nat"][uids[0]]["name"],
-                    )
+        for tmp_name in _disambiguate_uniq_ids(self.ds["nat"]):
+            if tmp_name not in self.nat_removed:
+                self.nat_removed[tmp_name] = 1
+                _LOGGER.info(
+                    "Mikrotik %s duplicate NAT rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
+                    self.host,
+                    tmp_name,
+                )
 
     # ---------------------------
     #   get_mangle
@@ -1440,27 +1457,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
 
         # Handle duplicate Mangle entries - suffix uniq-id with RouterOS ID to keep all rules
-        mangle_seen = {}
         for uid in self.ds["mangle"]:
             self.ds["mangle"][uid]["comment"] = str(self.ds["mangle"][uid]["comment"])
-            tmp_name = self.ds["mangle"][uid]["uniq-id"]
-            if tmp_name not in mangle_seen:
-                mangle_seen[tmp_name] = [uid]
-            else:
-                mangle_seen[tmp_name].append(uid)
 
-        for tmp_name, uids in mangle_seen.items():
-            if len(uids) > 1:
-                for uid in uids:
-                    router_id = self.ds["mangle"][uid].get(".id", uid)
-                    self.ds["mangle"][uid]["uniq-id"] = f"{tmp_name} ({router_id})"
-                if tmp_name not in self.mangle_removed:
-                    self.mangle_removed[tmp_name] = 1
-                    _LOGGER.info(
-                        "Mikrotik %s duplicate Mangle rule '%s' — RouterOS ID suffix added. Add unique comments to the rules to remove this warning.",
-                        self.host,
-                        self.ds["mangle"][uids[0]]["name"],
-                    )
+        for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"]):
+            if tmp_name not in self.mangle_removed:
+                self.mangle_removed[tmp_name] = 1
+                _LOGGER.info(
+                    "Mikrotik %s duplicate Mangle rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
+                    self.host,
+                    tmp_name,
+                )
 
     # ---------------------------
     #   get_routing_rules
@@ -1524,27 +1531,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
 
         # Handle duplicate Routing Rules entries - suffix uniq-id with RouterOS ID to keep all rules
-        routing_rules_seen = {}
         for uid in self.ds["routing_rules"]:
             self.ds["routing_rules"][uid]["comment"] = str(self.ds["routing_rules"][uid]["comment"])
-            tmp_name = self.ds["routing_rules"][uid]["uniq-id"]
-            if tmp_name not in routing_rules_seen:
-                routing_rules_seen[tmp_name] = [uid]
-            else:
-                routing_rules_seen[tmp_name].append(uid)
 
-        for tmp_name, uids in routing_rules_seen.items():
-            if len(uids) > 1:
-                for uid in uids:
-                    router_id = self.ds["routing_rules"][uid].get(".id", uid)
-                    self.ds["routing_rules"][uid]["uniq-id"] = f"{tmp_name} ({router_id})"
-                if tmp_name not in self.routing_rules_removed:
-                    self.routing_rules_removed[tmp_name] = 1
-                    _LOGGER.info(
-                        "Mikrotik %s duplicate Routing Rule '%s' — RouterOS ID suffix added. Add unique comments to the rules to remove this warning.",
-                        self.host,
-                        self.ds["routing_rules"][uids[0]]["name"],
-                    )
+        for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"]):
+            if tmp_name not in self.routing_rules_removed:
+                self.routing_rules_removed[tmp_name] = 1
+                _LOGGER.info(
+                    "Mikrotik %s duplicate Routing Rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
+                    self.host,
+                    tmp_name,
+                )
 
     # ---------------------------
     #   get_wireguard_peers
@@ -1801,27 +1798,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
 
         # Handle duplicate filter entries - suffix uniq-id with RouterOS ID to keep all rules
-        filter_seen = {}
         for uid in self.ds["filter"]:
             self.ds["filter"][uid]["comment"] = str(self.ds["filter"][uid]["comment"])
-            tmp_name = self.ds["filter"][uid]["uniq-id"]
-            if tmp_name not in filter_seen:
-                filter_seen[tmp_name] = [uid]
-            else:
-                filter_seen[tmp_name].append(uid)
 
-        for tmp_name, uids in filter_seen.items():
-            if len(uids) > 1:
-                for uid in uids:
-                    router_id = self.ds["filter"][uid].get(".id", uid)
-                    self.ds["filter"][uid]["uniq-id"] = f"{tmp_name} ({router_id})"
-                if tmp_name not in self.filter_removed:
-                    self.filter_removed[tmp_name] = 1
-                    _LOGGER.info(
-                        "Mikrotik %s duplicate Filter rule '%s' — RouterOS ID suffix added. Add unique comments to the rules to remove this warning.",
-                        self.host,
-                        self.ds["filter"][uids[0]]["name"],
-                    )
+        for tmp_name in _disambiguate_uniq_ids(self.ds["filter"]):
+            if tmp_name not in self.filter_removed:
+                self.filter_removed[tmp_name] = 1
+                _LOGGER.info(
+                    "Mikrotik %s duplicate Filter rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
+                    self.host,
+                    tmp_name,
+                )
 
     # ---------------------------
     #   get_kidcontrol
@@ -1922,11 +1909,27 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_netwatch(self) -> None:
         """Get netwatch data from Mikrotik"""
+        source = self.api.query("/tool/netwatch") or []
+        # Keying on the host alone collapses several probes watching the same
+        # address (for example an icmp and a tcp check) into one entity, so one
+        # of them disappears. Build the reference from host, type and port, and
+        # fall back to a deterministic suffix when even that is not unique.
+        seen_ref: dict = {}
+        for entry in sorted(source, key=lambda e: (str(e.get("comment", "")), str(e.get(".id", "")))):
+            parts = [str(entry.get("host", "")) or "unknown", str(entry.get("type", "")) or "simple"]
+            if str(entry.get("port", "")):
+                parts.append(str(entry["port"]))
+            ref = "-".join(parts)
+            count = seen_ref.get(ref, 0) + 1
+            seen_ref[ref] = count
+            entry["uid-ref"] = ref if count == 1 else f"{ref}-{count}"
+
         self.ds["netwatch"] = parse_api(
             data=self.ds["netwatch"],
-            source=self.api.query("/tool/netwatch"),
-            key="host",
+            source=source,
+            key="uid-ref",
             vals=[
+                {"name": "uid-ref"},
                 {"name": "host"},
                 {"name": "type"},
                 {"name": "interval"},
@@ -2274,24 +2277,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._dedupe_queue_uniq_ids()
 
     def _dedupe_queue_uniq_ids(self) -> None:
-        """Suffix uniq-id with RouterOS id when multiple queues share a name."""
-        queue_seen: dict[str, list[str]] = {}
-        for uid in self.ds["queue"]:
-            tmp_name = self.ds["queue"][uid]["uniq-id"]
-            queue_seen.setdefault(tmp_name, []).append(uid)
-
-        for tmp_name, uids in queue_seen.items():
-            if len(uids) > 1:
-                for uid in uids:
-                    router_id = self.ds["queue"][uid].get(".id", uid)
-                    self.ds["queue"][uid]["uniq-id"] = f"{tmp_name} ({router_id})"
-                if tmp_name not in self.queue_removed:
-                    self.queue_removed[tmp_name] = 1
-                    _LOGGER.info(
-                        "Mikrotik %s duplicate Queue rule '%s' — RouterOS ID suffix added. Add unique names to the rules to remove this warning.",
-                        self.host,
-                        tmp_name,
-                    )
+        """Add a stable suffix to uniq-id when multiple queues share a name."""
+        for tmp_name in _disambiguate_uniq_ids(self.ds["queue"]):
+            if tmp_name not in self.queue_removed:
+                self.queue_removed[tmp_name] = 1
+                _LOGGER.info(
+                    "Mikrotik %s duplicate Queue rule '%s', a suffix was added to keep both entities. Add unique names to the rules to remove this warning.",
+                    self.host,
+                    tmp_name,
+                )
 
     # ---------------------------
     #   get_arp

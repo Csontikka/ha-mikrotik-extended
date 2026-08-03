@@ -1035,12 +1035,52 @@ class TestFirewallRules:
         ):
             coord.get_nat()
 
-        # dupes suffixed
-        assert coord.ds["nat"]["r1"]["uniq-id"] == "dupe (*1)"
-        assert coord.ds["nat"]["r2"]["uniq-id"] == "dupe (*2)"
+        # dupes get a positional suffix (comments do not tell them apart)
+        assert coord.ds["nat"]["r1"]["uniq-id"] == "dupe #1"
+        assert coord.ds["nat"]["r2"]["uniq-id"] == "dupe #2"
         # unique untouched
         assert coord.ds["nat"]["r3"]["uniq-id"] == "unique"
         assert "dupe" in coord.nat_removed
+
+    def test_dedup_prefers_comments_and_ignores_router_id(self, hass):
+        """Distinct comments disambiguate; the unstable RouterOS id is never used."""
+        coord = _make_coordinator(hass)
+        nat = {
+            "r1": {".id": "*1", "uniq-id": "dupe", "name": "rule1", "comment": "web"},
+            "r2": {".id": "*2", "uniq-id": "dupe", "name": "rule2", "comment": "mail"},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=nat,
+        ):
+            coord.get_nat()
+        assert coord.ds["nat"]["r1"]["uniq-id"] == "dupe (web)"
+        assert coord.ds["nat"]["r2"]["uniq-id"] == "dupe (mail)"
+
+    def test_dedup_stable_when_router_ids_change(self, hass):
+        """Re-created rules get new RouterOS ids; the uniq-id must not follow them."""
+        coord = _make_coordinator(hass)
+        before = {
+            "r1": {".id": "*1", "uniq-id": "dupe", "name": "rule1", "comment": ""},
+            "r2": {".id": "*2", "uniq-id": "dupe", "name": "rule2", "comment": ""},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=before,
+        ):
+            coord.get_nat()
+        first = [coord.ds["nat"][u]["uniq-id"] for u in ("r1", "r2")]
+
+        after = {
+            "r1": {".id": "*77", "uniq-id": "dupe", "name": "rule1", "comment": ""},
+            "r2": {".id": "*78", "uniq-id": "dupe", "name": "rule2", "comment": ""},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=after,
+        ):
+            coord.get_nat()
+        assert [coord.ds["nat"][u]["uniq-id"] for u in ("r1", "r2")] == first
 
     def test_get_mangle_dedup(self, hass):
         coord = _make_coordinator(hass)
@@ -1055,7 +1095,7 @@ class TestFirewallRules:
         ):
             coord.get_mangle()
 
-        assert coord.ds["mangle"]["m1"]["uniq-id"] == "x (*1)"
+        assert coord.ds["mangle"]["m1"]["uniq-id"] == "x #1"
         assert "x" in coord.mangle_removed
 
     def test_get_routing_rules_dedup(self, hass):
@@ -1071,7 +1111,7 @@ class TestFirewallRules:
         ):
             coord.get_routing_rules()
 
-        assert coord.ds["routing_rules"]["rr1"]["uniq-id"] == "y (*1)"
+        assert coord.ds["routing_rules"]["rr1"]["uniq-id"] == "y #1"
 
     def test_get_filter_dedup(self, hass):
         coord = _make_coordinator(hass)
@@ -1086,7 +1126,7 @@ class TestFirewallRules:
         ):
             coord.get_filter()
 
-        assert coord.ds["filter"]["f1"]["uniq-id"] == "z (*1)"
+        assert coord.ds["filter"]["f1"]["uniq-id"] == "z #1"
 
 
 # ---------------------------------------------------------------------------
@@ -1349,12 +1389,48 @@ class TestMiscResourceGetters:
 class TestSystemGetters:
     def test_get_netwatch(self, hass):
         coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
-            return_value={"1.1.1.1": {"host": "1.1.1.1", "status": True}},
+            return_value={"1.1.1.1-icmp": {"host": "1.1.1.1", "status": True}},
         ):
             coord.get_netwatch()
-        assert "1.1.1.1" in coord.ds["netwatch"]
+        assert "1.1.1.1-icmp" in coord.ds["netwatch"]
+
+    def test_get_netwatch_same_host_different_probes(self, hass):
+        """Two probes watching the same address must produce two entries."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [
+            {".id": "*1", "host": "1.1.1.1", "type": "icmp", "status": "up", "comment": "ping"},
+            {".id": "*2", "host": "1.1.1.1", "type": "tcp-conn", "port": "443", "status": "up", "comment": "https"},
+        ]
+        coord.get_netwatch()
+        assert sorted(coord.ds["netwatch"].keys()) == ["1.1.1.1-icmp", "1.1.1.1-tcp-conn-443"]
+
+    def test_get_netwatch_identical_probes_get_suffix(self, hass):
+        """Fully identical probes still get distinct, comment ordered references."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [
+            {".id": "*2", "host": "8.8.8.8", "type": "icmp", "status": "up", "comment": "b"},
+            {".id": "*1", "host": "8.8.8.8", "type": "icmp", "status": "up", "comment": "a"},
+        ]
+        coord.get_netwatch()
+        assert sorted(coord.ds["netwatch"].keys()) == ["8.8.8.8-icmp", "8.8.8.8-icmp-2"]
+        assert coord.ds["netwatch"]["8.8.8.8-icmp"]["comment"] == "a"
+
+    def test_get_netwatch_uid_stable_across_id_change(self, hass):
+        """A re-created netwatch entry keeps its reference."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [
+            {".id": "*5", "host": "9.9.9.9", "type": "icmp", "status": "up", "comment": "dns"},
+        ]
+        coord.get_netwatch()
+        assert list(coord.ds["netwatch"].keys()) == ["9.9.9.9-icmp"]
+        coord.api.query.return_value = [
+            {".id": "*9", "host": "9.9.9.9", "type": "icmp", "status": "up", "comment": "dns"},
+        ]
+        coord.get_netwatch()
+        assert list(coord.ds["netwatch"].keys()) == ["9.9.9.9-icmp"]
 
     def test_get_system_routerboard_x86(self, hass):
         coord = _make_coordinator(hass)
@@ -1663,7 +1739,7 @@ class TestMiscSensorGetters:
 
         assert coord.ds["queue"]["q1"]["upload-max-limit"] == "1000 bps"
         # dedup applied (both have same uniq-id)
-        assert coord.ds["queue"]["q1"]["uniq-id"] == "dupe (*q1)"
+        assert coord.ds["queue"]["q1"]["uniq-id"] == "dupe #1"
         assert "dupe" in coord.queue_removed
 
 
