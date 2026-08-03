@@ -1016,6 +1016,55 @@ class TestProcessInterfaceClient:
 # ---------------------------------------------------------------------------
 
 
+class TestTextDecodingBeforeDerivedValues:
+    """Keys and names must be built from decoded text, not from the raw bytes."""
+
+    RAW = "Òåñòîâûé"  # "Тестовый" as the router hands it over
+    DECODED = "Тестовый"
+
+    def _coord(self, hass):
+        coord = _make_coordinator(hass, options={"text_encoding": "Windows-1251"})
+        coord.api.query.return_value = []
+        return coord
+
+    def test_rule_key_uses_decoded_comment(self, hass):
+        coord = self._coord(hass)
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"r1": {".id": "*1", "uniq-id": "generated", "name": "r", "comment": self.RAW}},
+        ):
+            coord.get_nat()
+        assert coord.ds["nat"]["r1"]["uniq-id"] == self.DECODED
+        assert coord.ds["nat"]["r1"]["comment-raw"] == self.RAW
+
+    def test_queue_key_uses_decoded_comment(self, hass):
+        coord = self._coord(hass)
+        queue = {"q1": {".id": "*1", "name": "q1", "comment": self.RAW, "max-limit": "0/0", "rate": "0/0", "limit-at": "0/0", "burst-limit": "0/0", "burst-threshold": "0/0", "burst-time": "0s/0s"}}
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", return_value=queue):
+            coord.get_queue()
+        assert coord.ds["queue"]["q1"]["uniq-id"] == self.DECODED
+
+    def test_container_name_uses_decoded_comment(self, hass):
+        coord = self._coord(hass)
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"veth1": {".id": "*1", "name": "uuid", "comment": self.RAW, "status": "running"}},
+        ):
+            coord.get_containers()
+        assert coord.ds["containers"]["veth1"]["display-name"] == self.DECODED
+
+    def test_netwatch_and_peer_comments_are_decoded(self, hass):
+        coord = self._coord(hass)
+        coord.ds["netwatch"] = {"n1": {"comment": self.RAW}}
+        coord.ds["wireguard_peers"] = {"p1": {"comment": self.RAW}}
+        coord.ds["ip_address"] = {"i1": {"comment": self.RAW}}
+        coord._decode_text_fields()
+        for store in ("netwatch", "wireguard_peers", "ip_address"):
+            entry = next(iter(coord.ds[store].values()))
+            assert entry["comment"] == self.DECODED, store
+            assert entry["comment-raw"] == self.RAW, store
+
+
 class TestRuleUniqueIdMigration:
     """The one time move of existing entities to the comment based unique_id."""
 

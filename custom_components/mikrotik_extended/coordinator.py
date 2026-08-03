@@ -995,6 +995,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         "routing_rules": ("comment",),
         "host": ("host-name",),
         "client_traffic": ("host-name",),
+        # These also surface the comment: netwatch and WireGuard peers use it as
+        # the entity name, containers and queues derive their name or key from
+        # it, and IP addresses expose it as an attribute.
+        "netwatch": ("comment",),
+        "wireguard_peers": ("comment",),
+        "containers": ("comment",),
+        "queue": ("comment",),
+        "ip_address": ("comment",),
     }
 
     def _decode_text(self, value):
@@ -1016,27 +1024,36 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             except (LookupError, UnicodeDecodeError):
                 return value
 
-    def _decode_text_fields(self) -> None:
-        """Decode the known free-text fields across the data stores in place.
+    def _decode_store(self, store: str) -> None:
+        """Decode the free-text fields of one store in place.
 
-        When decoding actually changes a value, the original is kept next to it
-        so entity ids generated from the misdecoded text can be recognised
-        later (see encoding_repair).
+        Call this right after the store is filled and before anything is
+        derived from those fields, so keys and names are built from readable
+        text. When decoding changes a value, the original is kept next to it so
+        entity ids generated from the misdecoded text stay recognisable (see
+        encoding_repair).
         """
-        for store, fields in self._TEXT_FIELDS.items():
-            for entry in self.ds.get(store, {}).values():
-                if not isinstance(entry, dict):
+        fields = self._TEXT_FIELDS.get(store)
+        if not fields:
+            return
+        for entry in self.ds.get(store, {}).values():
+            if not isinstance(entry, dict):
+                continue
+            for field in fields:
+                if field not in entry:
                     continue
-                for field in fields:
-                    if field not in entry:
-                        continue
-                    raw = entry[field]
-                    decoded = self._decode_text(raw)
-                    entry[field] = decoded
-                    if isinstance(raw, str) and raw != decoded:
-                        entry[f"{field}{RAW_SUFFIX}"] = raw
-                    else:
-                        entry.pop(f"{field}{RAW_SUFFIX}", None)
+                raw = entry[field]
+                decoded = self._decode_text(raw)
+                entry[field] = decoded
+                if isinstance(raw, str) and raw != decoded:
+                    entry[f"{field}{RAW_SUFFIX}"] = raw
+                else:
+                    entry.pop(f"{field}{RAW_SUFFIX}", None)
+
+    def _decode_text_fields(self) -> None:
+        """Decode every known free-text field across the data stores."""
+        for store in self._TEXT_FIELDS:
+            self._decode_store(store)
 
     ENCODING_ISSUE_ID = "encoding_entity_ids"
 
@@ -1459,6 +1476,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate NAT entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["nat"]:
             self.ds["nat"][uid]["comment"] = str(self.ds["nat"][uid]["comment"])
+        self._decode_store("nat")
         _prefer_comment_uniq_id(self.ds["nat"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["nat"]):
@@ -1543,6 +1561,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate Mangle entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["mangle"]:
             self.ds["mangle"][uid]["comment"] = str(self.ds["mangle"][uid]["comment"])
+        self._decode_store("mangle")
         _prefer_comment_uniq_id(self.ds["mangle"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"]):
@@ -1618,6 +1637,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate Routing Rules entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["routing_rules"]:
             self.ds["routing_rules"][uid]["comment"] = str(self.ds["routing_rules"][uid]["comment"])
+        self._decode_store("routing_rules")
         _prefer_comment_uniq_id(self.ds["routing_rules"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"]):
@@ -1782,6 +1802,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             stale_counters=self._get_stale_counters("containers"),
         )
 
+        self._decode_store("containers")
+
         for uid in self.ds["containers"]:
             container = self.ds["containers"][uid]
             container["uniq-id"] = uid
@@ -1886,6 +1908,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # Handle duplicate filter entries - suffix uniq-id with RouterOS ID to keep all rules
         for uid in self.ds["filter"]:
             self.ds["filter"][uid]["comment"] = str(self.ds["filter"][uid]["comment"])
+        self._decode_store("filter")
         _prefer_comment_uniq_id(self.ds["filter"])
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["filter"]):
@@ -2365,6 +2388,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _dedupe_queue_uniq_ids(self) -> None:
         """Add a stable suffix to uniq-id when multiple queues share a name."""
+        self._decode_store("queue")
         _prefer_comment_uniq_id(self.ds["queue"])
         for tmp_name in _disambiguate_uniq_ids(self.ds["queue"]):
             if tmp_name not in self.queue_removed:
