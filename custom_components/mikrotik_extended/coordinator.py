@@ -16,6 +16,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import slugify
 from mac_vendor_lookup import AsyncMacLookup
 
+from .encoding_repair import RAW_SUFFIX, collect_renames
+
 try:
     from homeassistant.components.repairs import (
         IssueSeverity,
@@ -984,6 +986,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             len(self.ds.get("routing_rules", {})),
         )
         self._decode_text_fields()
+        self._check_encoding_entity_ids()
         self._migrate_rule_unique_ids()
         self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
@@ -1031,14 +1034,59 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 return value
 
     def _decode_text_fields(self) -> None:
-        """Decode the known free-text fields across the data stores in place."""
+        """Decode the known free-text fields across the data stores in place.
+
+        When decoding actually changes a value, the original is kept next to it
+        so entity ids generated from the misdecoded text can be recognised
+        later (see encoding_repair).
+        """
         for store, fields in self._TEXT_FIELDS.items():
             for entry in self.ds.get(store, {}).values():
                 if not isinstance(entry, dict):
                     continue
                 for field in fields:
-                    if field in entry:
-                        entry[field] = self._decode_text(entry[field])
+                    if field not in entry:
+                        continue
+                    raw = entry[field]
+                    decoded = self._decode_text(raw)
+                    entry[field] = decoded
+                    if isinstance(raw, str) and raw != decoded:
+                        entry[f"{field}{RAW_SUFFIX}"] = raw
+                    else:
+                        entry.pop(f"{field}{RAW_SUFFIX}", None)
+
+    ENCODING_ISSUE_ID = "encoding_entity_ids"
+
+    def _check_encoding_entity_ids(self) -> None:
+        """Offer a repair when entity ids still hold misdecoded router text.
+
+        Only entities the user never renamed are considered, and nothing is
+        changed here: the rename itself needs an explicit confirmation in the
+        repair dialog.
+        """
+        if async_create_issue is None:
+            return
+
+        renames = collect_renames(self.hass, self.config_entry.entry_id, self.ds, self._TEXT_FIELDS)
+        issue_id = f"{self.ENCODING_ISSUE_ID}_{self.config_entry.entry_id}"
+        if not renames:
+            if async_delete_issue is not None:
+                async_delete_issue(self.hass, DOMAIN, issue_id)
+            return
+
+        async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=True,
+            severity=IssueSeverity.WARNING,
+            translation_key="encoding_entity_ids",
+            translation_placeholders={
+                "host": self.host,
+                "count": str(len(renames)),
+            },
+            data={"entry_id": self.config_entry.entry_id},
+        )
 
     # ---------------------------
     #   _refresh_core_device_sw_version

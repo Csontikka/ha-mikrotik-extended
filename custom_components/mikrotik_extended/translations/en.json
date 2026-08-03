@@ -219,6 +219,17 @@
     "insufficient_permissions": {
       "title": "Insufficient API permissions for {host}",
       "description": "The RouterOS user **{username}** on router **{host}** is missing the following permissions: **{missing}**.\n\nSome integration features will not work (switches, reboot button, Kid Control auto-setup). To fix this, add the missing policies to the user's group on the router:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Entity IDs still contain misdecoded text ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Rename {count} entity IDs",
+            "description": "These entities were created before the Text encoding option matched your router, so their IDs were built from unreadable text. Their names and data are already correct, only the IDs are left over.\n\n{renames}\n\nEntity IDs you renamed yourself are never touched. Automations, scripts and dashboards that refer to the old IDs need to be updated by you after this change; the pairs above are also written to the Home Assistant log.\n\nSelect **Submit** to rename them, or close this dialog to leave everything as it is."
+          }
+        }
+      }
     }
   },
   "exceptions": {
