@@ -321,22 +321,18 @@ class TestRepairIssues:
 
         assert mock_create.call_args[0][2] == "ssl_error"
 
-    async def test_repair_issue_not_called_when_async_create_issue_is_none(self, hass):
-        """No error raised when async_create_issue is None (import failed)."""
-        coordinator = _make_coordinator(hass)
-        self._stub_all_get_methods(coordinator)
+    async def test_repair_helpers_are_importable(self):
+        """Regression: the repair helpers must resolve, otherwise no issue is ever raised.
 
-        coordinator.api.has_reconnected.return_value = True
-        coordinator.api.connected.return_value = False
-        coordinator.api.error = "wrong_login"
+        They used to be imported from a module that no longer exports them, with a
+        fallback to None, which silently disabled every repair notification.
+        """
+        from custom_components.mikrotik_extended import coordinator as coordinator_module
 
-        with (
-            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", None),
-            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", None),
-            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", None),
-            pytest.raises(ConfigEntryAuthFailed),
-        ):
-            await coordinator._async_update_data()
+        assert coordinator_module.async_create_issue is not None
+        assert coordinator_module.async_delete_issue is not None
+        assert coordinator_module.IssueSeverity is not None
+        assert coordinator_module.IssueSeverity.WARNING
 
     async def test_repair_issues_deleted_on_successful_reconnect(self, hass):
         """async_delete_issue called for both issue keys after successful reconnect."""

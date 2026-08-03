@@ -11,30 +11,6 @@ from ipaddress import IPv4Network
 
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-from homeassistant.util import slugify
-from mac_vendor_lookup import AsyncMacLookup
-
-from .encoding_repair import RAW_SUFFIX, collect_renames
-
-try:
-    from homeassistant.components.repairs import (
-        IssueSeverity,
-        async_create_issue,
-        async_delete_issue,
-    )
-except ImportError:
-    try:
-        from homeassistant.components.repairs import (
-            async_create_issue,
-            async_delete_issue,
-        )
-        from homeassistant.helpers.issue_registry import IssueSeverity
-    except ImportError:
-        async_create_issue = None
-        async_delete_issue = None
-        IssueSeverity = None
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -46,12 +22,21 @@ from homeassistant.const import (
     CONF_ZONE,
     STATE_HOME,
 )
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.issue_registry import (
+    IssueSeverity,
+    async_create_issue,
+    async_delete_issue,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import slugify
 from homeassistant.util.dt import utcnow
+from mac_vendor_lookup import AsyncMacLookup
 
 from .apiparser import parse_api
 from .const import (
@@ -95,6 +80,7 @@ from .const import (
     DEFAULT_TRACK_HOSTS,
     DOMAIN,
 )
+from .encoding_repair import RAW_SUFFIX, collect_renames
 from .mikrotikapi import MikrotikAPI
 
 _LOGGER = logging.getLogger(__name__)
@@ -820,54 +806,51 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 await self.hass.async_add_executor_job(self.get_dns)
 
             if not self.api.connected():
-                if async_create_issue is not None:
-                    if self.api.error == "wrong_login":
-                        async_create_issue(
-                            self.hass,
-                            DOMAIN,
-                            "wrong_credentials",
-                            is_fixable=False,
-                            severity=IssueSeverity.ERROR,
-                            translation_key="wrong_credentials",
-                            translation_placeholders={"host": self.host},
-                        )
-                    elif self.api.error in ("ssl_handshake_failure", "ssl_verify_failure"):
-                        async_create_issue(
-                            self.hass,
-                            DOMAIN,
-                            "ssl_error",
-                            is_fixable=False,
-                            severity=IssueSeverity.ERROR,
-                            translation_key="ssl_error",
-                            translation_placeholders={"host": self.host},
-                        )
+                if self.api.error == "wrong_login":
+                    async_create_issue(
+                        self.hass,
+                        DOMAIN,
+                        "wrong_credentials",
+                        is_fixable=False,
+                        severity=IssueSeverity.ERROR,
+                        translation_key="wrong_credentials",
+                        translation_placeholders={"host": self.host},
+                    )
+                elif self.api.error in ("ssl_handshake_failure", "ssl_verify_failure"):
+                    async_create_issue(
+                        self.hass,
+                        DOMAIN,
+                        "ssl_error",
+                        is_fixable=False,
+                        severity=IssueSeverity.ERROR,
+                        translation_key="ssl_error",
+                        translation_placeholders={"host": self.host},
+                    )
                 if self.api.error == "wrong_login":
                     raise ConfigEntryAuthFailed(f"Invalid credentials for {self.host}")
                 raise UpdateFailed("Mikrotik Disconnected")
 
             if self.api.connected():
                 self.last_hwinfo_update = datetime.now().replace(microsecond=0)
-                if async_delete_issue is not None:
-                    async_delete_issue(self.hass, DOMAIN, "wrong_credentials")
-                    async_delete_issue(self.hass, DOMAIN, "ssl_error")
-                if async_create_issue is not None:
-                    missing = self.ds.get("access_missing", [])
-                    if missing:
-                        async_create_issue(
-                            self.hass,
-                            DOMAIN,
-                            "insufficient_permissions",
-                            is_fixable=False,
-                            severity=IssueSeverity.WARNING,
-                            translation_key="insufficient_permissions",
-                            translation_placeholders={
-                                "host": self.host,
-                                "username": self.config_entry.data[CONF_USERNAME],
-                                "missing": ", ".join(missing),
-                            },
-                        )
-                    else:
-                        async_delete_issue(self.hass, DOMAIN, "insufficient_permissions")
+                async_delete_issue(self.hass, DOMAIN, "wrong_credentials")
+                async_delete_issue(self.hass, DOMAIN, "ssl_error")
+                missing = self.ds.get("access_missing", [])
+                if missing:
+                    async_create_issue(
+                        self.hass,
+                        DOMAIN,
+                        "insufficient_permissions",
+                        is_fixable=False,
+                        severity=IssueSeverity.WARNING,
+                        translation_key="insufficient_permissions",
+                        translation_placeholders={
+                            "host": self.host,
+                            "username": self.config_entry.data[CONF_USERNAME],
+                            "missing": ", ".join(missing),
+                        },
+                    )
+                else:
+                    async_delete_issue(self.hass, DOMAIN, "insufficient_permissions")
 
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_system_health)
@@ -1064,14 +1047,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         changed here: the rename itself needs an explicit confirmation in the
         repair dialog.
         """
-        if async_create_issue is None:
-            return
-
         renames = collect_renames(self.hass, self.config_entry.entry_id, self.ds, self._TEXT_FIELDS)
         issue_id = f"{self.ENCODING_ISSUE_ID}_{self.config_entry.entry_id}"
         if not renames:
-            if async_delete_issue is not None:
-                async_delete_issue(self.hass, DOMAIN, issue_id)
+            async_delete_issue(self.hass, DOMAIN, issue_id)
             return
 
         async_create_issue(
