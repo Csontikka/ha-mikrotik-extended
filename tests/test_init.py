@@ -176,12 +176,16 @@ async def test_unload_entry_no_runtime_data(hass):
 
 
 async def test_reload_entry_invokes_async_reload(hass):
-    """async_reload_entry delegates to hass.config_entries.async_reload."""
+    """async_reload_entry schedules the reload instead of awaiting it.
+
+    Awaiting the reload from inside the update listener deadlocks the entry and
+    Home Assistant stops allowing it in 2026.12.
+    """
     entry = _make_entry(hass)
 
-    with patch.object(hass.config_entries, "async_reload", new=AsyncMock()) as mock_reload:
+    with patch.object(hass.config_entries, "async_schedule_reload") as mock_schedule:
         await async_reload_entry(hass, entry)
-    mock_reload.assert_awaited_once_with(entry.entry_id)
+    mock_schedule.assert_called_once_with(entry.entry_id)
 
 
 # ---------------------------------------------------------------------------

@@ -305,9 +305,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 # ---------------------------
 #   async_reload_entry
 # ---------------------------
-async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Reload the config entry when it changed."""
-    await hass.config_entries.async_reload(config_entry.entry_id)
+async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:  # NOSONAR — HA contract requires async
+    """Reload the config entry when its options changed.
+
+    Scheduling the reload lets Home Assistant run it after the update listener
+    returns. Awaiting the reload here instead would deadlock the very entry
+    being reloaded, which Home Assistant warns about and stops allowing in
+    2026.12.
+    """
+    hass.config_entries.async_schedule_reload(config_entry.entry_id)
 
 
 # ---------------------------
