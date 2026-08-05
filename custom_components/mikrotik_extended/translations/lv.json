@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Nepietiekamas API atļaujas {host}",
       "description": "RouterOS lietotājam **{username}** maršrutētājā **{host}** trūkst šādas atļaujas: **{missing}**.\n\nDažas integrācijas funkcijas nedarbosies (slēdži, pārstartēšanas poga, Kid Control automātiskā iestatīšana). Lai to novērstu, pievienojiet trūkstošās politikas lietotāja grupai maršrutētājā:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Entītiju ID joprojām satur nesalasāmu tekstu ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Pārdēvēt {count} entītiju ID",
+            "description": "Šīs entītijas tika izveidotas, pirms teksta kodējuma opcija atbilda jūsu maršrutētājam, tāpēc to ID tika veidoti no nesalasāma teksta. To nosaukumi un dati jau ir pareizi, palikuši tikai ID.\n\n{renames}\n\nID, kurus pārdēvējāt pats, nekad netiek aiztikti. Automatizācijas, skripti un paneļi, kas atsaucas uz vecajiem ID, jums pašam jāatjaunina pēc šīs izmaiņas; pāri tiek ierakstīti arī Home Assistant žurnālā.\n\nIzvēlieties Iesniegt, lai tos pārdēvētu, vai aizveriet šo logu, lai viss paliktu nemainīgs."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Nederīgs MAC adreses formāts: {mac}. Paredzamais formāts: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Nederīgs vides mainīgā nosaukums: {name}. Izmantojiet tikai burtus, ciparus un pasvītrojumus, sākot ar burtu vai pasvītrojumu."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

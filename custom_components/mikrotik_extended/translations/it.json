@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Autorizzazioni API insufficienti per {host}",
       "description": "All'utente RouterOS **{username}** sul router **{host}** mancano i seguenti permessi: **{missing}**.\n\nAlcune funzionalità dell'integrazione non funzioneranno (interruttori, pulsante di riavvio, configurazione automatica di Kid Control). Per risolvere, aggiungi le policy mancanti al gruppo dell'utente sul router:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Gli ID entità contengono ancora testo illeggibile ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Rinomina {count} ID entità",
+            "description": "Queste entità sono state create prima che l'opzione Codifica testo corrispondesse al router, quindi i loro ID sono stati costruiti da testo illeggibile. I nomi e i dati sono già corretti, restano solo gli ID.\n\n{renames}\n\nGli ID che hai rinominato tu non vengono mai toccati. Automazioni, script e dashboard che fanno riferimento ai vecchi ID devono essere aggiornati da te dopo questa modifica; le coppie vengono scritte anche nel registro di Home Assistant.\n\nSeleziona Invia per rinominarli, oppure chiudi questa finestra per lasciare tutto invariato."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Formato indirizzo MAC non valido: {mac}. Formato atteso: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Nome della variabile di ambiente non valido: {name}. Usa solo lettere, cifre e trattini bassi, iniziando con una lettera o un trattino basso."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

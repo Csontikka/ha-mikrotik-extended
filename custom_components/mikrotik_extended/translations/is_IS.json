@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Ófullnægjandi API-heimildir fyrir {host}",
       "description": "RouterOS notandinn **{username}** á beini **{host}** vantar eftirfarandi heimildir: **{missing}**.\n\nNokkrar samþættingaraðgerðir munu ekki virka (rofar, endurræsingarhnappurinn, sjálfvirk uppsetning Kid Control). Til að laga þetta skaltu bæta við heimildunum sem vantar í notendahópinn á beininum:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Auðkenni eininga innihalda enn ólæsilegan texta ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Endurnefna {count} einingaauðkenni",
+            "description": "Þessar einingar voru búnar til áður en valkosturinn Textakóðun passaði við beininn þinn, svo auðkenni þeirra voru byggð á ólæsilegum texta. Nöfn þeirra og gögn eru þegar rétt, aðeins auðkennin eru eftir.\n\n{renames}\n\nAuðkenni sem þú endurnefndir sjálf eru aldrei snert. Sjálfvirkni, skriftur og mælaborð sem vísa í gömlu auðkennin þarft þú að uppfæra eftir þessa breytingu; pörin eru einnig skrifuð í annál Home Assistant.\n\nVeldu Senda til að endurnefna, eða lokaðu þessum glugga til að hafa allt óbreytt."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Ógilt MAC-vistfang snið: {mac}. Vænt snið: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Ógilt heiti umhverfisbreytu: {name}. Notaðu aðeins bókstafi, tölustafi og undirstrik, sem byrjar á bókstaf eða undirstriki."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

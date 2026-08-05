@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "{host} の API 権限が不足しています",
       "description": "RouterOS ユーザー **{username}** がルーター **{host}** で次の権限を持っていません: **{missing}**。\n\n一部のインテグレーション機能が動作しません（スイッチ、再起動ボタン、Kid Control 自動設定）。修正するには、ルーターのユーザーグループに不足しているポリシーを追加してください:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "エンティティIDに読み取れない文字が残っています ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{count} 件のエンティティIDの名前を変更",
+            "description": "これらのエンティティは、テキストエンコーディングの設定がルーターと一致する前に作成されたため、IDが読み取れない文字から作られています。名前とデータはすでに正しく、IDだけが残っています。\n\n{renames}\n\nご自身で変更したエンティティIDには一切手を加えません。古いIDを参照しているオートメーション、スクリプト、ダッシュボードは、この変更後にご自身で更新してください。上記の対応はHome Assistantのログにも記録されます。\n\n名前を変更するには送信を選択し、そのままにする場合はこのダイアログを閉じてください。"
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "無効な MAC アドレス形式: {mac}。期待される形式: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "環境変数名が無効です: {name}。英字、数字、アンダースコアのみを使用し、英字またはアンダースコアで始めてください。"
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

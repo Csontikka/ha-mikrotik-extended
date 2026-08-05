@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Autorisations API insuffisantes pour {host}",
       "description": "L'utilisateur RouterOS **{username}** sur le routeur **{host}** manque les autorisations suivantes : **{missing}**.\n\nCertaines fonctionnalités de l'intégration ne fonctionneront pas (interrupteurs, bouton de redémarrage, configuration automatique du Kid Control). Pour corriger cela, ajoutez les politiques manquantes au groupe de l'utilisateur sur le routeur :\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Les identifiants d'entités contiennent encore du texte illisible ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Renommer {count} identifiants d'entités",
+            "description": "Ces entités ont été créées avant que l'option Encodage du texte ne corresponde à votre routeur, leurs identifiants ont donc été construits à partir de texte illisible. Leurs noms et leurs données sont déjà corrects, seuls les identifiants subsistent.\n\n{renames}\n\nLes identifiants que vous avez renommés vous-même ne sont jamais modifiés. Les automatisations, scripts et tableaux de bord qui référencent les anciens identifiants doivent être mis à jour par vos soins après ce changement; les paires sont également écrites dans le journal de Home Assistant.\n\nSélectionnez Envoyer pour les renommer, ou fermez cette fenêtre pour tout laisser en l'état."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Format d'adresse MAC invalide : {mac}. Format attendu : AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Nom de variable d'environnement invalide: {name}. Utilisez uniquement des lettres, des chiffres et des tirets bas, en commençant par une lettre ou un tiret bas."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

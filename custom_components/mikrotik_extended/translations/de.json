@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Unzureichende API-Berechtigungen für {host}",
       "description": "Dem RouterOS-Benutzer **{username}** auf Router **{host}** fehlen folgende Berechtigungen: **{missing}**.\n\nEinige Integrationsfunktionen funktionieren nicht (Schalter, Neustart-Schaltfläche, Kid Control Auto-Setup). Um dies zu beheben, füge die fehlenden Richtlinien zur Benutzergruppe auf dem Router hinzu:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Entitäts-IDs enthalten weiterhin unlesbaren Text ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{count} Entitäts-IDs umbenennen",
+            "description": "Diese Entitäten wurden erstellt, bevor die Option Textkodierung zu Ihrem Router passte, daher wurden ihre IDs aus unlesbarem Text gebildet. Ihre Namen und Daten sind bereits korrekt, nur die IDs sind übrig geblieben.\n\n{renames}\n\nSelbst umbenannte Entitäts-IDs werden nie angetastet. Automationen, Skripte und Dashboards, die auf die alten IDs verweisen, müssen Sie nach dieser Änderung selbst anpassen; die Paare werden zusätzlich in das Home Assistant Protokoll geschrieben.\n\nWählen Sie Senden zum Umbenennen, oder schließen Sie diesen Dialog, um alles so zu lassen, wie es ist."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Ungültiges MAC-Adressformat: {mac}. Erwartetes Format: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Ungültiger Name der Umgebungsvariable: {name}. Verwenden Sie nur Buchstaben, Ziffern und Unterstriche, beginnend mit einem Buchstaben oder Unterstrich."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

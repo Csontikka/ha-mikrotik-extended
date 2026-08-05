@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Permissões de API insuficientes para {host}",
       "description": "O usuário `{username}` está se conectando ao roteador MikroTik em {host}, mas não tem as permissões de API necessárias. Permissões ausentes: **{missing}**\n\nPara corrigir as permissões, execute o seguinte comando no terminal do RouterOS:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Os IDs de entidade ainda contêm texto ilegível ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Renomear {count} IDs de entidade",
+            "description": "Estas entidades foram criadas antes de a opção Codificação de texto corresponder ao seu roteador, então seus IDs foram construídos a partir de texto ilegível. Os nomes e os dados já estão corretos, restam apenas os IDs.\n\n{renames}\n\nOs IDs que você mesmo renomeou nunca são alterados. Automações, scripts e painéis que se referem aos IDs antigos precisam ser atualizados por você após esta mudança; os pares também são gravados no log do Home Assistant.\n\nSelecione Enviar para renomeá-los, ou feche esta janela para deixar tudo como está."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Formato de endereço MAC inválido: {mac}. Formato esperado: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Nome de variável de ambiente inválido: {name}. Use apenas letras, dígitos e sublinhados, começando por uma letra ou sublinhado."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

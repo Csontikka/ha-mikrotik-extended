@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "{host} 的 API 权限不足",
       "description": "RouterOS 用户 **{username}** 在路由器 **{host}** 上缺少以下权限：**{missing}**。\n\n部分集成功能将无法使用（开关、重启按钮、Kid Control 自动设置）。要修复此问题，请在路由器上将缺少的策略添加到用户组：\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "实体 ID 仍包含无法识别的文本 ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "重命名 {count} 个实体 ID",
+            "description": "这些实体是在文本编码选项与路由器匹配之前创建的，因此它们的 ID 由无法识别的文本生成。它们的名称和数据已经正确，只剩下 ID。\n\n{renames}\n\n您自己重命名过的实体 ID 绝不会被改动。引用旧 ID 的自动化、脚本和仪表板需要您在此更改后自行更新，上述对应关系也会写入 Home Assistant 日志。\n\n选择提交以重命名，或关闭此对话框以保持原样。"
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "无效的 MAC 地址格式：{mac}。预期格式：AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "环境变量名称无效：{name}。只能使用字母、数字和下划线，并以字母或下划线开头。"
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

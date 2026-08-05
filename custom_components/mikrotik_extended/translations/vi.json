@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Quyền API không đủ cho {host}",
       "description": "Người dùng RouterOS **{username}** trên bộ định tuyến **{host}** thiếu các quyền sau: **{missing}**.\n\nMột số tính năng tích hợp sẽ không hoạt động (công tắc, nút khởi động lại, thiết lập tự động Kid Control). Để khắc phục, hãy thêm các chính sách còn thiếu vào nhóm người dùng trên bộ định tuyến:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "ID thực thể vẫn chứa văn bản không đọc được ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Đổi tên {count} ID thực thể",
+            "description": "Các thực thể này được tạo trước khi tùy chọn Mã hóa văn bản khớp với bộ định tuyến của bạn, nên ID của chúng được tạo từ văn bản không đọc được. Tên và dữ liệu của chúng đã đúng, chỉ còn lại ID.\n\n{renames}\n\nNhững ID bạn tự đổi tên sẽ không bao giờ bị chạm tới. Các tự động hóa, kịch bản và bảng điều khiển tham chiếu ID cũ cần được bạn cập nhật sau thay đổi này; các cặp cũng được ghi vào nhật ký Home Assistant.\n\nChọn Gửi để đổi tên, hoặc đóng hộp thoại này để giữ nguyên mọi thứ."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Định dạng địa chỉ MAC không hợp lệ: {mac}. Định dạng mong đợi: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Tên biến môi trường không hợp lệ: {name}. Chỉ dùng chữ cái, chữ số và dấu gạch dưới, bắt đầu bằng chữ cái hoặc dấu gạch dưới."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

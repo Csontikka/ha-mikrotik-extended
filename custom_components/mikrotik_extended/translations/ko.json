@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "{host}에 대한 API 권한 부족",
       "description": "RouterOS 사용자 **{username}**이(가) 라우터 **{host}**에서 다음 권한이 없습니다: **{missing}**.\n\n일부 통합 기능이 작동하지 않습니다(스위치, 재시작 버튼, Kid Control 자동 설정). 이를 수정하려면 라우터의 사용자 그룹에 누락된 정책을 추가하세요:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "엔터티 ID에 읽을 수 없는 텍스트가 남아 있습니다 ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{count}개의 엔터티 ID 이름 변경",
+            "description": "이 엔터티들은 텍스트 인코딩 옵션이 라우터와 일치하기 전에 생성되어 ID가 읽을 수 없는 텍스트로 만들어졌습니다. 이름과 데이터는 이미 정확하며 ID만 남아 있습니다.\n\n{renames}\n\n직접 이름을 바꾼 엔터티 ID는 절대 건드리지 않습니다. 이전 ID를 참조하는 자동화, 스크립트, 대시보드는 이 변경 후 직접 수정해야 하며, 위의 쌍은 Home Assistant 로그에도 기록됩니다.\n\n이름을 변경하려면 제출을 선택하고, 그대로 두려면 이 대화 상자를 닫으세요."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "잘못된 MAC 주소 형식: {mac}. 예상 형식: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "잘못된 환경 변수 이름: {name}. 문자, 숫자, 밑줄만 사용하고 문자 또는 밑줄로 시작하세요."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "{host} için yetersiz API izinleri",
       "description": "RouterOS kullanıcısı **{username}**, **{host}** yönlendiricisinde şu izinlere sahip değil: **{missing}**.\n\nBazı entegrasyon özellikleri çalışmayacak (anahtarlar, yeniden başlatma düğmesi, Kid Control otomatik kurulumu). Bunu düzeltmek için yönlendiricide kullanıcı grubuna eksik politikaları ekleyin:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Varlık kimlikleri hâlâ okunamayan metin içeriyor ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{count} varlık kimliğini yeniden adlandır",
+            "description": "Bu varlıklar, Metin kodlaması seçeneği yönlendiricinizle eşleşmeden önce oluşturuldu, bu yüzden kimlikleri okunamayan metinden üretildi. Adları ve verileri zaten doğru, yalnızca kimlikler kaldı.\n\n{renames}\n\nKendi yeniden adlandırdığınız kimliklere asla dokunulmaz. Eski kimliklere başvuran otomasyonları, betikleri ve panoları bu değişiklikten sonra sizin güncellemeniz gerekir; çiftler ayrıca Home Assistant günlüğüne de yazılır.\n\nYeniden adlandırmak için Gönder seçeneğini seçin veya her şeyi olduğu gibi bırakmak için bu pencereyi kapatın."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Geçersiz MAC adresi biçimi: {mac}. Beklenen biçim: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Geçersiz ortam değişkeni adı: {name}. Yalnızca harf, rakam ve alt çizgi kullanın; harf veya alt çizgi ile başlayın."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

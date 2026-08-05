@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Niewystarczające uprawnienia API dla {host}",
       "description": "Użytkownik RouterOS **{username}** na routerze **{host}** nie ma następujących uprawnień: **{missing}**.\n\nNiektóre funkcje integracji nie będą działać (przełączniki, przycisk restartu, automatyczna konfiguracja Kid Control). Aby to naprawić, dodaj brakujące zasady do grupy użytkownika na routerze:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Identyfikatory encji nadal zawierają nieczytelny tekst ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Zmień nazwę {count} identyfikatorów encji",
+            "description": "Te encje powstały, zanim opcja Kodowanie tekstu odpowiadała routerowi, więc ich identyfikatory zbudowano z nieczytelnego tekstu. Ich nazwy i dane są już poprawne, pozostały tylko identyfikatory.\n\n{renames}\n\nIdentyfikatory zmienione przez Ciebie nigdy nie są ruszane. Automatyzacje, skrypty i pulpity odwołujące się do starych identyfikatorów musisz zaktualizować sam po tej zmianie; pary są zapisywane także w dzienniku Home Assistant.\n\nWybierz Wyślij, aby zmienić nazwy, albo zamknij to okno, by wszystko zostało bez zmian."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Nieprawidłowy format adresu MAC: {mac}. Oczekiwany format: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Nieprawidłowa nazwa zmiennej środowiskowej: {name}. Używaj tylko liter, cyfr i podkreśleń, zaczynając od litery lub podkreślenia."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

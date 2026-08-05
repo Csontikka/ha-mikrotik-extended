@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Nedostatečná oprávnění API pro {host}",
       "description": "Uživatel RouterOS **{username}** na routeru **{host}** postrádá následující oprávnění: **{missing}**.\n\nNěkteré funkce integrace nebudou fungovat (přepínače, tlačítko restartu, automatické nastavení Kid Control). Chcete-li to opravit, přidejte chybějící zásady do skupiny uživatele na routeru:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "ID entit stále obsahují nečitelný text ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Přejmenovat {count} ID entit",
+            "description": "Tyto entity vznikly dříve, než volba Kódování textu odpovídala vašemu routeru, takže jejich ID byla sestavena z nečitelného textu. Jejich názvy a data jsou již správné, zbývají pouze ID.\n\n{renames}\n\nID entit, která jste přejmenovali sami, nejsou nikdy dotčena. Automatizace, skripty a nástěnky odkazující na stará ID musíte po této změně upravit vy; uvedené dvojice se zapisují i do protokolu Home Assistant.\n\nVyberte Odeslat pro přejmenování, nebo zavřete toto okno a nic se nezmění."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Neplatný formát MAC adresy: {mac}. Očekávaný formát: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Neplatný název proměnné prostředí: {name}. Používejte pouze písmena, číslice a podtržítka, začínající písmenem nebo podtržítkem."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

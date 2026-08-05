@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Onvoldoende API-rechten voor {host}",
       "description": "De RouterOS-gebruiker **{username}** op router **{host}** mist de volgende rechten: **{missing}**.\n\nSommige integratiefuncties zullen niet werken (schakelaars, herstart-knop, automatische Kid Control-instelling). Voeg de ontbrekende beleidsregels toe aan de gebruikersgroep op de router om dit op te lossen:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Entiteit-ID's bevatten nog steeds onleesbare tekst ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{count} entiteit-ID's hernoemen",
+            "description": "Deze entiteiten zijn aangemaakt voordat de optie Tekstcodering overeenkwam met uw router, waardoor hun ID's uit onleesbare tekst zijn opgebouwd. Hun namen en gegevens zijn al correct, alleen de ID's resteren.\n\n{renames}\n\nEntiteit-ID's die u zelf hebt hernoemd worden nooit aangeraakt. Automatiseringen, scripts en dashboards die naar de oude ID's verwijzen moet u na deze wijziging zelf bijwerken; de paren worden ook naar het Home Assistant logboek geschreven.\n\nKies Verzenden om ze te hernoemen, of sluit dit venster om alles te laten zoals het is."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Ongeldig MAC-adresformaat: {mac}. Verwacht formaat: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Ongeldige naam voor omgevingsvariabele: {name}. Gebruik alleen letters, cijfers en onderstrepingstekens, beginnend met een letter of onderstrepingsteken."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

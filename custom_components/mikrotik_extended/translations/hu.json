@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Elégtelen API-jogosultságok: {host}",
       "description": "A(z) **{host}** routeren a(z) **{username}** RouterOS felhasználónak hiányzó jogosultságai vannak: **{missing}**.\n\nNéhány integrációs funkció nem fog működni (kapcsolók, újraindítás gomb, Kid Control automatikus beállítás). A javításhoz adj hozzá a hiányzó jogosultságokat a felhasználó csoportjához a routeren:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Az entitásazonosítók olvashatatlan szöveget tartalmaznak ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "{count} entitásazonosító átnevezése",
+            "description": "Ezek az entitások még azelőtt jöttek létre, hogy a Szövegkódolás beállítás illeszkedett volna a routerhez, ezért az azonosítójuk olvashatatlan szövegből képződött. A nevük és az adataik már helyesek, csak az azonosítók maradtak hátra.\n\n{renames}\n\nAz általad átnevezett azonosítókhoz soha nem nyúlunk. A régi azonosítókra hivatkozó automatizációkat, szkripteket és vezérlőpultokat a változtatás után neked kell átvezetned; a fenti párok a Home Assistant naplójába is bekerülnek.\n\nVálaszd a Küldés lehetőséget az átnevezéshez, vagy zárd be ezt az ablakot, és minden marad a régiben."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Érvénytelen MAC cím formátum: {mac}. Elvárt formátum: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Érvénytelen környezeti változó név: {name}. Csak betűket, számjegyeket és aláhúzást használj, betűvel vagy aláhúzással kezdve."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."

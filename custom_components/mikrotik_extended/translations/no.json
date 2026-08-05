@@ -219,11 +219,25 @@
     "insufficient_permissions": {
       "title": "Utilstrekkelige API-tillatelser for {host}",
       "description": "RouterOS-brukeren **{username}** på ruteren **{host}** mangler følgende tillatelser: **{missing}**.\n\nNoen integrasjonsfunksjoner vil ikke fungere (brytere, omstart-knapp, automatisk Kid Control-oppsett). For å fikse dette, legg til de manglende retningslinjene i brukergruppen på ruteren:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
+    },
+    "encoding_entity_ids": {
+      "title": "Enhets-ID-er inneholder fortsatt uleselig tekst ({host})",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Gi nytt navn til {count} enhets-ID-er",
+            "description": "Disse enhetene ble opprettet før alternativet Tekstkoding samsvarte med ruteren din, så ID-ene deres ble bygget av uleselig tekst. Navnene og dataene er allerede riktige, bare ID-ene gjenstår.\n\n{renames}\n\nEnhets-ID-er du selv har endret blir aldri berørt. Automasjoner, skript og dashbord som viser til de gamle ID-ene må du oppdatere selv etter denne endringen; parene skrives også til Home Assistant-loggen.\n\nVelg Send for å gi dem nytt navn, eller lukk dette vinduet for å la alt være som det er."
+          }
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_mac": {
       "message": "Ugyldig MAC-adresseformat: {mac}. Forventet format: AA:BB:CC:DD:EE:FF"
+    },
+    "invalid_env_name": {
+      "message": "Ugyldig navn på miljøvariabel: {name}. Bruk kun bokstaver, tall og understrek, som starter med en bokstav eller understrek."
     },
     "missing_value": {
       "message": "A value is required for add or set actions."
