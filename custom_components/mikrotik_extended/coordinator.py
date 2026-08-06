@@ -126,7 +126,7 @@ def _package_enabled(packages: dict, name: str) -> bool:
     return name in packages and packages[name]["enabled"]
 
 
-def _prefer_comment_uniq_id(store: dict) -> None:
+def _prefer_comment_uniq_id(store: dict, stale_uids=()) -> None:
     """Use the comment as the entity reference when the rule has one.
 
     The generated reference is built from the rule contents, so editing the rule
@@ -134,8 +134,16 @@ def _prefer_comment_uniq_id(store: dict) -> None:
     new entity while the old one is left behind. The comment survives such
     edits. The previous reference is kept as legacy-uniq-id so entities created
     under the old scheme can be pointed at the new one.
+
+    Rows in ``stale_uids`` are skipped entirely: they are no longer refreshed
+    from the router, so rewriting legacy-uniq-id would degrade their stored
+    content signature to the bare comment. That signature is what tells a
+    re-created rule apart from a different rule that happens to share the
+    comment when an entity looks for its successor.
     """
-    for vals in store.values():
+    for uid, vals in store.items():
+        if uid in stale_uids:
+            continue
         vals["legacy-uniq-id"] = str(vals.get("uniq-id", ""))
         comment = str(vals.get("comment", "")).strip()
         if comment:
@@ -1494,7 +1502,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for uid in self.ds["nat"]:
             self.ds["nat"][uid]["comment"] = str(self.ds["nat"][uid]["comment"])
         self._decode_store("nat")
-        _prefer_comment_uniq_id(self.ds["nat"])
+        _prefer_comment_uniq_id(self.ds["nat"], self._get_stale_counters("nat"))
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["nat"], self._get_stale_counters("nat")):
             if tmp_name not in self.nat_removed:
@@ -1579,7 +1587,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for uid in self.ds["mangle"]:
             self.ds["mangle"][uid]["comment"] = str(self.ds["mangle"][uid]["comment"])
         self._decode_store("mangle")
-        _prefer_comment_uniq_id(self.ds["mangle"])
+        _prefer_comment_uniq_id(self.ds["mangle"], self._get_stale_counters("mangle"))
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"], self._get_stale_counters("mangle")):
             if tmp_name not in self.mangle_removed:
@@ -1655,7 +1663,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for uid in self.ds["routing_rules"]:
             self.ds["routing_rules"][uid]["comment"] = str(self.ds["routing_rules"][uid]["comment"])
         self._decode_store("routing_rules")
-        _prefer_comment_uniq_id(self.ds["routing_rules"])
+        _prefer_comment_uniq_id(self.ds["routing_rules"], self._get_stale_counters("routing_rules"))
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"], self._get_stale_counters("routing_rules")):
             if tmp_name not in self.routing_rules_removed:
@@ -1937,7 +1945,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for uid in self.ds["filter"]:
             self.ds["filter"][uid]["comment"] = str(self.ds["filter"][uid]["comment"])
         self._decode_store("filter")
-        _prefer_comment_uniq_id(self.ds["filter"])
+        _prefer_comment_uniq_id(self.ds["filter"], self._get_stale_counters("filter"))
 
         for tmp_name in _disambiguate_uniq_ids(self.ds["filter"], self._get_stale_counters("filter")):
             if tmp_name not in self.filter_removed:
@@ -2417,7 +2425,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def _dedupe_queue_uniq_ids(self) -> None:
         """Add a stable suffix to uniq-id when multiple queues share a name."""
         self._decode_store("queue")
-        _prefer_comment_uniq_id(self.ds["queue"])
+        _prefer_comment_uniq_id(self.ds["queue"], self._get_stale_counters("queue"))
         for tmp_name in _disambiguate_uniq_ids(self.ds["queue"], self._get_stale_counters("queue")):
             if tmp_name not in self.queue_removed:
                 self.queue_removed[tmp_name] = 1
