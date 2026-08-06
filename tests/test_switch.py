@@ -1,6 +1,5 @@
 """Tests for the switch platform."""
 
-import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.const import (
@@ -492,9 +491,31 @@ async def test_rule_switches_toggle_by_own_router_id(hass):
         (MikrotikFilterSwitch, "filter", "/ip/firewall/filter"),
         (MikrotikQueueSwitch, "queue", "/queue/simple"),
     ]
+    # Full rule fields so the pre-fix code runs its content-based lookup to
+    # completion and produces value=None instead of tripping on a KeyError.
+    rule_fields = {
+        "chain": "dstnat",
+        "action": "dst-nat",
+        "protocol": "tcp",
+        "layer7-protocol": "",
+        "in-interface": "ether1",
+        "in-interface-list": "",
+        "out-interface": "ether2",
+        "out-interface-list": "",
+        "src-address": "",
+        "src-address-list": "",
+        "src-port": "",
+        "dst-address": "",
+        "dst-address-list": "",
+        "dst-port": "443",
+        "to-addresses": "10.0.0.5",
+        "to-ports": "443",
+        "routing-mark": "",
+        "interface": "",
+    }
     for cls, store, path in cases:
         desc = _make_description(func=cls.__name__, data_path=store, data_reference="uniq-id", data_name="uniq-id", data_switch_path=path)
-        row = {".id": "*7", "uniq-id": "my comment", "name": "q1", "comment": "my comment", "enabled": True}
+        row = {".id": "*7", "uniq-id": "my comment", "name": "q1", "comment": "my comment", "enabled": True, **rule_fields}
         coord = _make_coordinator(hass, {store: {"*7": row}, "access": {"write"}})
         sw = cls(coord, desc, uid="*7")
         sw.hass = hass
@@ -519,8 +540,8 @@ async def test_rule_switch_follows_recreated_row(hass):
     sw.hass = hass
 
     coord.data["nat"] = {"*9": {".id": "*9", "uniq-id": "my comment", "name": "n1", "comment": "my comment", "enabled": True}}
-    with contextlib.suppress(Exception):
-        sw._handle_coordinator_update()
+    sw.async_write_ha_state = MagicMock()
+    sw._handle_coordinator_update()
 
     await sw.async_turn_on()
     assert coord.set_value.call_args.args == ("/ip/firewall/nat", ".id", "*9", desc.data_switch_parameter, False)

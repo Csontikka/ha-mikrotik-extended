@@ -319,11 +319,39 @@ class TestHandleCoordinatorUpdate:
             data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
         )
         entity = _make_entity(coord, desc, uid="*1")
+        entity.async_write_ha_state = MagicMock()
 
         coord.data = {"nat": {"*9": {".id": "*9", "name": "my rule", "uniq-id": "my rule"}}}
 
-        with contextlib.suppress(Exception):
-            entity._handle_coordinator_update()
+        entity._handle_coordinator_update()
+
+        assert entity._uid == "*9"
+        assert entity._data[".id"] == "*9"
+
+    def test_rebinds_away_from_a_stale_row_still_in_the_store(self, hass):
+        """A dead row on the pruning grace is superseded by the live row at once."""
+        desc = _make_entity_description(
+            data_path="nat",
+            data_reference="uniq-id",
+            data_name="name",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
+        )
+        entity = _make_entity(coord, desc, uid="*1")
+        entity.async_write_ha_state = MagicMock()
+
+        # *1 is still in the store on the pruning grace, *9 is the live row.
+        coord.data = {
+            "nat": {
+                "*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"},
+                "*9": {".id": "*9", "name": "my rule", "uniq-id": "my rule"},
+            }
+        }
+        coord._get_stale_counters = lambda path: {"*1": 1}
+
+        entity._handle_coordinator_update()
 
         assert entity._uid == "*9"
         assert entity._data[".id"] == "*9"
@@ -340,6 +368,7 @@ class TestHandleCoordinatorUpdate:
             data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
         )
         entity = _make_entity(coord, desc, uid="*1")
+        entity.async_write_ha_state = MagicMock()
 
         # *3 is a dead row still on the pruning grace, *5 is the live one.
         coord.data = {
@@ -350,8 +379,7 @@ class TestHandleCoordinatorUpdate:
         }
         coord._get_stale_counters = lambda path: {"*3": 1}
 
-        with contextlib.suppress(Exception):
-            entity._handle_coordinator_update()
+        entity._handle_coordinator_update()
 
         assert entity._uid == "*5"
         assert entity._data[".id"] == "*5"
@@ -368,11 +396,11 @@ class TestHandleCoordinatorUpdate:
             data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
         )
         entity = _make_entity(coord, desc, uid="*1")
+        entity.async_write_ha_state = MagicMock()
 
         coord.data = {"nat": {"*9": {".id": "*9", "name": "other", "uniq-id": "other"}}}
 
-        with contextlib.suppress(Exception):
-            entity._handle_coordinator_update()
+        entity._handle_coordinator_update()
 
         assert entity._uid == "*1"
         assert entity._data[".id"] == "*1"
