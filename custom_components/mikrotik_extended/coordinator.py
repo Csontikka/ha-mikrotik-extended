@@ -142,16 +142,24 @@ def _prefer_comment_uniq_id(store: dict) -> None:
             vals["uniq-id"] = comment
 
 
-def _disambiguate_uniq_ids(store: dict) -> list[str]:
+def _disambiguate_uniq_ids(store: dict, stale_uids=()) -> list[str]:
     """Give colliding uniq-id values a stable suffix; return the collided bases.
 
     The comment is used when it tells the entries apart, otherwise a positional
     index. The RouterOS list id is deliberately not used: it changes whenever an
     entry is removed and re-added, which would register a new entity instead of
     updating the existing one.
+
+    Rows in ``stale_uids`` are no longer on the router and only survive on the
+    pruning grace period. They must not take part in disambiguation: a rule
+    re-created with the same comment briefly overlaps its own dead row, and
+    suffixing both would mint throwaway entities and strand the original one
+    (its stored uniq-id would never match a live row again).
     """
     seen: dict[str, list[str]] = {}
     for uid, vals in store.items():
+        if uid in stale_uids:
+            continue
         seen.setdefault(str(vals.get("uniq-id", uid)), []).append(uid)
 
     collided = []
@@ -1488,7 +1496,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("nat")
         _prefer_comment_uniq_id(self.ds["nat"])
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["nat"]):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["nat"], self._get_stale_counters("nat")):
             if tmp_name not in self.nat_removed:
                 self.nat_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -1573,7 +1581,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("mangle")
         _prefer_comment_uniq_id(self.ds["mangle"])
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"]):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"], self._get_stale_counters("mangle")):
             if tmp_name not in self.mangle_removed:
                 self.mangle_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -1649,7 +1657,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("routing_rules")
         _prefer_comment_uniq_id(self.ds["routing_rules"])
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"]):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"], self._get_stale_counters("routing_rules")):
             if tmp_name not in self.routing_rules_removed:
                 self.routing_rules_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -1931,7 +1939,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("filter")
         _prefer_comment_uniq_id(self.ds["filter"])
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["filter"]):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["filter"], self._get_stale_counters("filter")):
             if tmp_name not in self.filter_removed:
                 self.filter_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -2410,7 +2418,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Add a stable suffix to uniq-id when multiple queues share a name."""
         self._decode_store("queue")
         _prefer_comment_uniq_id(self.ds["queue"])
-        for tmp_name in _disambiguate_uniq_ids(self.ds["queue"]):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["queue"], self._get_stale_counters("queue")):
             if tmp_name not in self.queue_removed:
                 self.queue_removed[tmp_name] = 1
                 _LOGGER.info(
