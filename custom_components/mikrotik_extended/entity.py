@@ -261,8 +261,12 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         ref = self._data.get("uniq-id")
         if not ref:
             return None
+        # Rows on the pruning grace are already gone from the router; binding
+        # to one would just trade a dead row for another dead row.
+        get_counters = getattr(self.coordinator, "_get_stale_counters", None)
+        stale = get_counters(self.entity_description.data_path) if get_counters else {}
         for uid, vals in path_data.items():
-            if vals.get("uniq-id") == ref:
+            if uid not in stale and vals.get("uniq-id") == ref:
                 return uid
         return None
 
