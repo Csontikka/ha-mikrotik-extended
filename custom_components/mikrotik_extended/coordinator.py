@@ -1799,7 +1799,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             # omits the key entirely (verified live on 7.23.3). Map the new
             # schema onto the old one so everything downstream keeps working
             # on both generations.
-            if "status" not in entry:
+            if not entry.get("status"):
                 stopped = str(entry.get("stopped", "")).lower() in ("true", "yes", "1")
                 entry["status"] = "stopped" if stopped else "running"
             if not entry.get("repo") and entry.get("remote-image"):
