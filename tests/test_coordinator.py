@@ -3903,3 +3903,40 @@ class TestForceHwinfoRefresh:
         coord.last_hwinfo_update = datetime(2026, 7, 9, 12, 0, 0)
         coord.force_hwinfo_refresh()
         assert coord.last_hwinfo_update == datetime(1970, 1, 1)
+
+
+class TestContainerStatusSchemas:
+    """RouterOS 7.23 replaced the container status text with a stopped flag."""
+
+    def _run(self, hass, source):
+        coord = _make_coordinator(hass)
+        coord.api.query = MagicMock(return_value=source)
+        coord.get_containers()
+        return coord.ds["containers"]
+
+    def test_pre_723_status_text_kept(self, hass):
+        store = self._run(hass, [{".id": "*2", "interface": "veth1", "status": "running", "repo": "docker.io/x"}])
+        assert store["veth1"]["status"] == "running"
+        assert store["veth1"]["repo"] == "docker.io/x"
+
+    def test_723_stopped_false_maps_to_running(self, hass):
+        store = self._run(hass, [{".id": "*2", "interface": "veth1", "stopped": False, "remote-image": "docker.io/x"}])
+        assert store["veth1"]["status"] == "running"
+        assert store["veth1"]["repo"] == "docker.io/x"
+
+    def test_723_stopped_true_maps_to_stopped(self, hass):
+        store = self._run(hass, [{".id": "*2", "interface": "veth1", "stopped": True}])
+        assert store["veth1"]["status"] == "stopped"
+
+    def test_723_stopped_string_values(self, hass):
+        store = self._run(hass, [{".id": "*2", "interface": "veth1", "stopped": "false"}])
+        assert store["veth1"]["status"] == "running"
+        store = self._run(hass, [{".id": "*3", "interface": "veth2", "stopped": "true"}])
+        assert store["veth2"]["status"] == "stopped"
+
+    def test_no_status_no_stopped_means_running(self, hass):
+        # On 7.23 the stopped flag is omitted entirely while the container
+        # runs, so a record with neither field is a running container.
+        store = self._run(hass, [{".id": "*2", "interface": "veth1"}])
+        assert store["veth1"]["status"] == "running"
+        assert store["veth1"]["running"] is True
