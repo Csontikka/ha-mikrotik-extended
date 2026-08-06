@@ -1219,8 +1219,10 @@ class TestFirewallRules:
         original one on a reference no live row ever matches again.
         """
         coord = _make_coordinator(hass)
+        # The stale row already carries its final comment-based reference
+        # from its live cycles; only the live row still has a raw signature.
         nat = {
-            "*1": {".id": "*1", "uniq-id": "a", "name": "rule1", "comment": "web"},
+            "*1": {".id": "*1", "uniq-id": "web", "name": "rule1", "comment": "web"},
             "*3": {".id": "*3", "uniq-id": "b", "name": "rule1", "comment": "web"},
         }
         coord._get_stale_counters("nat")["*1"] = 1
@@ -1232,6 +1234,28 @@ class TestFirewallRules:
         assert coord.ds["nat"]["*1"]["uniq-id"] == "web"
         assert coord.ds["nat"]["*3"]["uniq-id"] == "web"
         assert "web" not in coord.nat_removed
+
+    def test_stale_row_keeps_its_content_signature(self, hass):
+        """A dead row's legacy-uniq-id must not degrade to the bare comment.
+
+        The signature is what lets an entity tell its re-created rule apart
+        from a different rule that shares the comment.
+        """
+        coord = _make_coordinator(hass)
+        nat = {
+            "*1": {".id": "*1", "uniq-id": "web", "name": "r1", "comment": "web", "legacy-uniq-id": "dstnat-sig"},
+            "*3": {".id": "*3", "uniq-id": "dstnat-sig", "name": "r1", "comment": "web"},
+        }
+        coord._get_stale_counters("nat")["*1"] = 1
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=nat,
+        ):
+            coord.get_nat()
+        # the stale row froze its signature, the live row generated its own
+        assert coord.ds["nat"]["*1"]["legacy-uniq-id"] == "dstnat-sig"
+        assert coord.ds["nat"]["*3"]["legacy-uniq-id"] == "dstnat-sig"
+        assert coord.ds["nat"]["*3"]["uniq-id"] == "web"
 
     def test_dedup_stable_when_router_ids_change(self, hass):
         """Re-created rules get new RouterOS ids; the uniq-id must not follow them."""

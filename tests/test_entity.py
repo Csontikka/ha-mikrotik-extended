@@ -316,17 +316,63 @@ class TestHandleCoordinatorUpdate:
         )
         coord = _make_coordinator(
             hass,
-            data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
+            data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule", "legacy-uniq-id": "sig"}}},
         )
         entity = _make_entity(coord, desc, uid="*1")
         entity.async_write_ha_state = MagicMock()
 
-        coord.data = {"nat": {"*9": {".id": "*9", "name": "my rule", "uniq-id": "my rule"}}}
+        coord.data = {"nat": {"*9": {".id": "*9", "name": "my rule", "uniq-id": "my rule", "legacy-uniq-id": "sig"}}}
 
         entity._handle_coordinator_update()
 
         assert entity._uid == "*9"
         assert entity._data[".id"] == "*9"
+
+    def test_never_rebinds_to_a_different_rule_sharing_the_comment(self, hass):
+        """A deleted rule's entity must not take over an unrelated rule.
+
+        Two different rules can share a comment; only the content signature
+        tells the re-created rule apart from the unrelated one.
+        """
+        desc = _make_entity_description(
+            data_path="nat",
+            data_reference="uniq-id",
+            data_name="name",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={"nat": {"*1": {".id": "*1", "name": "dst rule", "uniq-id": "web", "legacy-uniq-id": "dstnat-sig"}}},
+        )
+        entity = _make_entity(coord, desc, uid="*1")
+        entity.async_write_ha_state = MagicMock()
+
+        coord.data = {"nat": {"*2": {".id": "*2", "name": "src rule", "uniq-id": "web", "legacy-uniq-id": "srcnat-sig"}}}
+
+        entity._handle_coordinator_update()
+
+        assert entity._uid == "*1"
+        assert entity._data[".id"] == "*1"
+
+    def test_no_rebinding_outside_the_rule_stores(self, hass):
+        """WireGuard peers must not rebind: the key is not unique per interface."""
+        desc = _make_entity_description(
+            data_path="wireguard_peers",
+            data_reference="uniq-id",
+            data_name="name",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={"wireguard_peers": {"*1": {".id": "*1", "name": "peer", "uniq-id": "pubkey"}}},
+        )
+        entity = _make_entity(coord, desc, uid="*1")
+        entity.async_write_ha_state = MagicMock()
+
+        coord.data = {"wireguard_peers": {"*2": {".id": "*2", "name": "peer", "uniq-id": "pubkey"}}}
+
+        entity._handle_coordinator_update()
+
+        assert entity._uid == "*1"
+        assert entity._data[".id"] == "*1"
 
     def test_rebinds_away_from_a_stale_row_still_in_the_store(self, hass):
         """A dead row on the pruning grace is superseded by the live row at once."""
