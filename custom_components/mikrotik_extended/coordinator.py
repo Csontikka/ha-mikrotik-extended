@@ -1785,6 +1785,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             count = seen_per_iface.get(ref, 0) + 1
             seen_per_iface[ref] = count
             entry["uid-ref"] = ref if count == 1 else f"{ref}-{count}"
+            # RouterOS 7.23 dropped the "status" text in favour of a "stopped"
+            # flag, and like other RouterOS flags it is only present when set:
+            # a stopped container reports stopped=true while a running one
+            # omits the key entirely (verified live on 7.23.3). Map the new
+            # schema onto the old one so everything downstream keeps working
+            # on both generations.
+            if "status" not in entry:
+                stopped = str(entry.get("stopped", "")).lower() in ("true", "yes", "1")
+                entry["status"] = "stopped" if stopped else "running"
+            if not entry.get("repo") and entry.get("remote-image"):
+                entry["repo"] = entry["remote-image"]
 
         self.ds["containers"] = parse_api(
             data=self.ds["containers"],
