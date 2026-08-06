@@ -40,6 +40,14 @@ from .helper import format_attribute
 
 _LOGGER = getLogger(__name__)
 
+# Stores whose entities may follow a re-created record to its new list id.
+# Only the rule stores qualify: they are keyed by the unstable RouterOS id,
+# carry a comment-based uniq-id AND a content signature (legacy-uniq-id) to
+# confirm the match. WireGuard peers are deliberately absent: the public key
+# is not unique across interfaces, so a match there could bind a switch to a
+# different peer.
+REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "queue"})
+
 _FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Routing Rules"}
 _IFACE_TYPE_CATEGORY = {
     "ether": "port",
@@ -263,13 +271,22 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
 
     def _replacement_uid(self, path_data, stale) -> str | None:
         """Find the live store key of a re-created record by its uniq-id."""
+        if self.entity_description.data_path not in REBIND_DATA_PATHS:
+            return None
         ref = self._data.get("uniq-id")
         if not ref:
             return None
+        # The comment alone cannot tell a re-created rule apart from a
+        # different rule that happens to share it, and following the wrong
+        # one would put this switch in control of an unrelated firewall
+        # rule. The stored content signature settles it.
+        signature = self._data.get("legacy-uniq-id")
         # Rows on the pruning grace are already gone from the router; binding
         # to one would just trade a dead row for another dead row.
         for uid, vals in path_data.items():
-            if uid != self._uid and uid not in stale and vals.get("uniq-id") == ref:
+            if uid == self._uid or uid in stale:
+                continue
+            if vals.get("uniq-id") == ref and vals.get("legacy-uniq-id") == signature:
                 return uid
         return None
 
