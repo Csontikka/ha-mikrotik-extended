@@ -1211,6 +1211,28 @@ class TestFirewallRules:
         assert coord.ds["nat"]["r1"]["uniq-id"] == "same #1"
         assert coord.ds["nat"]["r2"]["uniq-id"] == "same #2"
 
+    def test_recreated_rule_overlap_not_disambiguated(self, hass):
+        """A dead row on the pruning grace must not trigger suffixing.
+
+        While a re-created rule overlaps its own dead row both share the
+        comment; suffixing them would mint throwaway entities and strand the
+        original one on a reference no live row ever matches again.
+        """
+        coord = _make_coordinator(hass)
+        nat = {
+            "*1": {".id": "*1", "uniq-id": "a", "name": "rule1", "comment": "web"},
+            "*3": {".id": "*3", "uniq-id": "b", "name": "rule1", "comment": "web"},
+        }
+        coord._get_stale_counters("nat")["*1"] = 1
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=nat,
+        ):
+            coord.get_nat()
+        assert coord.ds["nat"]["*1"]["uniq-id"] == "web"
+        assert coord.ds["nat"]["*3"]["uniq-id"] == "web"
+        assert "web" not in coord.nat_removed
+
     def test_dedup_stable_when_router_ids_change(self, hass):
         """Re-created rules get new RouterOS ids; the uniq-id must not follow them."""
         coord = _make_coordinator(hass)
