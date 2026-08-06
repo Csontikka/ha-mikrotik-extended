@@ -475,3 +475,30 @@ async def test_container_switch_is_on_icon_and_turn_on_off(hass):
     coord.execute.assert_called_with("/container", "start", ".id", "*c1")
     await sw.async_turn_off()
     coord.execute.assert_called_with("/container", "stop", ".id", "*c1")
+
+
+async def test_rule_switches_toggle_by_own_router_id(hass):
+    """Rule switches pass their own row's .id to set_value (issue #23).
+
+    The pre-0.6.2 code rebuilt the old content-based reference and searched
+    the store for it; after the 0.6.0 key change that lookup never matched
+    and set_value was called with value=None.
+    """
+    cases = [
+        (MikrotikNATSwitch, "nat", "/ip/firewall/nat"),
+        (MikrotikMangleSwitch, "mangle", "/ip/firewall/mangle"),
+        (MikrotikRoutingRulesSwitch, "routing_rules", "/routing/rule"),
+        (MikrotikFilterSwitch, "filter", "/ip/firewall/filter"),
+        (MikrotikQueueSwitch, "queue", "/queue/simple"),
+    ]
+    for cls, store, path in cases:
+        desc = _make_description(func=cls.__name__, data_path=store, data_reference="uniq-id", data_name="uniq-id", data_switch_path=path)
+        row = {".id": "*7", "uniq-id": "my comment", "name": "q1", "comment": "my comment", "enabled": True}
+        coord = _make_coordinator(hass, {store: {"*7": row}, "access": {"write"}})
+        sw = cls(coord, desc, uid="*7")
+        sw.hass = hass
+
+        await sw.async_turn_on()
+        assert coord.set_value.call_args.args == (path, ".id", "*7", desc.data_switch_parameter, False), cls.__name__
+        await sw.async_turn_off()
+        assert coord.set_value.call_args.args == (path, ".id", "*7", desc.data_switch_parameter, True), cls.__name__
