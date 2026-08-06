@@ -1,4 +1,5 @@
 """Root conftest — must run before any asyncio fixtures are set up."""
+
 import asyncio
 import asyncio.events
 import sys
@@ -38,7 +39,7 @@ def pytest_configure(config):
 
     def _unguarded_socketpair(
         family=_socket_mod.AF_INET,
-        type=_socket_mod.SOCK_STREAM,  # noqa: A002
+        type=_socket_mod.SOCK_STREAM,
         proto=0,
     ):
         """socketpair that bypasses pytest-socket's GuardedSocket for asyncio."""
