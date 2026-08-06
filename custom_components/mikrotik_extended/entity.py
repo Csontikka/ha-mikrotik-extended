@@ -242,12 +242,29 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return
         if self._uid:
             if self._uid not in path_data:
-                return
+                # Stores keyed by the RouterOS list id lose their key when a
+                # record is re-created (the id is not stable). Follow the row
+                # to its new key via the stable uniq-id, otherwise the entity
+                # would stay bound to the dead row forever (issue 23 family).
+                new_uid = self._replacement_uid(path_data)
+                if new_uid is None:
+                    return
+                self._uid = new_uid
             self._data = path_data[self._uid]
         else:
             self._data = path_data
         self._attr_name = self.custom_name
         super()._handle_coordinator_update()
+
+    def _replacement_uid(self, path_data) -> str | None:
+        """Find the new store key of a re-created record by its uniq-id."""
+        ref = self._data.get("uniq-id")
+        if not ref:
+            return None
+        for uid, vals in path_data.items():
+            if vals.get("uniq-id") == ref:
+                return uid
+        return None
 
     @property
     def custom_name(self) -> str:
