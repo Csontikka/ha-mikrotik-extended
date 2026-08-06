@@ -328,6 +328,34 @@ class TestHandleCoordinatorUpdate:
         assert entity._uid == "*9"
         assert entity._data[".id"] == "*9"
 
+    def test_rebind_skips_rows_on_the_pruning_grace(self, hass):
+        """With two candidate rows the entity must pick the live one."""
+        desc = _make_entity_description(
+            data_path="nat",
+            data_reference="uniq-id",
+            data_name="name",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
+        )
+        entity = _make_entity(coord, desc, uid="*1")
+
+        # *3 is a dead row still on the pruning grace, *5 is the live one.
+        coord.data = {
+            "nat": {
+                "*3": {".id": "*3", "name": "my rule", "uniq-id": "my rule"},
+                "*5": {".id": "*5", "name": "my rule", "uniq-id": "my rule"},
+            }
+        }
+        coord._get_stale_counters = lambda path: {"*3": 1}
+
+        with contextlib.suppress(Exception):
+            entity._handle_coordinator_update()
+
+        assert entity._uid == "*5"
+        assert entity._data[".id"] == "*5"
+
     def test_keeps_last_row_when_no_replacement_exists(self, hass):
         """Without a matching uniq-id the entity keeps its last known row."""
         desc = _make_entity_description(
