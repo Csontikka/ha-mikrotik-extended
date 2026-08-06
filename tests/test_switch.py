@@ -1,5 +1,6 @@
 """Tests for the switch platform."""
 
+import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.const import (
@@ -395,7 +396,7 @@ async def test_filter_switch_async_turn_on_off(hass):
 
 
 async def test_queue_switch_async_turn_on_off(hass):
-    """MikrotikQueueSwitch turn_on/off matches by name; write-gated."""
+    """MikrotikQueueSwitch turn_on/off uses its own row's .id; write-gated."""
     desc = _make_description(func="MikrotikQueueSwitch", data_path="queue", data_reference="name", data_name="name")
     queue_data = {"q1": {".id": "*q", "name": "myqueue", "enabled": True}}
     coord = _make_coordinator(hass, {"queue": queue_data, "access": set()})
@@ -502,3 +503,24 @@ async def test_rule_switches_toggle_by_own_router_id(hass):
         assert coord.set_value.call_args.args == (path, ".id", "*7", desc.data_switch_parameter, False), cls.__name__
         await sw.async_turn_off()
         assert coord.set_value.call_args.args == (path, ".id", "*7", desc.data_switch_parameter, True), cls.__name__
+
+
+async def test_rule_switch_follows_recreated_row(hass):
+    """After a rule is re-created with a new .id the toggle uses the new id.
+
+    RouterOS list ids are not stable: deleting and re-adding a rule changes
+    the id while the comment-based uniq-id stays. The entity must rebind to
+    the new row instead of sending the dead id forever.
+    """
+    desc = _make_description(func="MikrotikNATSwitch", data_path="nat", data_reference="uniq-id", data_name="uniq-id", data_switch_path="/ip/firewall/nat")
+    row = {".id": "*7", "uniq-id": "my comment", "name": "n1", "comment": "my comment", "enabled": True}
+    coord = _make_coordinator(hass, {"nat": {"*7": row}, "access": {"write"}})
+    sw = MikrotikNATSwitch(coord, desc, uid="*7")
+    sw.hass = hass
+
+    coord.data["nat"] = {"*9": {".id": "*9", "uniq-id": "my comment", "name": "n1", "comment": "my comment", "enabled": True}}
+    with contextlib.suppress(Exception):
+        sw._handle_coordinator_update()
+
+    await sw.async_turn_on()
+    assert coord.set_value.call_args.args == ("/ip/firewall/nat", ".id", "*9", desc.data_switch_parameter, False)

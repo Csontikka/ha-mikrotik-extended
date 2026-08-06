@@ -307,6 +307,48 @@ class TestHandleCoordinatorUpdate:
 
         assert entity._data == original_data
 
+    def test_rebinds_to_recreated_row_by_uniq_id(self, hass):
+        """A re-created record gets a new list id; the entity follows it."""
+        desc = _make_entity_description(
+            data_path="nat",
+            data_reference="uniq-id",
+            data_name="name",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
+        )
+        entity = _make_entity(coord, desc, uid="*1")
+
+        coord.data = {"nat": {"*9": {".id": "*9", "name": "my rule", "uniq-id": "my rule"}}}
+
+        with contextlib.suppress(Exception):
+            entity._handle_coordinator_update()
+
+        assert entity._uid == "*9"
+        assert entity._data[".id"] == "*9"
+
+    def test_keeps_last_row_when_no_replacement_exists(self, hass):
+        """Without a matching uniq-id the entity keeps its last known row."""
+        desc = _make_entity_description(
+            data_path="nat",
+            data_reference="uniq-id",
+            data_name="name",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={"nat": {"*1": {".id": "*1", "name": "my rule", "uniq-id": "my rule"}}},
+        )
+        entity = _make_entity(coord, desc, uid="*1")
+
+        coord.data = {"nat": {"*9": {".id": "*9", "name": "other", "uniq-id": "other"}}}
+
+        with contextlib.suppress(Exception):
+            entity._handle_coordinator_update()
+
+        assert entity._uid == "*1"
+        assert entity._data[".id"] == "*1"
+
     def test_updates_flat_data_without_uid(self, hass):
         """_handle_coordinator_update updates _data correctly when uid is None."""
         desc = _make_entity_description(data_path="resource", data_attribute="cpu-load")
