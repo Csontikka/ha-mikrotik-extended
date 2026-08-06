@@ -241,32 +241,35 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         if path_data is None:
             return
         if self._uid:
-            if self._uid not in path_data:
+            get_counters = getattr(self.coordinator, "_get_stale_counters", None)
+            stale = get_counters(self.entity_description.data_path) if get_counters else {}
+            if self._uid not in path_data or self._uid in stale:
                 # Stores keyed by the RouterOS list id lose their key when a
                 # record is re-created (the id is not stable). Follow the row
                 # to its new key via the stable uniq-id, otherwise the entity
                 # would stay bound to the dead row forever (issue 23 family).
-                new_uid = self._replacement_uid(path_data)
-                if new_uid is None:
+                # A row on the pruning grace is already gone from the router,
+                # so a live row with the same reference supersedes it at once.
+                new_uid = self._replacement_uid(path_data, stale)
+                if new_uid is not None:
+                    self._uid = new_uid
+                elif self._uid not in path_data:
                     return
-                self._uid = new_uid
             self._data = path_data[self._uid]
         else:
             self._data = path_data
         self._attr_name = self.custom_name
         super()._handle_coordinator_update()
 
-    def _replacement_uid(self, path_data) -> str | None:
-        """Find the new store key of a re-created record by its uniq-id."""
+    def _replacement_uid(self, path_data, stale) -> str | None:
+        """Find the live store key of a re-created record by its uniq-id."""
         ref = self._data.get("uniq-id")
         if not ref:
             return None
         # Rows on the pruning grace are already gone from the router; binding
         # to one would just trade a dead row for another dead row.
-        get_counters = getattr(self.coordinator, "_get_stale_counters", None)
-        stale = get_counters(self.entity_description.data_path) if get_counters else {}
         for uid, vals in path_data.items():
-            if uid not in stale and vals.get("uniq-id") == ref:
+            if uid != self._uid and uid not in stale and vals.get("uniq-id") == ref:
                 return uid
         return None
 
