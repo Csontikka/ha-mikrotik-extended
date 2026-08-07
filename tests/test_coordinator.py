@@ -1048,7 +1048,7 @@ class TestTextDecodingBeforeDerivedValues:
         coord = self._coord(hass)
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
-            return_value={"veth1": {".id": "*1", "name": "uuid", "comment": self.RAW, "status": "running"}},
+            return_value={"veth1": {".id": "*1", "name": "4619db28-c827-4828-b4ac-ccf100192f97", "comment": self.RAW, "status": "running"}},
         ):
             coord.get_containers()
         assert coord.ds["containers"]["veth1"]["display-name"] == self.DECODED
@@ -1432,14 +1432,14 @@ class TestMiscResourceGetters:
         containers = {
             "veth1": {
                 ".id": "*c1",
-                "name": "43915e42-uuid",
+                "name": "43915e42-8282-4617-a873-f4da221f529c",
                 "repo": "library/nginx:1.25",
                 "comment": "web",
                 "status": "running",
             },
             "veth2": {
                 ".id": "*c2",
-                "name": "9a1b2c3d-uuid",
+                "name": "9a1b2c3d-1111-2222-3333-444455556666",
                 "repo": "library/redis:7",
                 "comment": "",
                 "status": "stopped",
@@ -1482,7 +1482,7 @@ class TestMiscResourceGetters:
         coord = _make_coordinator(hass)
         coord.api.query.return_value = []
         containers = {
-            "veth1": {".id": "*c1", "name": "uuid-1", "tag": "library/busybox:1.36", "status": "stopped"},
+            "veth1": {".id": "*c1", "name": "0af52d1e-9c5b-4f26-8d41-73a0b58c2ee1", "tag": "library/busybox:1.36", "status": "stopped"},
         }
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
@@ -1491,6 +1491,21 @@ class TestMiscResourceGetters:
             coord.get_containers()
 
         assert coord.ds["containers"]["veth1"]["display-name"] == "library/busybox:1.36"
+
+    def test_get_containers_user_named(self, hass):
+        """A name the user chose wins over comment and image (issue 24)."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = []
+        containers = {
+            "veth1": {".id": "*c1", "name": "adguard", "tag": "adguard/adguardhome:v0.107", "comment": "dns", "status": "running"},
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=containers,
+        ):
+            coord.get_containers()
+
+        assert coord.ds["containers"]["veth1"]["display-name"] == "adguard"
 
     def test_get_containers_uid_stable_across_recreate(self, hass):
         """A re-created container (new list id, same veth) keeps its uid."""
