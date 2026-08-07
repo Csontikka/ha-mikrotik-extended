@@ -126,6 +126,11 @@ def _package_enabled(packages: dict, name: str) -> bool:
     return name in packages and packages[name]["enabled"]
 
 
+# Newer RouterOS names a container with a generated UUID when the user does
+# not pick one; such a name is useless as a label.
+_GENERATED_CONTAINER_NAME = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
+
+
 def _prefer_comment_uniq_id(store: dict, stale_uids=()) -> None:
     """Use the comment as the entity reference when the rule has one.
 
@@ -1846,10 +1851,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             comment = str(container.get("comment", "")).strip()
             # RouterOS 7.18 reports the image in "repo", older builds in "tag".
             image = str(container.get("repo", "")).strip() or str(container.get("tag", "")).strip()
-            # "name" is a generated UUID that changes on every re-creation, so
-            # it is only the last resort for a human readable label.
+            # A name the user chose is the best label, but newer RouterOS
+            # generates a UUID name on creation and that means nothing to a
+            # human, so only a real name may win (issue 24).
             cname = str(container.get("name", "")).strip()
-            container["display-name"] = comment or image or cname or uid
+            if _GENERATED_CONTAINER_NAME.fullmatch(cname):
+                cname = ""
+            container["display-name"] = cname or comment or image or uid
             # The router reports the state in "status" as text; there is no
             # boolean "running" field, so derive it here.
             container["running"] = str(container.get("status", "")).lower() == "running"
