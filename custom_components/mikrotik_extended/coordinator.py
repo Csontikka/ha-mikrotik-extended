@@ -2859,6 +2859,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
             if uid not in self.ds["host"]:
                 self.ds["host"][uid] = {"source": "dhcp"}
+            elif self.ds["host"][uid]["source"] == "restored":
+                # The host is back: hand the entry over to live data at once
+                # instead of leaving it dormant for another cycle (issue 25).
+                self.ds["host"][uid]["source"] = "dhcp"
             elif self.ds["host"][uid]["source"] != "dhcp":
                 continue
 
@@ -2869,21 +2873,27 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         for uid, vals in self.ds["arp"].items():
             if uid not in self.ds["host"]:
                 self.ds["host"][uid] = {"source": "arp"}
+            elif self.ds["host"][uid]["source"] == "restored":
+                # Same as above: a restored entry yields to live ARP data.
+                self.ds["host"][uid]["source"] = "arp"
             elif self.ds["host"][uid]["source"] != "arp":
                 continue
 
             for key in ["address", "mac-address", "interface"]:
                 self.ds["host"][uid][key] = vals[key]
 
-        # Add restored hosts from hass registry
+        # Add restored hosts from hass registry. The keys must stay in the
+        # case RouterOS uses, which is what _mac_from_host_entity already
+        # normalizes to: lowercasing here made the membership test below miss
+        # every time, so a dead "restored" twin was seeded for every known
+        # host and could never be adopted by live data again (issue 25).
         if not self.host_hass_recovered:
             self.host_hass_recovered = True
             for uid in self.ds["host_hass"]:
-                uid_lower = uid.lower()
-                if uid_lower not in self.ds["host"]:
-                    self.ds["host"][uid_lower] = {"source": "restored"}
-                    self.ds["host"][uid_lower]["mac-address"] = uid_lower
-                    self.ds["host"][uid_lower]["host-name"] = self.ds["host_hass"][uid]
+                if uid not in self.ds["host"]:
+                    self.ds["host"][uid] = {"source": "restored"}
+                    self.ds["host"][uid]["mac-address"] = uid
+                    self.ds["host"][uid]["host-name"] = self.ds["host_hass"][uid]
 
         for uid, _vals in self.ds["host"].items():
             # Add missing default values
