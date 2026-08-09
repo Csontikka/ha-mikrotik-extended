@@ -96,7 +96,6 @@ TO_REDACT = {
     "ntp-server",
     "caps-manager",
     "serial-number",
-    "source",
     "from-addresses",
     "to-addresses",
     "src-address",
