@@ -30,7 +30,7 @@ async def async_get_config_entry_diagnostics(_hass: HomeAssistant, config_entry:
             "data": async_redact_data(config_entry.data, TO_REDACT),
             "options": async_redact_data(config_entry.options, TO_REDACT),
         },
-        "data": async_redact_data(data_coordinator.data, TO_REDACT),
-        "tracker": async_redact_data(tracker_coordinator.data, TO_REDACT),
+        "data": redactor.redact_keys(async_redact_data(data_coordinator.data, TO_REDACT)),
+        "tracker": redactor.redact_keys(async_redact_data(tracker_coordinator.data, TO_REDACT)),
         "logs": [redactor.redact(line) for line in _LOG_BUFFER],
     }

@@ -64,3 +64,18 @@ class LogRedactor:
         line = _IPV4_RE.sub(self._ipv4, line)
         line = _KEYED_RE.sub(self._keyed, line)
         return line
+
+    def redact_keys(self, data):
+        """Mask identifiers used as mapping keys, recursively.
+
+        ``async_redact_data`` only rewrites values, but several stores are
+        keyed by a MAC or an IP address, so every one of them was published in
+        clear text as an object key (issue 25). Keys that hold no identifier
+        are returned untouched, and the masking is the same correlation-stable
+        one used for log lines, so a store can still be read.
+        """
+        if isinstance(data, dict):
+            return {self.redact(str(key)): self.redact_keys(value) for key, value in data.items()}
+        if isinstance(data, list):
+            return [self.redact_keys(item) for item in data]
+        return data
