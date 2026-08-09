@@ -35,6 +35,54 @@ async def test_diagnostics_redacts_and_returns_shape(hass):
         assert isinstance(entry_line, str)
 
 
+async def test_diagnostics_masks_identifiers_used_as_keys(hass):
+    """Stores keyed by a MAC must not publish it as a plain object key (issue 25)."""
+    entry = MagicMock()
+    entry.data = {"host": "192.168.88.1"}
+    entry.options = {}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(
+            data={
+                "host": {
+                    "BC:F4:D4:11:22:33": {"source": "arp", "host-name": "laptop"},
+                    "E0:98:06:DF:A4:65": {"source": "dhcp", "host-name": "phone"},
+                },
+                "arp": {"192.168.1.42": {"address": "192.168.1.42"}},
+                "resource": {"cpu-load": 5},
+            }
+        ),
+        tracker_coordinator=SimpleNamespace(data={"host": {"BC:F4:D4:11:22:33": {"source": "arp"}}}),
+    )
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    dumped = str(result)
+    assert "BC:F4:D4:11:22:33" not in dumped
+    assert "E0:98:06:DF:A4:65" not in dumped
+    assert "192.168.1.42" not in dumped
+    # non-identifier keys stay readable, otherwise the dump is useless
+    assert "resource" in result["data"]
+    assert result["data"]["resource"]["cpu-load"] == 5
+    # the same MAC keeps one stable placeholder across stores, so entries can
+    # still be correlated while reading the dump
+    assert next(iter(result["data"]["host"])) == next(iter(result["tracker"]["host"]))
+
+
+async def test_diagnostics_keeps_the_host_source_visible(hass):
+    """'source' tells restored twins from live entries, so it must not be redacted."""
+    entry = MagicMock()
+    entry.data = {}
+    entry.options = {}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(data={"host": {"AA:BB:CC:DD:EE:FF": {"source": "restored"}}}),
+        tracker_coordinator=SimpleNamespace(data={}),
+    )
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert next(iter(result["data"]["host"].values()))["source"] == "restored"
+
+
 async def test_diagnostics_masks_addresses_in_logs(hass):
     """Captured log lines have their network identifiers masked (SEC-02)."""
     from custom_components.mikrotik_extended import _LOG_BUFFER

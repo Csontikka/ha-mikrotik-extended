@@ -2313,6 +2313,64 @@ class TestNetworkGetters:
 # ---------------------------------------------------------------------------
 
 
+class TestRestoredHostSeeding:
+    """Restored registry hosts must not shadow the live entries (issue 25)."""
+
+    def _prepare(self, hass, host_hass):
+        coord = _make_coordinator(hass)
+        coord.ds["capsman_hosts"] = {}
+        coord.ds["wireless_hosts"] = {}
+        coord.ds["dhcp"] = {}
+        coord.ds["hostspot_host"] = {}
+        coord.ds["dns"] = {}
+        coord.ds["interface"] = {}
+        coord.ds["resource"] = {}
+        coord.ds["host"] = {}
+        coord.ds["host_hass"] = host_hass
+        coord.host_hass_recovered = False
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="Vendor Inc")
+        return coord
+
+    async def test_live_host_gets_no_restored_twin(self, hass):
+        mac = "BC:F4:D4:11:22:33"
+        coord = self._prepare(hass, {mac: "my-laptop"})
+        coord.ds["arp"] = {mac: {"mac-address": mac, "address": "192.168.1.50", "interface": "bridge", "status": "reachable"}}
+
+        await coord.async_process_host()
+
+        macs = [uid for uid in coord.ds["host"] if ":" in uid]
+        assert macs == [mac], f"a twin was seeded: {macs}"
+        assert coord.ds["host"][mac]["source"] == "arp"
+        assert coord.ds["host"][mac]["available"] is True
+
+    async def test_absent_host_is_still_restored(self, hass):
+        """The restore itself must keep working for hosts that are really gone."""
+        mac = "BC:F4:D4:11:22:33"
+        coord = self._prepare(hass, {mac: "my-laptop"})
+        coord.ds["arp"] = {}
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"][mac]["source"] == "restored"
+        assert coord.ds["host"][mac]["host-name"] == "my-laptop"
+
+    async def test_restored_host_is_adopted_when_it_comes_back(self, hass):
+        """Once seeded, a returning host must be picked up by live data."""
+        mac = "BC:F4:D4:11:22:33"
+        coord = self._prepare(hass, {mac: "my-laptop"})
+        coord.ds["arp"] = {}
+        await coord.async_process_host()
+        assert coord.ds["host"][mac]["source"] == "restored"
+
+        # the device reappears in the ARP table on a later cycle
+        coord.ds["arp"] = {mac: {"mac-address": mac, "address": "192.168.1.50", "interface": "bridge", "status": "reachable"}}
+        await coord.async_process_host()
+
+        assert coord.ds["host"][mac]["source"] == "arp"
+        assert coord.ds["host"][mac]["available"] is True
+        assert coord.ds["host"][mac]["address"] == "192.168.1.50"
+
+
 class TestAsyncProcessHost:
     async def test_capsman_wireless_dhcp_arp_populate(self, hass):
         coord = _make_coordinator(hass)
@@ -2362,7 +2420,9 @@ class TestAsyncProcessHost:
         assert "EE:FF" not in coord.ds["host"]  # ap=True skipped
         assert coord.ds["host"]["GG:HH"]["source"] == "dhcp"
         assert coord.ds["host"]["II:JJ"]["source"] == "arp"
-        assert "kk:ll:mm:nn:oo:pp" in coord.ds["host"]
+        # the restored key keeps the case the router uses, so live data can
+        # still find it (issue 25)
+        assert "KK:LL:MM:NN:OO:PP" in coord.ds["host"]
         assert coord.ds["resource"]["clients_wireless"] >= 1
 
     async def test_host_hostname_resolved_from_dns(self, hass):
