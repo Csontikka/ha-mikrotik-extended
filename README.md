@@ -510,7 +510,9 @@ recorder:
 
 ### Diagnostics Export
 
-Download the integration diagnostics file for bug reports — it includes integration state and the last 1000 debug log entries. Sensitive data (passwords, IPs, MACs) is automatically redacted.
+Download the integration diagnostics file for bug reports. It includes integration state and the last 1000 debug log entries. Passwords are removed, and IP and MAC addresses are masked wherever they appear, including where they are used as keys. Masking keeps the first and last part of an address plus a per-download tag, so the same device can still be followed through the file without publishing the address itself.
+
+Device names, comments and interface names are kept as they are, because they are what makes a dump readable. Review the file before attaching it if any of them would tell more about your network than you want to share.
 
 1. **Settings -> Devices & Services**
 2. Find **MikroTik Extended** -> click the integration
