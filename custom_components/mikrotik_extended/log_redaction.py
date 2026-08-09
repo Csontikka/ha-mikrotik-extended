@@ -65,17 +65,23 @@ class LogRedactor:
         line = _KEYED_RE.sub(self._keyed, line)
         return line
 
-    def redact_keys(self, data):
-        """Mask identifiers used as mapping keys, recursively.
+    def redact_data(self, data):
+        """Mask addresses anywhere in a data structure, keys included.
 
-        ``async_redact_data`` only rewrites values, but several stores are
-        keyed by a MAC or an IP address, so every one of them was published in
-        clear text as an object key (issue 25). Keys that hold no identifier
-        are returned untouched, and the masking is the same correlation-stable
-        one used for log lines, so a store can still be read.
+        ``async_redact_data`` only rewrites values, and only for the field
+        names it is given. That missed two things (issue 25): several stores
+        are keyed by a MAC or an IP, so every one of them went out as a plain
+        object key, and derived fields that spell the name differently
+        ("mac", "host_name", "public-address") were never covered at all.
+        Matching on the shape of the value instead of on a field name catches
+        both, and keeps catching them when new fields appear. Values that hold
+        no address are returned untouched, and the masking is the same
+        correlation-stable one used for log lines, so a dump stays readable.
         """
         if isinstance(data, dict):
-            return {self.redact(str(key)): self.redact_keys(value) for key, value in data.items()}
+            return {self.redact(str(key)): self.redact_data(value) for key, value in data.items()}
         if isinstance(data, list):
-            return [self.redact_keys(item) for item in data]
+            return [self.redact_data(item) for item in data]
+        if isinstance(data, str):
+            return self.redact(data)
         return data
