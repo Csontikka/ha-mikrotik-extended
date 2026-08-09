@@ -2891,10 +2891,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # normalizes to: lowercasing here made the membership test below miss
         # every time, so a dead "restored" twin was seeded for every known
         # host and could never be adopted by live data again (issue 25).
+        # The test itself ignores case so that a router reporting lower-case
+        # MACs cannot bring the twin back, and an entry that is already live
+        # keeps the key the router gave it.
         if not self.host_hass_recovered:
             self.host_hass_recovered = True
+            live = {str(uid).upper() for uid in self.ds["host"]}
             for uid in self.ds["host_hass"]:
-                if uid not in self.ds["host"]:
+                if str(uid).upper() not in live:
                     self.ds["host"][uid] = {"source": "restored"}
                     self.ds["host"][uid]["mac-address"] = uid
                     self.ds["host"][uid]["host-name"] = self.ds["host_hass"][uid]
