@@ -2343,6 +2343,18 @@ class TestRestoredHostSeeding:
         assert coord.ds["host"][mac]["source"] == "arp"
         assert coord.ds["host"][mac]["available"] is True
 
+    async def test_no_twin_even_if_the_router_reports_lower_case(self, hass):
+        """The seeding must not depend on RouterOS reporting upper-case MACs."""
+        mac = "BC:F4:D4:11:22:33"
+        coord = self._prepare(hass, {mac: "my-laptop"})
+        lower = mac.lower()
+        coord.ds["arp"] = {lower: {"mac-address": lower, "address": "192.168.1.50", "interface": "bridge", "status": "reachable"}}
+
+        await coord.async_process_host()
+
+        macs = [uid for uid in coord.ds["host"] if ":" in uid]
+        assert macs == [lower], f"a twin was seeded: {macs}"
+
     async def test_absent_host_is_still_restored(self, hass):
         """The restore itself must keep working for hosts that are really gone."""
         mac = "BC:F4:D4:11:22:33"
@@ -2353,6 +2365,11 @@ class TestRestoredHostSeeding:
 
         assert coord.ds["host"][mac]["source"] == "restored"
         assert coord.ds["host"][mac]["host-name"] == "my-laptop"
+        # a host that is really gone must not be counted as present
+        assert coord.ds["host"][mac]["available"] is False
+        assert coord.ds["resource"]["clients_wired"] == 0
+        assert coord.ds["resource"]["clients_wireless"] == 0
+        assert coord.ds["resource"]["wired_clients_list"] == []
 
     async def test_restored_host_is_adopted_by_capsman(self, hass):
         """A device returning on a CAPsMAN AP must be adopted too, as wireless."""
