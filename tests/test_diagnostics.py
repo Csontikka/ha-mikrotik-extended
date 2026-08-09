@@ -104,6 +104,28 @@ async def test_diagnostics_masks_addresses_in_derived_fields(hass):
         assert leaked not in dumped, leaked
 
 
+async def test_diagnostics_masks_the_router_address_and_objects(hass):
+    """The router host and non-string objects also reach the file (issue 25)."""
+    from ipaddress import IPv4Network
+
+    entry = MagicMock()
+    entry.data = {"host": "172.21.52.1", "name": "router"}
+    entry.options = {"zone": "home"}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(data={"dhcp-network": {"192.168.1.0/24": {"IPv4Network": IPv4Network("192.168.1.0/24")}}}),
+        tracker_coordinator=SimpleNamespace(data={}),
+    )
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    dumped = str(result)
+    assert "172.21.52.1" not in dumped
+    assert "192.168.1.0" not in dumped
+    # unrelated entry fields stay readable
+    assert result["entry"]["data"]["name"] == "router"
+    assert result["entry"]["options"]["zone"] == "home"
+
+
 async def test_diagnostics_keeps_non_address_values_readable(hass):
     """Masking must not eat versions, names or states, or the dump is useless."""
     entry = MagicMock()
