@@ -2816,6 +2816,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             for uid, vals in self.ds["capsman_hosts"].items():
                 if uid not in self.ds["host"]:
                     self.ds["host"][uid] = {"source": "capsman"}
+                elif self.ds["host"][uid]["source"] == "restored":
+                    # A restored entry yields to live data, same as in the
+                    # DHCP and ARP blocks below (issue 25).
+                    self.ds["host"][uid]["source"] = "capsman"
                 elif self.ds["host"][uid]["source"] != "capsman":
                     continue
 
