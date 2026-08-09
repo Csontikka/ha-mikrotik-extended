@@ -105,4 +105,15 @@ TO_REDACT = {
     "caller-id",
     "target",
     "ssid",
+    # The IP Cloud DDNS name is "<serial-number>.sn.mynetname.net": it repeats
+    # the serial redacted above and resolves straight back to the public
+    # address, which would undo masking it.
+    "ddns-hostname",
+    "back-to-home-vpn",
+    # A single public address carries no diagnostic value worth the exposure,
+    # so it is removed outright rather than partially masked.
+    "public-address",
+    # Not a secret, but a stable global identifier that would let separate
+    # dumps and forum posts be tied to the same router.
+    "public-key",
 }
