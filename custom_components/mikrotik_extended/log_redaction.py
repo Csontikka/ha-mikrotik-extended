@@ -42,6 +42,12 @@ class LogRedactor:
         return hmac.new(self._salt, value.encode(), hashlib.sha256).hexdigest()[:3]
 
     def _ipv4(self, m: re.Match) -> str:
+        # A leading 0 ("any", "this network") or anything from 224 up
+        # (multicast, reserved, broadcast, and the 255.x.x.x netmasks) never
+        # points at a device, so masking those would only cost readability.
+        first = int(m.group(1))
+        if first == 0 or first >= 224:
+            return m.group(0)
         return f"{m.group(1)}.x.x.{m.group(2)}#{self._tag(m.group(0))}"
 
     def _mac(self, m: re.Match) -> str:
