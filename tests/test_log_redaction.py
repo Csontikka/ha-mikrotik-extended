@@ -74,6 +74,27 @@ def test_salt_changes_tag_between_dumps():
     assert a != b
 
 
+def test_ipv6_full_form_and_prefix_are_masked():
+    """The "::" form was covered, the other two were not."""
+    r = _r()
+    for value, middle in (
+        ("2001:db8:85a3:1:2:3:4:5", "85a3"),
+        ("2001:db8:1234:5678::", "1234"),
+        ("2001:db8::ff00:42:8329", "ff00"),
+    ):
+        out = r.redact(value)
+        assert out != value, value
+        assert middle not in out, value
+
+
+def test_same_mac_in_either_case_gets_one_tag():
+    """A dump has to show that these are one device, not two."""
+    r = _r()
+    upper = r.redact("AA:BB:CC:DD:EE:FF").partition("#")[2]
+    lower = r.redact("aa:bb:cc:dd:ee:ff").partition("#")[2]
+    assert upper == lower
+
+
 def test_addresses_that_identify_nothing_are_left_alone():
     """Masking these would only make a dump harder to read."""
     r = _r()

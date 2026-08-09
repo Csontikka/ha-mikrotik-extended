@@ -150,6 +150,40 @@ async def test_diagnostics_keeps_non_address_values_readable(hass):
     assert result["data"]["interface"]["ether1"]["running"] is True
 
 
+async def test_diagnostics_removes_the_cloud_identity(hass):
+    """The DDNS name is "<serial>.sn.mynetname.net" and resolves to the WAN IP.
+
+    Leaving it in would republish the serial that is redacted elsewhere and
+    undo the masking of the public address (issue 25).
+    """
+    entry = MagicMock()
+    entry.data = {}
+    entry.options = {}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(
+            data={
+                "cloud": {
+                    "ddns-hostname": "hke0as3b27j.sn.mynetname.net",
+                    "public-address": "203.0.113.7",
+                    "back-to-home-vpn": "abc123.vpn.mynetname.net",
+                    "ddns-status": "updated",
+                },
+                "wireguard_peers": {"p1": {"public-key": "Qm9ndXNLZXlGb3JUZXN0aW5nMTIzNDU2Nzg5MA=", "comment": "phone"}},
+            }
+        ),
+        tracker_coordinator=SimpleNamespace(data={}),
+    )
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    dumped = str(result)
+    for leaked in ("hke0as3b27j", "mynetname.net", "203.0.113.7", "Qm9ndXNLZXlGb3JUZXN0aW5n"):
+        assert leaked not in dumped, leaked
+    # the surrounding, non-identifying fields stay useful
+    assert result["data"]["cloud"]["ddns-status"] == "updated"
+    assert next(iter(result["data"]["wireguard_peers"].values()))["comment"] == "phone"
+
+
 async def test_diagnostics_keeps_the_host_source_visible(hass):
     """'source' tells restored twins from live entries, so it must not be redacted."""
     entry = MagicMock()
