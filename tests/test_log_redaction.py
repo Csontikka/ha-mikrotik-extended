@@ -74,6 +74,39 @@ def test_salt_changes_tag_between_dumps():
     assert a != b
 
 
+def test_addresses_that_identify_nothing_are_left_alone():
+    """Masking these would only make a dump harder to read."""
+    r = _r()
+    for value in ("0.0.0.0", "255.255.255.255", "255.255.255.0", "224.0.0.1"):
+        assert r.redact(value) == value, value
+
+
+def test_real_addresses_are_still_masked():
+    r = _r()
+    for value in ("192.168.1.42", "10.0.0.1", "172.21.52.3", "223.1.2.3"):
+        assert r.redact(value) != value, value
+
+
+def test_redact_data_walks_keys_values_and_objects():
+    from ipaddress import IPv4Network
+
+    r = _r()
+    out = r.redact_data(
+        {
+            "host": {"BC:F4:D4:11:22:33": {"address": "192.168.1.50", "name": "laptop"}},
+            "nets": [{"net": IPv4Network("192.168.1.0/24"), "count": 3, "up": True, "none": None}],
+        }
+    )
+    dumped = str(out)
+    for leak in ("BC:F4:D4:11:22:33", "192.168.1.50", "192.168.1.0"):
+        assert leak not in dumped, leak
+    # non-address values keep their type and value
+    assert out["nets"][0]["count"] == 3
+    assert out["nets"][0]["up"] is True
+    assert out["nets"][0]["none"] is None
+    assert next(iter(out["host"].values()))["name"] == "laptop"
+
+
 def test_empty_and_plain_lines_untouched():
     r = _r()
     assert r.redact("") == ""
