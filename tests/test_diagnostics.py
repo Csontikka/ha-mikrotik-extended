@@ -68,6 +68,66 @@ async def test_diagnostics_masks_identifiers_used_as_keys(hass):
     assert next(iter(result["data"]["host"])) == next(iter(result["tracker"]["host"]))
 
 
+async def test_diagnostics_masks_addresses_in_derived_fields(hass):
+    """Derived lists spell the field names differently and were never covered."""
+    entry = MagicMock()
+    entry.data = {}
+    entry.options = {}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(
+            data={
+                "resource": {
+                    "wired_clients_list": [{"mac": "BC:F4:D4:11:22:33", "address": "192.168.1.50", "host_name": "laptop"}],
+                    "wireless_clients_list": [{"mac": "E0:98:06:DF:A4:65", "address": "192.168.1.51"}],
+                },
+                "dhcp_leases": {"leases": [{"mac": "AA:BB:CC:DD:EE:FF", "address": "192.168.1.52"}]},
+                "cloud": {"public-address": "203.0.113.7"},
+                "ip_address": {"iface": {"ip": "192.168.1.1", "network": "192.168.1.0"}},
+            }
+        ),
+        tracker_coordinator=SimpleNamespace(data={}),
+    )
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    dumped = str(result)
+    for leaked in (
+        "BC:F4:D4:11:22:33",
+        "E0:98:06:DF:A4:65",
+        "AA:BB:CC:DD:EE:FF",
+        "192.168.1.50",
+        "192.168.1.52",
+        "203.0.113.7",
+        "192.168.1.1",
+        "192.168.1.0",
+    ):
+        assert leaked not in dumped, leaked
+
+
+async def test_diagnostics_keeps_non_address_values_readable(hass):
+    """Masking must not eat versions, names or states, or the dump is useless."""
+    entry = MagicMock()
+    entry.data = {}
+    entry.options = {}
+    entry.runtime_data = SimpleNamespace(
+        data_coordinator=SimpleNamespace(
+            data={
+                "resource": {"version": "7.23.3", "board-name": "RB5009UG+S+", "uptime": "1d2h3m"},
+                "interface": {"ether1": {"name": "ether1", "running": True, "type": "ether"}},
+            }
+        ),
+        tracker_coordinator=SimpleNamespace(data={}),
+    )
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["data"]["resource"]["version"] == "7.23.3"
+    assert result["data"]["resource"]["board-name"] == "RB5009UG+S+"
+    assert result["data"]["resource"]["uptime"] == "1d2h3m"
+    assert result["data"]["interface"]["ether1"]["name"] == "ether1"
+    assert result["data"]["interface"]["ether1"]["running"] is True
+
+
 async def test_diagnostics_keeps_the_host_source_visible(hass):
     """'source' tells restored twins from live entries, so it must not be redacted."""
     entry = MagicMock()

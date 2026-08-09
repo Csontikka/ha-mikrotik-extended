@@ -2354,6 +2354,22 @@ class TestRestoredHostSeeding:
         assert coord.ds["host"][mac]["source"] == "restored"
         assert coord.ds["host"][mac]["host-name"] == "my-laptop"
 
+    async def test_restored_host_is_adopted_by_capsman(self, hass):
+        """A device returning on a CAPsMAN AP must be adopted too, as wireless."""
+        mac = "BC:F4:D4:11:22:33"
+        coord = self._prepare(hass, {mac: "my-phone"})
+        coord.ds["arp"] = {}
+        await coord.async_process_host()
+        assert coord.ds["host"][mac]["source"] == "restored"
+
+        coord.support_capsman = True
+        coord.ds["capsman_hosts"] = {mac: {"mac-address": mac, "interface": "wlan1"}}
+        await coord.async_process_host()
+
+        assert coord.ds["host"][mac]["source"] == "capsman"
+        assert coord.ds["host"][mac]["available"] is True
+        assert coord.ds["resource"]["clients_wireless"] == 1
+
     async def test_restored_host_is_adopted_when_it_comes_back(self, hass):
         """Once seeded, a returning host must be picked up by live data."""
         mac = "BC:F4:D4:11:22:33"
