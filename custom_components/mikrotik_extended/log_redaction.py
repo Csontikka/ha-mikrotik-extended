@@ -84,4 +84,12 @@ class LogRedactor:
             return [self.redact_data(item) for item in data]
         if isinstance(data, str):
             return self.redact(data)
-        return data
+        if data is None or isinstance(data, (int, float, bool)):
+            return data
+        # Anything else (an IPv4Network, for one) reaches the file through its
+        # repr, which can carry an address the traversal above never sees.
+        # Only swap in the masked text when there was something to mask, so
+        # values like timestamps keep their own serialization.
+        text = str(data)
+        masked = self.redact(text)
+        return masked if masked != text else data

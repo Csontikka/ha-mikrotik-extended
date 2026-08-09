@@ -27,8 +27,10 @@ async def async_get_config_entry_diagnostics(_hass: HomeAssistant, config_entry:
 
     return {
         "entry": {
-            "data": async_redact_data(config_entry.data, TO_REDACT),
-            "options": async_redact_data(config_entry.options, TO_REDACT),
+            # The router address lives here under "host", which no field-name
+            # rule covers, so this branch needs the same masking (issue 25).
+            "data": redactor.redact_data(async_redact_data(config_entry.data, TO_REDACT)),
+            "options": redactor.redact_data(async_redact_data(config_entry.options, TO_REDACT)),
         },
         "data": redactor.redact_data(async_redact_data(data_coordinator.data, TO_REDACT)),
         "tracker": redactor.redact_data(async_redact_data(tracker_coordinator.data, TO_REDACT)),
