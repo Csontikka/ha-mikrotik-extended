@@ -8,6 +8,7 @@ from threading import Lock
 from time import sleep, time
 
 import librouteros
+import librouteros.login as _rlogin
 from voluptuous import Optional
 
 from .const import (
@@ -18,6 +19,13 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 SCRIPT_ENVIRONMENT_PATH = "/system/script/environment"
+
+# librouteros expects a *callable* for its ``login_method`` argument (singular).
+# Map the configured method name (see DEFAULT_LOGIN_METHOD) to that callable so a
+# plain config string is never handed straight to librouteros.
+_LOGIN_METHODS = {"plain": _rlogin.plain}
+if hasattr(_rlogin, "token"):  # legacy pre-6.43 challenge login
+    _LOGIN_METHODS["token"] = _rlogin.token
 
 
 # ---------------------------
