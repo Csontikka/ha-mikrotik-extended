@@ -287,6 +287,35 @@ class TestSensorInterfacesOption:
         coordinator.get_system_health.assert_called_once()
         coordinator.get_cloud.assert_called_once()
 
+    async def test_interface_still_polled_for_host_tracking(self, hass):
+        """Host tracking reads the interface store, so it keeps /interface alive.
+
+        Without the store the veth filter and the wifi bridge port check
+        silently misclassify hosts, so only /ip/address may be dropped here.
+        """
+        coordinator = self._prepare(
+            hass,
+            options={CONF_SENSOR_INTERFACES: False, CONF_TRACK_HOSTS: True},
+        )
+        await self._run_update(coordinator)
+        coordinator.get_interface.assert_called_once()
+        coordinator.get_ip_address.assert_not_called()
+
+    def test_need_interface_data_matrix(self, hass):
+        """need_interface_data is the OR of the two consumers."""
+        cases = {
+            (True, True): True,
+            (True, False): True,
+            (False, True): True,
+            (False, False): False,
+        }
+        for (interfaces, hosts), expected in cases.items():
+            coord = _make_coordinator(
+                hass,
+                options={CONF_SENSOR_INTERFACES: interfaces, CONF_TRACK_HOSTS: hosts},
+            )
+            assert coord.need_interface_data is expected, (interfaces, hosts)
+
 
 # ---------------------------------------------------------------------------
 # _async_update_data — repair issues

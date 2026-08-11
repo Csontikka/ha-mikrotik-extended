@@ -561,8 +561,22 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     @property
     def option_sensor_interfaces(self):
-        """Config entry option to create interface entities and poll /interface."""
+        """Config entry option to create entities for network interfaces."""
         return self.config_entry.options.get(CONF_SENSOR_INTERFACES, DEFAULT_SENSOR_INTERFACES)
+
+    # ---------------------------
+    #   need_interface_data
+    # ---------------------------
+    @property
+    def need_interface_data(self):
+        """Whether the interface store still has to be filled.
+
+        Interface entities are the obvious consumer, but host tracking reads
+        the store as well: container veth ports are kept out of the client
+        count and wifi-type bridge ports decide the wired/wireless split. So
+        /interface may only be skipped when both are off.
+        """
+        return self.option_sensor_interfaces or self.option_track_network_hosts
 
     # ---------------------------
     #   option_sensor_port_traffic
@@ -898,7 +912,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_dhcp_client)
 
-        if self.api.connected() and self.option_sensor_interfaces:
+        if self.api.connected() and self.need_interface_data:
             await self.hass.async_add_executor_job(self.get_interface)
 
         if self.api.connected() and self.option_sensor_interfaces:

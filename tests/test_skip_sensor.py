@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from custom_components.mikrotik_extended.const import (
+    CONF_SENSOR_INTERFACES,
     CONF_SENSOR_NETWATCH_TRACKER,
     CONF_SENSOR_PORT_TRACKER,
     CONF_SENSOR_PORT_TRAFFIC,
@@ -57,6 +58,59 @@ class TestSkipTrafficSensor:
         desc = _make_desc(func="MikrotikInterfaceTrafficSensor")
         data = {"eth0": {"type": "ether"}}
         assert _skip_sensor(entry, desc, data, "eth0") is False
+
+
+# ---------------------------------------------------------------------------
+# sensor_interfaces skips
+# ---------------------------------------------------------------------------
+
+
+class TestSkipInterfaceEntity:
+    """With interface entities disabled nothing interface-derived is created."""
+
+    def test_skip_port_switch(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: False})
+        desc = _make_desc(func="MikrotikPortSwitch")
+        data = {"ether1": {"type": "ether"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is True
+
+    def test_skip_port_binary_sensor_even_when_tracker_enabled(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: False, CONF_SENSOR_PORT_TRACKER: True})
+        desc = _make_desc(func="MikrotikPortBinarySensor")
+        data = {"ether1": {"type": "ether"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is True
+
+    def test_skip_traffic_sensor_even_when_traffic_enabled(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: False, CONF_SENSOR_PORT_TRAFFIC: True})
+        desc = _make_desc(func="MikrotikInterfaceTrafficSensor")
+        data = {"ether1": {"type": "ether"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is True
+
+    def test_skip_ip_address_sensor(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: False})
+        desc = _make_desc(func="MikrotikSensor", data_path="ip_address", data_attribute="ip")
+        data = {"lan": {"ip": "192.168.88.1"}}
+        assert _skip_sensor(entry, desc, data, "lan") is True
+
+    def test_no_skip_when_interfaces_enabled(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: True})
+        desc = _make_desc(func="MikrotikPortSwitch")
+        data = {"ether1": {"type": "ether"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is False
+
+    def test_no_skip_when_option_absent(self):
+        """Entries predating the option keep creating interface entities."""
+        entry = _make_config_entry()
+        desc = _make_desc(func="MikrotikPortSwitch")
+        data = {"ether1": {"type": "ether"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is False
+
+    def test_unrelated_data_path_untouched(self):
+        """Turning interfaces off must not suppress other categories."""
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: False})
+        desc = _make_desc(func="MikrotikSwitch", data_path="nat")
+        data = {"rule1": {"enabled": True}}
+        assert _skip_sensor(entry, desc, data, "rule1") is False
 
 
 # ---------------------------------------------------------------------------
