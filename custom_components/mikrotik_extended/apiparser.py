@@ -147,6 +147,10 @@ def parse_api(
     if not source:
         if not key and not key_search:
             data = fill_defaults(data, vals)
+            # ensure_vals promises these keys exist, and that promise matters
+            # most when the query brought nothing back: callers read them right
+            # after this returns, and on the first cycle the store is empty.
+            data = fill_defaults(data, ensure_vals or [])
         return data
 
     if debug:

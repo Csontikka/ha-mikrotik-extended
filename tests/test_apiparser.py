@@ -244,6 +244,23 @@ class TestParseApi:
         assert result["*1"]["tx_bytes"] == 0
         assert result["*1"]["name"] == "eth0"
 
+    def test_ensure_vals_are_ensured_when_the_query_returned_nothing(self):
+        """A failed query must still leave the promised keys in place.
+
+        Callers read these straight after the call, so on the first cycle,
+        when the store is still empty, a missing key raises instead of showing
+        a default. Singleton stores only, a keyed store has no entry to fill.
+        """
+        result = parse_api(
+            data={},
+            source=None,
+            vals=[{"name": "uptime_str", "default": "unknown"}],
+            ensure_vals=[{"name": "uptime", "default": 0}, {"name": "clients_wired", "default": 0}],
+        )
+        assert result["uptime_str"] == "unknown"
+        assert result["uptime"] == 0
+        assert result["clients_wired"] == 0
+
     def test_key_secondary_fallback(self):
         source = [{"alt_id": "backup1", "name": "backup"}]
         result = parse_api(
