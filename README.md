@@ -432,7 +432,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Host tracking timeout | `180` s | Seconds after the last ARP/DHCP/wireless activity before a network device is marked as away. |
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
 | Sensor preset | recommended | Quick preset selector — see below. |
-| Interface entities | enabled | Per-interface entities (port switches, port trackers, traffic sensors, IP addresses) and the interface polling behind them. Disable to monitor only the core device, useful on large switches. |
+| Interface entities | enabled | Per-interface entities: port switches, port trackers, traffic sensors and IP address sensors. Disable to monitor only the core device, useful on large switches. When host tracking is off as well, the interface queries are skipped entirely and the polling load on the router drops; with host tracking on they keep running, because the wired/wireless client split is derived from them. |
 | Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, scripts, WireGuard, containers, etc. |
 
 > **Note:** The **Configure** button opens the options flow (scan interval, presets, sensor toggles). The **Reconfigure** option (three-dot menu) is for changing connection settings only (host, port, credentials, SSL).
@@ -443,7 +443,7 @@ Available during initial setup and via the **Configure** button at any time:
 
 | Preset | Enabled sensors |
 |--------|----------------|
-| **Core only** | Nothing per-interface or per-rule - only the core device with its system, health, cloud and firmware update entities. Interface polling stops as well, which lowers the load on the router. |
+| **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. Interface polling stops as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
 | **Full** | Everything — port traffic, client traffic, queues, routing rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
