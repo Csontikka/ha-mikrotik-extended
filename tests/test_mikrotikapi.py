@@ -348,6 +348,83 @@ class TestQuery:
         result = self.api.query("/interface")
         assert result is None
 
+    def test_refused_query_keeps_the_session(self):
+        """A trap means the router answered and refused, not that the link died.
+
+        Tearing the session down here aborted the rest of the update cycle and
+        took every entity of the router unavailable with it.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        result = self.api.query("/interface")
+
+        assert result is None
+        assert self.api.connected() is True
+
+    def test_refused_query_lets_the_next_one_through(self):
+        """The point of keeping the session: whatever is readable still loads."""
+        from librouteros.exceptions import TrapError
+
+        refused = MagicMock()
+        refused.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        allowed = MagicMock()
+        allowed.__iter__ = MagicMock(return_value=iter([{"name": "ether1"}]))
+        self.api._connection.path.side_effect = [refused, allowed]
+
+        assert self.api.query("/user") is None
+        assert self.api.query("/interface") == [{"name": "ether1"}]
+
+    def test_multi_trap_keeps_the_session(self):
+        """A missing path arrives as a MultiTrapError on librouteros 4."""
+        from librouteros.exceptions import MultiTrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=MultiTrapError("no such command prefix"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.query("/nope") is None
+        assert self.api.connected() is True
+
+    def test_fatal_error_still_disconnects(self):
+        """A fatal reply means the router is closing the connection."""
+        from librouteros.exceptions import FatalError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=FatalError("session closed"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.query("/interface") is None
+        assert self.api.connected() is False
+
+    def test_connection_closed_still_disconnects(self):
+        from librouteros.exceptions import ConnectionClosed
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=ConnectionClosed("gone"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.query("/interface") is None
+        assert self.api.connected() is False
+
+    def test_refused_query_is_logged_once_per_path(self, caplog):
+        """A permanently refused path must not fill the log every cycle."""
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            for _ in range(5):
+                self.api.query("/interface")
+
+        refusals = [r for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, [r.getMessage() for r in refusals]
+
 
 class TestSetValue:
     def setup_method(self):
