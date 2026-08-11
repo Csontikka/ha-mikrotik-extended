@@ -8,6 +8,7 @@ from threading import Lock
 from time import sleep, time
 
 import librouteros
+import librouteros.login as _rlogin
 from voluptuous import Optional
 
 from .const import (
@@ -18,6 +19,13 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 SCRIPT_ENVIRONMENT_PATH = "/system/script/environment"
+
+# librouteros expects a *callable* for its ``login_method`` argument (singular).
+# Map the configured method name (see DEFAULT_LOGIN_METHOD) to that callable so a
+# plain config string is never handed straight to librouteros.
+_LOGIN_METHODS = {"plain": _rlogin.plain}
+if hasattr(_rlogin, "token"):  # legacy pre-6.43 challenge login
+    _LOGIN_METHODS["token"] = _rlogin.token
 
 
 # ---------------------------
@@ -134,9 +142,17 @@ class MikrotikAPI:
 
         kwargs = {
             "encoding": self._encoding,
-            "login_methods": self._login_method,
             "port": self._port,
         }
+        # librouteros wants the callable under ``login_method`` (singular). The
+        # old ``login_methods`` key was silently ignored by librouteros <4 (which
+        # accepted **kwargs) but is rejected outright by librouteros >=4, whose
+        # connect() is keyword-only. That rejection surfaced to the user as a
+        # generic "cannot_connect". Home Assistant ships librouteros 4.x, so
+        # resolve the configured method to a callable and pass it correctly.
+        login_method = _LOGIN_METHODS.get(self._login_method)
+        if login_method is not None:
+            kwargs["login_method"] = login_method
 
         with self.lock:
             try:

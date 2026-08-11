@@ -16,6 +16,9 @@ DEFAULT_NAME = "MikroTik Extended"
 ATTRIBUTION = "Data provided by Mikrotik"
 
 DEFAULT_ENCODING = "ISO-8859-1"
+# Supported login methods: "plain" (RouterOS >=6.43) and "token" (legacy
+# pre-6.43 challenge login). The name is mapped to a librouteros callable in
+# mikrotikapi.py; keep the values in sync with that map.
 DEFAULT_LOGIN_METHOD = "plain"
 
 # Fallback codepage for free-text fields (comments, host names, SSIDs) that are
