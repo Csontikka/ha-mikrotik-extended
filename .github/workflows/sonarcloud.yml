@@ -9,6 +9,9 @@ on:
 jobs:
   sonarqube:
     name: SonarCloud
+    # Fork PRs do not receive SONAR_TOKEN, the scan can only run on pushes
+    # and on branches of this repository.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
