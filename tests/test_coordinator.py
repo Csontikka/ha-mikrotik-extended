@@ -277,44 +277,25 @@ class TestSensorInterfacesOption:
         coordinator.get_interface.assert_called_once()
         coordinator.get_ip_address.assert_called_once()
 
-    async def test_interface_polling_skipped_when_disabled(self, hass):
-        """With the option off neither /interface nor /ip/address is queried."""
-        coordinator = self._prepare(hass, options={CONF_SENSOR_INTERFACES: False})
-        await self._run_update(coordinator)
-        coordinator.get_interface.assert_not_called()
-        coordinator.get_ip_address.assert_not_called()
-        # Core polling is unaffected
-        coordinator.get_system_health.assert_called_once()
-        coordinator.get_cloud.assert_called_once()
+    async def test_interface_always_polled_ip_address_follows_option(self, hass):
+        """get_interface runs for every option combination.
 
-    async def test_interface_still_polled_for_host_tracking(self, hass):
-        """Host tracking reads the interface store, so it keeps /interface alive.
-
-        Without the store the veth filter and the wifi bridge port check
-        silently misclassify hosts, so only /ip/address may be dropped here.
+        Host processing runs unconditionally and reads the interface store to
+        keep container veth ports out of the client count and to tell a
+        wifi-type bridge port from a wired one, so the store may never be left
+        empty. /ip/address has no such consumer and follows the option.
         """
-        coordinator = self._prepare(
-            hass,
-            options={CONF_SENSOR_INTERFACES: False, CONF_TRACK_HOSTS: True},
-        )
-        await self._run_update(coordinator)
-        coordinator.get_interface.assert_called_once()
-        coordinator.get_ip_address.assert_not_called()
-
-    def test_need_interface_data_matrix(self, hass):
-        """need_interface_data is the OR of the two consumers."""
-        cases = {
-            (True, True): True,
-            (True, False): True,
-            (False, True): True,
-            (False, False): False,
-        }
-        for (interfaces, hosts), expected in cases.items():
-            coord = _make_coordinator(
+        for hosts in (True, False):
+            coordinator = self._prepare(
                 hass,
-                options={CONF_SENSOR_INTERFACES: interfaces, CONF_TRACK_HOSTS: hosts},
+                options={CONF_SENSOR_INTERFACES: False, CONF_TRACK_HOSTS: hosts},
             )
-            assert coord.need_interface_data is expected, (interfaces, hosts)
+            await self._run_update(coordinator)
+            coordinator.get_interface.assert_called_once()
+            coordinator.get_ip_address.assert_not_called()
+            # Core polling is unaffected
+            coordinator.get_system_health.assert_called_once()
+            coordinator.get_cloud.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -802,6 +783,93 @@ class TestGetAccess:
 
 
 # ---------------------------------------------------------------------------
+# client counting with interface entities off
+# ---------------------------------------------------------------------------
+
+
+class TestClientCountsWithoutInterfaceEntities:
+    """The Core device client counters must stay correct in core-only mode.
+
+    They are `resource` singletons with no option of their own, so they are
+    created even by the Core only preset. Both of their inputs are derived
+    from the interface store: container veth ports are excluded, and a host
+    learned on a wifi-type bridge port counts as wireless.
+    """
+
+    VETH_HOST = "AA:AA:AA:AA:AA:01"
+    WIFI_HOST = "AA:AA:AA:AA:AA:02"
+    WIRED_HOST = "AA:AA:AA:AA:AA:03"
+
+    def _coordinator(self, hass):
+        coord = _make_coordinator(hass, options={CONF_SENSOR_INTERFACES: False, CONF_TRACK_HOSTS: True})
+        coord.support_capsman = False
+        coord.support_wireless = False
+        coord.host_hass_recovered = True
+        coord.async_mac_lookup = MagicMock()
+        coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+        now = utcnow()
+        coord.ds["host"] = {
+            self.VETH_HOST: {"source": "arp", "interface": "veth1", "mac-address": self.VETH_HOST, "last-seen": now},
+            self.WIFI_HOST: {"source": "arp", "interface": "bridge1", "mac-address": self.WIFI_HOST, "last-seen": now},
+            self.WIRED_HOST: {"source": "arp", "interface": "ether1", "mac-address": self.WIRED_HOST, "last-seen": now},
+        }
+        coord.ds["arp"] = {
+            uid: {"address": "10.0.0.1", "mac-address": uid, "interface": iface, "status": "reachable", "bridge": ""}
+            for uid, iface in (
+                (self.VETH_HOST, "veth1"),
+                (self.WIFI_HOST, "bridge1"),
+                (self.WIRED_HOST, "ether1"),
+            )
+        }
+        # The wifi host was learned on a wifi-type bridge port.
+        coord.ds["bridge_host"] = {self.WIFI_HOST: {"interface": "wifi2-home", "bridge": "bridge1"}}
+        return coord
+
+    def _interfaces(self):
+        """What a single /interface pass yields: names and types, nothing more."""
+        return {
+            "ether1": {"name": "ether1", "default-name": "ether1", "type": "ether"},
+            "veth1": {"name": "veth1", "default-name": "veth1", "type": "veth"},
+            "bridge1": {"name": "bridge1", "default-name": "bridge1", "type": "bridge"},
+            "wifi2": {"name": "wifi2-home", "default-name": "wifi2", "type": "wifi"},
+        }
+
+    async def test_counts_correct_when_interface_store_is_filled(self, hass):
+        """This is what the base /interface pass buys, even with entities off."""
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = self._interfaces()
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"][self.VETH_HOST]["available"] is False, "veth port is not a client"
+        assert coord.ds["resource"]["clients_wireless"] == 1, "wifi bridge port host counts as wireless"
+        assert coord.ds["resource"]["clients_wired"] == 1, "only the real wired host counts"
+
+    async def test_empty_interface_store_would_miscount(self, hass):
+        """Documents the defect the base pass prevents.
+
+        With an empty store the veth port becomes a client and the wifi host
+        is bucketed as wired. Kept as a guard so nobody reintroduces the skip.
+        """
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = {}
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"][self.VETH_HOST]["available"] is True
+        assert coord.ds["resource"]["clients_wireless"] == 0
+        assert coord.ds["resource"]["clients_wired"] == 3
+
+    def test_wifi_bridge_port_resolves_by_name(self, hass):
+        """The port is matched on the name field, not only the store key."""
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = self._interfaces()
+        assert coord._is_wifi_bridge_port_host(self.WIFI_HOST) is True
+        assert coord._is_wifi_bridge_port_host(self.WIRED_HOST) is False
+
+
+# ---------------------------------------------------------------------------
 # get_interface
 # ---------------------------------------------------------------------------
 
@@ -842,6 +910,78 @@ class TestGetInterface:
         assert coord.ds["interface"]["ether1"]["tx-total"] == 2000
         assert coord.ds["interface"]["ether1"]["rx-total"] == 5000
         assert isinstance(coord.ds["interface"]["ether1"]["comment"], str)
+
+    def test_stops_after_base_list_when_entities_off(self, hass):
+        """With interface entities off only the plain /interface list is fetched.
+
+        The list still has to land in the store: host processing classifies
+        clients from it. What is skipped is the per-port ethernet monitor,
+        which is the expensive part on a large switch.
+        """
+        coord = _make_coordinator(hass, options={CONF_SENSOR_INTERFACES: False, "sensor_port_traffic": True})
+        iface = {
+            "ether1": {
+                ".id": "*1",
+                "name": "ether1",
+                "default-name": "ether1",
+                "type": "ether",
+                "comment": "",
+                "port-mac-address": "AA:BB",
+                "tx-current": 2000,
+                "tx-previous": 1000,
+                "rx-current": 5000,
+                "rx-previous": 3000,
+                "tx": 0,
+                "rx": 0,
+                "tx-total": 0,
+                "rx-total": 0,
+                "sfp-shutdown-temperature": "",
+            },
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[iface],
+        ) as mock_parse:
+            coord.get_interface()
+
+        assert mock_parse.call_count == 1, "only the /interface list may be fetched"
+        assert coord.api.query.call_count == 1
+        assert coord.api.query.call_args[0][0] == "/interface"
+        # The type is what the client classification needs, and it is there.
+        assert coord.ds["interface"]["ether1"]["type"] == "ether"
+        # The entity-only traffic deltas were not computed.
+        assert coord.ds["interface"]["ether1"]["tx-total"] == 0
+
+    def test_full_pass_when_entities_on(self, hass):
+        """With the option on the ethernet and monitor queries still run."""
+        coord = _make_coordinator(hass, options={CONF_SENSOR_INTERFACES: True})
+        iface = {
+            "ether1": {
+                ".id": "*1",
+                "name": "ether1",
+                "default-name": "ether1",
+                "type": "ether",
+                "comment": "",
+                "port-mac-address": "AA:BB",
+                "tx-current": 0,
+                "tx-previous": 0,
+                "rx-current": 0,
+                "rx-previous": 0,
+                "tx": 0,
+                "rx": 0,
+                "tx-total": 0,
+                "rx-total": 0,
+                "sfp-shutdown-temperature": "",
+            },
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[iface, iface, iface],
+        ) as mock_parse:
+            coord.get_interface()
+
+        assert mock_parse.call_count == 3
+        assert coord.api.query.call_count > 1
 
     def test_get_interface_with_sfp_branch(self, hass):
         coord = _make_coordinator(hass)

@@ -565,20 +565,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         return self.config_entry.options.get(CONF_SENSOR_INTERFACES, DEFAULT_SENSOR_INTERFACES)
 
     # ---------------------------
-    #   need_interface_data
-    # ---------------------------
-    @property
-    def need_interface_data(self):
-        """Whether the interface store still has to be filled.
-
-        Interface entities are the obvious consumer, but host tracking reads
-        the store as well: container veth ports are kept out of the client
-        count and wifi-type bridge ports decide the wired/wireless split. So
-        /interface may only be skipped when both are off.
-        """
-        return self.option_sensor_interfaces or self.option_track_network_hosts
-
-    # ---------------------------
     #   option_sensor_port_traffic
     # ---------------------------
     @property
@@ -912,7 +898,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_dhcp_client)
 
-        if self.api.connected() and self.need_interface_data:
+        if self.api.connected():
             await self.hass.async_add_executor_job(self.get_interface)
 
         if self.api.connected() and self.option_sensor_interfaces:
@@ -1268,6 +1254,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             prune_stale=True,
             stale_counters=self._get_stale_counters("interface"),
         )
+
+        # The plain /interface list above is what host processing needs: it
+        # keeps container veth ports out of the client count and tells a
+        # wifi-type bridge port from a wired one. Host processing always runs,
+        # so this part may never be skipped. Everything below only feeds
+        # interface entities, and skipping it saves one API call per ethernet
+        # port on every cycle, which is where the load on a large switch is.
+        if not self.option_sensor_interfaces:
+            return
 
         if self.option_sensor_port_traffic:
             self._compute_interface_traffic_deltas()
