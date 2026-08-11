@@ -1354,13 +1354,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         previous_at, self._traffic_read_at = self._traffic_read_at, now
         interval_seconds = now - previous_at if previous_at is not None else 0.0
         if interval_seconds <= 0:
-            # First read of this entry, or a second read within the same
-            # instant. The per interface priming below already reports zero for
-            # a first read, so this only has to be a sane non-zero divisor.
+            # First read of this entry. The per interface priming below already
+            # reports zero here, so this only has to be a sane divisor.
             # total_seconds, not seconds: the latter is the within-a-day part,
             # so a day long interval would divide by zero and a longer one by
             # the wrong number.
             interval_seconds = self.option_scan_interval.total_seconds()
+        # Two updates can land almost on top of each other, for example a manual
+        # refresh right after a poll. Byte counters cannot describe a window
+        # that short, and dividing a handful of bytes by a few microseconds
+        # reports a rate of billions, so the window has a floor.
+        interval_seconds = max(interval_seconds, 1.0)
         for uid, vals in self.ds["interface"].items():
             entry = self.ds["interface"][uid]
 

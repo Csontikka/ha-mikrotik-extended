@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from time import monotonic as _monotonic
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -1207,6 +1206,18 @@ class TestGetInterface:
             },
         }
 
+    def _compute_with_gap(self, coord, gap):
+        """Run the calculation with an exact gap since the previous read.
+
+        The clock is driven rather than read, so these cases behave the same
+        everywhere. A real monotonic clock is coarse on some platforms and fine
+        on others, which is exactly how the microsecond gap below passed
+        locally and only failed on CI.
+        """
+        with patch("custom_components.mikrotik_extended.coordinator.monotonic", side_effect=[1000.0 + gap]):
+            coord._traffic_read_at = 1000.0
+            coord._compute_interface_traffic_deltas()
+
     def test_rate_uses_the_time_that_actually_passed(self, hass):
         """A late or missed cycle must not inflate the reported rate.
 
@@ -1217,9 +1228,8 @@ class TestGetInterface:
         coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
         coord.ds["interface"] = self._traffic_iface(60001, 1)
 
-        # A previous read 60 s ago, twice the configured interval.
-        coord._traffic_read_at = _monotonic() - 60
-        coord._compute_interface_traffic_deltas()
+        # A gap of 60 s, twice the configured interval.
+        self._compute_with_gap(coord, 60)
 
         # 60000 bytes over the 60 s that really passed, not over the nominal 30.
         assert coord.ds["interface"]["ether1"]["tx"] == 1000
@@ -1233,13 +1243,28 @@ class TestGetInterface:
 
         assert coord.ds["interface"]["ether1"]["tx"] == 0
 
-    def test_two_reads_in_the_same_instant_do_not_divide_by_zero(self, hass):
-        """A refresh on top of a poll can land in the same instant."""
+    def test_microsecond_gap_does_not_become_a_spike(self, hass):
+        """The exact case that failed on CI, now reproducible anywhere.
+
+        A refresh landing on top of a poll leaves a gap of microseconds. Byte
+        counters cannot describe a window that short, and dividing by it turned
+        a handful of bytes into billions per second, which is worse than the
+        inflated rate this all set out to fix.
+        """
         coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
         coord.ds["interface"] = self._traffic_iface(30001, 1)
 
-        coord._traffic_read_at = _monotonic()
-        coord._compute_interface_traffic_deltas()
+        self._compute_with_gap(coord, 0.0000024)
+
+        # Floored at one second: 30000, not the twelve billion this produced.
+        assert coord.ds["interface"]["ether1"]["tx"] == 30000
+
+    def test_two_reads_in_the_same_instant_do_not_divide_by_zero(self, hass):
+        """What a coarse clock reports for two reads close together."""
+        coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
+        coord.ds["interface"] = self._traffic_iface(30001, 1)
+
+        self._compute_with_gap(coord, 0.0)
 
         # Falls back to the configured interval rather than raising.
         assert coord.ds["interface"]["ether1"]["tx"] == 1000
@@ -1249,8 +1274,7 @@ class TestGetInterface:
         coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
         coord.ds["interface"] = self._traffic_iface(5, 900000)
 
-        coord._traffic_read_at = _monotonic() - 30
-        coord._compute_interface_traffic_deltas()
+        self._compute_with_gap(coord, 30)
 
         assert coord.ds["interface"]["ether1"]["tx"] == 0
 
