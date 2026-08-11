@@ -46,6 +46,7 @@ from .const import (
     CONF_SENSOR_CONTAINERS,
     CONF_SENSOR_ENVIRONMENT,
     CONF_SENSOR_FILTER,
+    CONF_SENSOR_INTERFACES,
     CONF_SENSOR_KIDCONTROL,
     CONF_SENSOR_MANGLE,
     CONF_SENSOR_NAT,
@@ -65,6 +66,7 @@ from .const import (
     DEFAULT_SENSOR_CONTAINERS,
     DEFAULT_SENSOR_ENVIRONMENT,
     DEFAULT_SENSOR_FILTER,
+    DEFAULT_SENSOR_INTERFACES,
     DEFAULT_SENSOR_KIDCONTROL,
     DEFAULT_SENSOR_MANGLE,
     DEFAULT_SENSOR_NAT,
@@ -555,6 +557,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         return timedelta(seconds=self.config_entry.options.get(CONF_TRACK_HOSTS_TIMEOUT, DEFAULT_TRACK_HOST_TIMEOUT))
 
     # ---------------------------
+    #   option_sensor_interfaces
+    # ---------------------------
+    @property
+    def option_sensor_interfaces(self):
+        """Config entry option to create interface entities and poll /interface."""
+        return self.config_entry.options.get(CONF_SENSOR_INTERFACES, DEFAULT_SENSOR_INTERFACES)
+
+    # ---------------------------
     #   option_sensor_port_traffic
     # ---------------------------
     @property
@@ -888,10 +898,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_dhcp_client)
 
-        if self.api.connected():
+        if self.api.connected() and self.option_sensor_interfaces:
             await self.hass.async_add_executor_job(self.get_interface)
 
-        if self.api.connected():
+        if self.api.connected() and self.option_sensor_interfaces:
             await self.hass.async_add_executor_job(self.get_ip_address)
 
         if self.api.connected():
