@@ -166,3 +166,35 @@ async def test_options_flow_sensor_toggle(hass):
     # Every flag submitted must round-trip: all False, except CONF_SENSOR_PORT_TRACKER
     for flag, expected in disabled_sensors.items():
         assert entry.options[flag] is expected, f"{flag} did not round-trip: got {entry.options.get(flag)!r}, expected {expected!r}"
+
+
+async def test_options_flow_core_preset_disables_interfaces(hass):
+    """Choosing the Core only preset turns every category off, interfaces included."""
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_INTERFACES
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=ENTRY_DATA,
+        options=INITIAL_OPTIONS,
+        unique_id="192.168.88.1",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_SCAN_INTERVAL: 30,
+            CONF_TRACK_HOSTS_TIMEOUT: 180,
+            CONF_ZONE: STATE_HOME,
+        },
+    )
+    assert result["step_id"] == "sensor_mode"
+
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"sensor_preset": "core"})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    assert entry.options[CONF_SENSOR_INTERFACES] is False
+    assert entry.options[CONF_SENSOR_PORT_TRACKER] is False
+    assert entry.options[CONF_SENSOR_NAT] is False
+    assert entry.options[CONF_TRACK_HOSTS] is False

@@ -21,7 +21,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.util.dt import utcnow
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mikrotik_extended.const import CONF_TRACK_HOSTS, DOMAIN
+from custom_components.mikrotik_extended.const import CONF_SENSOR_INTERFACES, CONF_TRACK_HOSTS, DOMAIN
 
 
 # Provide IssueSeverity fallback for test environment
@@ -233,6 +233,59 @@ class TestAsyncUpdateDataConnection:
             result = await self._run_update(coordinator)
 
         assert result is coordinator.ds
+
+
+# ---------------------------------------------------------------------------
+# _async_update_data — sensor_interfaces option
+# ---------------------------------------------------------------------------
+
+
+class TestSensorInterfacesOption:
+    """The sensor_interfaces option gates interface polling in the update cycle."""
+
+    def _prepare(self, hass, options=None):
+        coordinator = _make_coordinator(hass, options=options)
+        TestAsyncUpdateDataConnection()._stub_all_get_methods(coordinator)
+        coordinator.api.has_reconnected.return_value = False
+        coordinator.last_hwinfo_update = datetime.now()
+        coordinator.api.connected.return_value = True
+        coordinator.api.error = ""
+        return coordinator
+
+    async def _run_update(self, coordinator):
+        with (
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
+        ):
+            return await coordinator._async_update_data()
+
+    def test_option_defaults_to_true(self, hass):
+        """Entries without the key keep the legacy behavior."""
+        coord = _make_coordinator(hass)
+        assert coord.option_sensor_interfaces is True
+
+    def test_option_reads_entry_value(self, hass):
+        coord = _make_coordinator(hass, options={CONF_SENSOR_INTERFACES: False})
+        assert coord.option_sensor_interfaces is False
+
+    async def test_interface_polling_runs_by_default(self, hass):
+        """An entry without the option key still polls /interface and /ip/address."""
+        coordinator = self._prepare(hass)
+        await self._run_update(coordinator)
+        coordinator.get_interface.assert_called_once()
+        coordinator.get_ip_address.assert_called_once()
+
+    async def test_interface_polling_skipped_when_disabled(self, hass):
+        """With the option off neither /interface nor /ip/address is queried."""
+        coordinator = self._prepare(hass, options={CONF_SENSOR_INTERFACES: False})
+        await self._run_update(coordinator)
+        coordinator.get_interface.assert_not_called()
+        coordinator.get_ip_address.assert_not_called()
+        # Core polling is unaffected
+        coordinator.get_system_health.assert_called_once()
+        coordinator.get_cloud.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

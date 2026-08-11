@@ -273,6 +273,45 @@ async def test_sensor_select_creates_entry_with_custom_sensors(hass):
         assert result["options"][CONF_SENSOR_NAT] is True
 
 
+async def test_successful_setup_core_preset(hass):
+    """Core preset creates the entry with every category off, interfaces included."""
+    from custom_components.mikrotik_extended.const import (
+        CONF_SENSOR_INTERFACES,
+        CONF_SENSOR_NAT,
+        CONF_SENSOR_PORT_TRACKER,
+        CONF_TRACK_HOSTS,
+    )
+
+    with patch("custom_components.mikrotik_extended.config_flow.MikrotikAPI") as mock_api_cls:
+        mock_api = MagicMock()
+        mock_api.connect.return_value = True
+        mock_api.error = None
+        mock_api_cls.return_value = mock_api
+
+        result = await _init_and_skip_discovery(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], USER_INPUT)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], BASIC_OPTIONS_INPUT)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"sensor_preset": "core"})
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["options"][CONF_SENSOR_INTERFACES] is False
+        assert result["options"][CONF_SENSOR_PORT_TRACKER] is False
+        assert result["options"][CONF_SENSOR_NAT] is False
+        assert result["options"][CONF_TRACK_HOSTS] is False
+
+
+def test_sensor_presets_cover_interfaces_option():
+    """Every preset pins the interfaces option, core turns everything off."""
+    from custom_components.mikrotik_extended.config_flow import _SENSOR_PRESETS
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_INTERFACES
+
+    key_sets = {frozenset(preset) for preset in _SENSOR_PRESETS.values()}
+    assert len(key_sets) == 1, "all presets must define the same option keys"
+    for name, preset in _SENSOR_PRESETS.items():
+        assert preset[CONF_SENSOR_INTERFACES] is (name != "core"), name
+    assert all(value is False for value in _SENSOR_PRESETS["core"].values())
+
+
 async def test_reconfigure_flow_success(hass):
     """Reconfigure flow updates entry data when credentials still work."""
     entry = MockConfigEntry(
