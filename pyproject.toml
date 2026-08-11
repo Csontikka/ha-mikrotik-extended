@@ -1,6 +1,9 @@
+# Tooling configuration only. This project is not built or published as a
+# Python package, it is installed by HACS from custom_components. The single
+# source of truth for the version is manifest.json, which CI checks against
+# the release tag, so no version is declared here for it to drift from.
 [project]
 name = "ha-mikrotik-extended"
-version = "0.2.3"
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
