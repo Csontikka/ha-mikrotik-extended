@@ -321,7 +321,14 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
                 host[key] = default
 
     def _should_ping_host(self, host) -> bool:
-        """Return True if the host should be arp-pinged this refresh."""
+        """Return True if the host should be arp-pinged this refresh.
+
+        A container endpoint is skipped: it is not a client, it answers the
+        ping anyway, and that answer refreshed its last-seen stamp, which is
+        what kept its tracker reporting home.
+        """
+        if host.get("container-port"):
+            return False
         return self.coordinator.host_tracking_initialized and host["source"] not in ["capsman", "wireless"] and host["address"] not in ["unknown", ""] and host["interface"] not in ["unknown", ""]
 
     async def _ping_host(self, uid: str) -> None:
@@ -2991,7 +2998,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             if vals.get("source") in ["capsman", "wireless", "restored"]:
                 continue
             # Container veth interfaces are not real clients — never count them.
-            if self.ds["interface"].get(self.ds["host"][uid].get("interface"), {}).get("type") == "veth":
+            # The mark is recomputed every cycle rather than kept, so a host
+            # that moves off a container port is not hidden forever. Without
+            # interface data nothing is marked, which keeps a real device from
+            # disappearing when the types are simply unknown.
+            is_container_port = self.ds["interface"].get(self.ds["host"][uid].get("interface"), {}).get("type") == "veth"
+            self.ds["host"][uid]["container-port"] = is_container_port
+            if is_container_port:
                 self.ds["host"][uid]["available"] = False
                 continue
             arp_entry = self.ds["arp"].get(uid, {})

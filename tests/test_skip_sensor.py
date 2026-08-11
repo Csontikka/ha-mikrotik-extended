@@ -206,6 +206,31 @@ class TestSkipHostTracker:
         data = {"host1": {}}
         assert _skip_sensor(entry, desc, data, "host1") is False
 
+    def test_skip_container_port_host(self):
+        """A container endpoint is not a client, so it gets no tracker.
+
+        The client counters have excluded these since issue #6. The tracker
+        never applied the same rule, so every container kept a device tracker
+        that reported home permanently.
+        """
+        entry = _make_config_entry(**{CONF_TRACK_HOSTS: True})
+        desc = _make_desc(func="MikrotikHostDeviceTracker")
+        data = {"host1": {"container-port": True}}
+        assert _skip_sensor(entry, desc, data, "host1") is True
+
+    def test_no_skip_for_a_host_that_is_not_on_a_container_port(self):
+        entry = _make_config_entry(**{CONF_TRACK_HOSTS: True})
+        desc = _make_desc(func="MikrotikHostDeviceTracker")
+        data = {"host1": {"container-port": False}}
+        assert _skip_sensor(entry, desc, data, "host1") is False
+
+    def test_container_flag_does_not_affect_other_entities(self):
+        """Only the tracker is suppressed, nothing else keys off the flag."""
+        entry = _make_config_entry(**{CONF_TRACK_HOSTS: True})
+        desc = _make_desc(func="MikrotikSensor", data_path="host", data_attribute="address")
+        data = {"host1": {"container-port": True}}
+        assert _skip_sensor(entry, desc, data, "host1") is False
+
 
 # ---------------------------------------------------------------------------
 # Default — no skip

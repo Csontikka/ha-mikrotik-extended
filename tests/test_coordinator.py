@@ -950,6 +950,44 @@ class TestClientCountsWithoutInterfaceEntities:
         assert coord.ds["resource"]["clients_wireless"] == 0
         assert coord.ds["resource"]["clients_wired"] == 3
 
+    async def test_container_port_hosts_are_flagged(self, hass):
+        """The veth check already runs here, so it is where the mark belongs.
+
+        Marking the host lets the entity layer suppress its tracker without a
+        second copy of the same rule, and without touching the store shape the
+        counters and the diagnostics rely on.
+        """
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = self._interfaces()
+
+        await coord.async_process_host()
+
+        assert coord.ds["host"][self.VETH_HOST]["container-port"] is True
+        assert coord.ds["host"][self.WIRED_HOST]["container-port"] is False
+        assert coord.ds["host"][self.WIFI_HOST]["container-port"] is False
+
+    async def test_flag_clears_when_the_host_moves_off_the_container_port(self, hass):
+        """The mark is recomputed every cycle, it must not stick."""
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = self._interfaces()
+        await coord.async_process_host()
+        assert coord.ds["host"][self.VETH_HOST]["container-port"] is True
+
+        coord.ds["host"][self.VETH_HOST]["interface"] = "ether1"
+        coord.ds["arp"][self.VETH_HOST]["interface"] = "ether1"
+        await coord.async_process_host()
+
+        assert coord.ds["host"][self.VETH_HOST]["container-port"] is False
+
+    async def test_nothing_is_flagged_without_interface_data(self, hass):
+        """No interface types means no evidence, so nothing is hidden."""
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = {}
+
+        await coord.async_process_host()
+
+        assert all(not h.get("container-port") for h in coord.ds["host"].values())
+
     def test_wifi_bridge_port_resolves_by_name(self, hass):
         """The port is matched on the name field, not only the store key."""
         coord = self._coordinator(hass)
@@ -3333,6 +3371,35 @@ class TestTrackerCoordinator:
         assert result is not None
         assert main.ds["host"]["AA:BB"]["available"] is True
         assert main.ds["host"]["AA:BB"]["last-seen"] is not None
+
+    async def test_container_port_hosts_are_not_pinged(self, hass):
+        """Pinging a container endpoint is wasted work every cycle.
+
+        It also answers, which refreshed last-seen and kept the tracker
+        reporting home even though the host is not counted as a client.
+        """
+        main = _make_coordinator(hass, options={"track_network_hosts": True})
+        main.ds["access"] = ["test"]
+        main.host_tracking_initialized = True
+        main.ds["host"] = {
+            "AA:BB": {"source": "arp", "address": "1.2.3.4", "mac-address": "AA:BB", "interface": "ether1", "available": False, "last-seen": None},
+            "CC:DD": {"source": "arp", "address": "1.2.3.5", "mac-address": "CC:DD", "interface": "veth1", "available": False, "last-seen": None, "container-port": True},
+        }
+        main.ds["arp"] = {
+            "AA:BB": {"bridge": "", "address": "1.2.3.4", "interface": "ether1", "mac-address": "AA:BB"},
+            "CC:DD": {"bridge": "", "address": "1.2.3.5", "interface": "veth1", "mac-address": "CC:DD"},
+        }
+        main.ds["routerboard"] = {}
+        main.async_process_host = AsyncMock()
+
+        tracker = _make_tracker(hass, main)
+        tracker.api.arp_ping = MagicMock(return_value=True)
+        await tracker._async_update_data()
+
+        pinged = [call.args[0] for call in tracker.api.arp_ping.call_args_list]
+        assert "1.2.3.4" in pinged
+        assert "1.2.3.5" not in pinged
+        assert main.ds["host"]["CC:DD"]["last-seen"] is None
 
 
 # ---------------------------------------------------------------------------

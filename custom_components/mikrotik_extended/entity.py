@@ -104,8 +104,17 @@ def _skip_netwatch(config_entry, entity_description) -> bool:
     return entity_description.data_path == "netwatch" and not config_entry.options.get(CONF_SENSOR_NETWATCH_TRACKER, DEFAULT_SENSOR_NETWATCH_TRACKER)
 
 
-def _skip_host_tracker(config_entry, entity_description) -> bool:
-    return entity_description.func == "MikrotikHostDeviceTracker" and not config_entry.options.get(CONF_TRACK_HOSTS, DEFAULT_TRACK_HOSTS)
+def _skip_host_tracker(config_entry, entity_description, item) -> bool:
+    if entity_description.func != "MikrotikHostDeviceTracker":
+        return False
+    if not config_entry.options.get(CONF_TRACK_HOSTS, DEFAULT_TRACK_HOSTS):
+        return True
+    # A container endpoint is not a client. The client counters have excluded
+    # these since the overcounting work, but the tracker never applied the
+    # same rule, so every container kept a tracker entity, and a device, that
+    # reported home permanently. The mark is set where that check already
+    # lives, so the rule stays in one place.
+    return bool(item.get("container-port"))
 
 
 def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
@@ -120,7 +129,7 @@ def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
         return True
     if _skip_netwatch(config_entry, entity_description):
         return True
-    return _skip_host_tracker(config_entry, entity_description)
+    return _skip_host_tracker(config_entry, entity_description, item)
 
 
 # ---------------------------
