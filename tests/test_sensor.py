@@ -106,6 +106,41 @@ async def test_mikrotik_sensor_native_value_and_uom_static(hass):
     assert sensor.native_unit_of_measurement == "%"
 
 
+async def test_measurement_sensor_reports_unknown_as_no_value(hass):
+    """A numeric sensor must never hand Home Assistant a placeholder string.
+
+    The stores use "unknown" when the router did not report a field, and a
+    sensor with a state class is required to be numeric, so Home Assistant
+    refuses the entity outright and logs a ValueError for every update.
+    """
+    from homeassistant.components.sensor import SensorStateClass
+
+    desc = _make_description(native_uom="%", state_class=SensorStateClass.MEASUREMENT)
+    coord = _make_coordinator(hass, {"resource": {"cpu-load": "unknown", "type": "x"}})
+    sensor = MikrotikSensor(coord, desc)
+
+    assert sensor.native_value is None
+
+
+async def test_measurement_sensor_keeps_numeric_values(hass):
+    from homeassistant.components.sensor import SensorStateClass
+
+    desc = _make_description(native_uom="%", state_class=SensorStateClass.MEASUREMENT)
+    coord = _make_coordinator(hass, {"resource": {"cpu-load": 0, "type": "x"}})
+    sensor = MikrotikSensor(coord, desc)
+
+    assert sensor.native_value == 0
+
+
+async def test_plain_sensor_keeps_its_text_value(hass):
+    """Sensors without a state class are free to report text."""
+    desc = _make_description(data_attribute="version", native_uom=None, state_class=None)
+    coord = _make_coordinator(hass, {"resource": {"version": "unknown", "type": "x"}})
+    sensor = MikrotikSensor(coord, desc)
+
+    assert sensor.native_value == "unknown"
+
+
 async def test_mikrotik_sensor_native_uom_dynamic_lookup(hass):
     """native_unit_of_measurement supports 'data__xxx' → pulls the field from self._data."""
     desc = _make_description(native_uom="data__rx-unit")

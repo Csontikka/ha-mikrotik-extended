@@ -86,7 +86,17 @@ class MikrotikSensor(MikrotikEntity, SensorEntity):
     @property
     def native_value(self) -> StateType | date | datetime | Decimal:
         """Return the value reported by the sensor."""
-        return self._data[self.entity_description.data_attribute]
+        value = self._data[self.entity_description.data_attribute]
+        # The data stores use placeholder strings such as "unknown" for fields
+        # the router did not report. A sensor carrying a state class has to be
+        # numeric, and Home Assistant rejects the whole entity when it is not,
+        # so an absent value is reported as no value rather than as text.
+        if self.entity_description.state_class is not None and isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return None
+        return value
 
     @property
     def native_unit_of_measurement(self) -> str | None:
