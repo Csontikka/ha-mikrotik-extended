@@ -1,7 +1,10 @@
 name: Auto-label PRs
 
+# pull_request_target is needed so fork PRs get a token that may write
+# labels. Safe here: the job never checks out or runs PR code, the labeler
+# only reads the config from the base branch and the changed file list.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
