@@ -34,6 +34,7 @@ from .const import (
     CONF_SENSOR_CONTAINERS,
     CONF_SENSOR_ENVIRONMENT,
     CONF_SENSOR_FILTER,
+    CONF_SENSOR_INTERFACES,
     CONF_SENSOR_KIDCONTROL,
     CONF_SENSOR_MANGLE,
     CONF_SENSOR_NAT,
@@ -57,6 +58,7 @@ from .const import (
     DEFAULT_SENSOR_CONTAINERS,
     DEFAULT_SENSOR_ENVIRONMENT,
     DEFAULT_SENSOR_FILTER,
+    DEFAULT_SENSOR_INTERFACES,
     DEFAULT_SENSOR_KIDCONTROL,
     DEFAULT_SENSOR_MANGLE,
     DEFAULT_SENSOR_NAT,
@@ -92,7 +94,28 @@ def _ssl_mode_from_bools(ssl: bool, verify_ssl: bool) -> str:
 
 
 _SENSOR_PRESETS = {
+    "core": {
+        CONF_SENSOR_INTERFACES: False,
+        CONF_SENSOR_PORT_TRACKER: False,
+        CONF_SENSOR_PORT_TRAFFIC: False,
+        CONF_SENSOR_CLIENT_TRAFFIC: False,
+        CONF_SENSOR_CLIENT_CAPTIVE: False,
+        CONF_SENSOR_SIMPLE_QUEUES: False,
+        CONF_SENSOR_NAT: False,
+        CONF_SENSOR_MANGLE: False,
+        CONF_SENSOR_ROUTING_RULES: False,
+        CONF_SENSOR_FILTER: False,
+        CONF_SENSOR_WIREGUARD: False,
+        CONF_SENSOR_CONTAINERS: False,
+        CONF_SENSOR_PPP: False,
+        CONF_SENSOR_KIDCONTROL: False,
+        CONF_SENSOR_SCRIPTS: False,
+        CONF_SENSOR_ENVIRONMENT: False,
+        CONF_SENSOR_NETWATCH_TRACKER: False,
+        CONF_TRACK_HOSTS: False,
+    },
     "minimal": {
+        CONF_SENSOR_INTERFACES: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -112,6 +135,7 @@ _SENSOR_PRESETS = {
         CONF_TRACK_HOSTS: False,
     },
     "recommended": {
+        CONF_SENSOR_INTERFACES: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -131,6 +155,7 @@ _SENSOR_PRESETS = {
         CONF_TRACK_HOSTS: False,
     },
     "full": {
+        CONF_SENSOR_INTERFACES: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: True,
         CONF_SENSOR_CLIENT_TRAFFIC: True,
@@ -389,6 +414,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional("sensor_preset", default="recommended"): SelectSelector(
                         SelectSelectorConfig(
                             options=[
+                                SelectOptionDict(value="core", label="Core only - just the router itself, no interface or rule entities"),
                                 SelectOptionDict(value="minimal", label="Minimal — port tracker only"),
                                 SelectOptionDict(value="recommended", label="Recommended — port tracker, NAT, mangle, filter, scripts, netwatch"),
                                 SelectOptionDict(value="full", label="Full — all sensors enabled (warning: can generate hundreds of entities on large networks)"),
@@ -423,6 +449,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_SENSOR_CONTAINERS, default=DEFAULT_SENSOR_CONTAINERS): bool,
                     vol.Optional(CONF_SENSOR_ENVIRONMENT, default=DEFAULT_SENSOR_ENVIRONMENT): bool,
                     vol.Optional(CONF_SENSOR_FILTER, default=DEFAULT_SENSOR_FILTER): bool,
+                    vol.Optional(CONF_SENSOR_INTERFACES, default=DEFAULT_SENSOR_INTERFACES): bool,
                     vol.Optional(CONF_SENSOR_KIDCONTROL, default=DEFAULT_SENSOR_KIDCONTROL): bool,
                     vol.Optional(CONF_SENSOR_MANGLE, default=DEFAULT_SENSOR_MANGLE): bool,
                     vol.Optional(CONF_SENSOR_NAT, default=DEFAULT_SENSOR_NAT): bool,
@@ -602,6 +629,7 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                     vol.Optional("sensor_preset", default="custom"): SelectSelector(
                         SelectSelectorConfig(
                             options=[
+                                SelectOptionDict(value="core", label="Core only - just the router itself, no interface or rule entities"),
                                 SelectOptionDict(value="minimal", label="Minimal — port tracker only"),
                                 SelectOptionDict(value="recommended", label="Recommended — port tracker, NAT, mangle, filter, scripts, netwatch"),
                                 SelectOptionDict(value="full", label="Full — all sensors enabled (warning: can generate hundreds of entities on large networks)"),
@@ -643,6 +671,10 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                     vol.Optional(
                         CONF_SENSOR_FILTER,
                         default=self._config_entry.options.get(CONF_SENSOR_FILTER, DEFAULT_SENSOR_FILTER),
+                    ): bool,
+                    vol.Optional(
+                        CONF_SENSOR_INTERFACES,
+                        default=self._config_entry.options.get(CONF_SENSOR_INTERFACES, DEFAULT_SENSOR_INTERFACES),
                     ): bool,
                     vol.Optional(
                         CONF_SENSOR_KIDCONTROL,
