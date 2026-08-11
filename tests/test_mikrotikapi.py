@@ -60,6 +60,18 @@ class TestConnect:
         assert self.api._reconnected is True
 
     @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
+    def test_login_method_passed_as_callable(self, mock_connect):
+        """librouteros >=4 is keyword-only: login_method must be the plain
+        callable and the misspelled login_methods key must never appear."""
+        import librouteros.login
+
+        mock_connect.return_value = MagicMock()
+        assert self.api.connect() is True
+        kwargs = mock_connect.call_args.kwargs
+        assert "login_methods" not in kwargs
+        assert kwargs["login_method"] is librouteros.login.plain
+
+    @patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect")
     def test_failed_connect(self, mock_connect):
         mock_connect.side_effect = Exception("connection refused")
         result = self.api.connect()
