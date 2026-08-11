@@ -415,10 +415,10 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                         SelectSelectorConfig(
                             options=[
                                 SelectOptionDict(value="core", label="Core only - just the router itself, no interface or rule entities"),
-                                SelectOptionDict(value="minimal", label="Minimal — port tracker only"),
-                                SelectOptionDict(value="recommended", label="Recommended — port tracker, NAT, mangle, filter, scripts, netwatch"),
-                                SelectOptionDict(value="full", label="Full — all sensors enabled (warning: can generate hundreds of entities on large networks)"),
-                                SelectOptionDict(value="custom", label="Custom — manually select sensors"),
+                                SelectOptionDict(value="minimal", label="Minimal - port tracker only"),
+                                SelectOptionDict(value="recommended", label="Recommended - port tracker, NAT, mangle, filter, scripts, netwatch"),
+                                SelectOptionDict(value="full", label="Full - all sensors enabled (warning: can generate hundreds of entities on large networks)"),
+                                SelectOptionDict(value="custom", label="Custom - manually select sensors"),
                             ],
                             mode=SelectSelectorMode.LIST,
                         )
@@ -531,9 +531,9 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional("ssl_mode", default=ssl_mode): SelectSelector(
                         SelectSelectorConfig(
                             options=[
-                                SelectOptionDict(value="none", label="No SSL — unencrypted connection (default, port 8728)"),
-                                SelectOptionDict(value="ssl", label="SSL — encrypted, accepts self-signed certificates (port 8729)"),
-                                SelectOptionDict(value="ssl_verify", label="SSL with verification — requires a valid CA-signed certificate"),
+                                SelectOptionDict(value="none", label="No SSL - unencrypted connection (default, port 8728)"),
+                                SelectOptionDict(value="ssl", label="SSL - encrypted, accepts self-signed certificates (port 8729)"),
+                                SelectOptionDict(value="ssl_verify", label="SSL with verification - requires a valid CA-signed certificate"),
                             ],
                             mode=SelectSelectorMode.LIST,
                         )
@@ -630,10 +630,10 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                         SelectSelectorConfig(
                             options=[
                                 SelectOptionDict(value="core", label="Core only - just the router itself, no interface or rule entities"),
-                                SelectOptionDict(value="minimal", label="Minimal — port tracker only"),
-                                SelectOptionDict(value="recommended", label="Recommended — port tracker, NAT, mangle, filter, scripts, netwatch"),
-                                SelectOptionDict(value="full", label="Full — all sensors enabled (warning: can generate hundreds of entities on large networks)"),
-                                SelectOptionDict(value="custom", label="Custom — manually select sensors"),
+                                SelectOptionDict(value="minimal", label="Minimal - port tracker only"),
+                                SelectOptionDict(value="recommended", label="Recommended - port tracker, NAT, mangle, filter, scripts, netwatch"),
+                                SelectOptionDict(value="full", label="Full - all sensors enabled (warning: can generate hundreds of entities on large networks)"),
+                                SelectOptionDict(value="custom", label="Custom - manually select sensors"),
                             ],
                             mode=SelectSelectorMode.LIST,
                         )

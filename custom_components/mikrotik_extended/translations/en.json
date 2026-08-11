@@ -51,7 +51,7 @@
           "sensor_preset": "Sensor preset"
         },
         "data_description": {
-          "sensor_preset": "Recommended enables the most useful sensors with minimal entity count. Full enables everything — use with caution on large networks."
+          "sensor_preset": "Recommended enables the most useful sensors with minimal entity count. Full enables everything, use with caution on large networks."
         }
       },
       "sensor_select": {
@@ -79,7 +79,7 @@
         },
         "data_description": {
           "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
+          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control. The integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
           "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
           "sensor_environment": "Sensors for RouterOS environment variables.",
           "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
@@ -89,7 +89,7 @@
           "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
           "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
           "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
+          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface, disable if traffic graphs are not needed.",
           "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
           "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
           "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
@@ -188,7 +188,7 @@
         },
         "data_description": {
           "sensor_client_captive": "Adds hotspot authorization status to tracked devices. Only useful if a captive portal (hotspot) is configured.",
-          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control — the integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
+          "sensor_client_traffic": "2 sensors per tracked device (TX/RX speed). Requires RouterOS 7 with Kid Control. The integration automatically creates a 'ha-monitoring' profile on the router when enabled. Sensors appear only for devices actively tracked by Kid Control. Note: RouterOS 6 is not supported.",
           "sensor_containers": "Sensor and switch per container to monitor and start/stop Docker-like containers.",
           "sensor_environment": "Sensors for RouterOS environment variables.",
           "sensor_filter": "Switch per Filter rule to enable/disable firewall filter rules from HA. Warning: creates one entity per filter rule.",
@@ -198,7 +198,7 @@
           "sensor_nat": "Switch per NAT rule to enable/disable rules from HA. Warning: creates one entity per NAT rule.",
           "sensor_netwatch_tracker": "Binary sensor per Netwatch entry showing reachability status.",
           "sensor_port_tracker": "Binary sensor per port showing link up/down state.",
-          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface — disable if traffic graphs are not needed.",
+          "sensor_port_traffic": "4 sensors per interface (TX/RX bytes and totals). Warning: creates 4 entities per interface, disable if traffic graphs are not needed.",
           "sensor_ppp": "Switch per PPP secret (user) to enable/disable VPN/PPPoE accounts from HA.",
           "sensor_routing_rules": "Switch per Routing Rule to enable/disable policy routing rules from HA. Warning: creates one entity per routing rule.",
           "sensor_scripts": "Button per script to trigger RouterOS scripts from HA.",
@@ -250,9 +250,9 @@
   "selector": {
     "ssl_mode": {
       "options": {
-        "none": "No SSL — unencrypted connection (default, port 8728)",
-        "ssl": "SSL — encrypted, accepts self-signed certificates (port 8729)",
-        "ssl_verify": "SSL with verification — requires a valid CA-signed certificate"
+        "none": "No SSL - unencrypted connection (default, port 8728)",
+        "ssl": "SSL - encrypted, accepts self-signed certificates (port 8729)",
+        "ssl_verify": "SSL with verification - requires a valid CA-signed certificate"
       }
     }
   },
