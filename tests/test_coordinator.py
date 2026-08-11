@@ -763,6 +763,95 @@ class TestGetAccess:
         # coord.ds["access"] unchanged; access_missing correctly computed
         assert coord.ds["access_missing"] == []
 
+    async def test_full_cycle_survives_a_router_that_refuses_everything(self, hass):
+        """An account without read rights must not take the cycle down.
+
+        Every getter is real here, only the router is mocked. Before the fix
+        the first refusal disconnected the session, the rest of the cycle was
+        skipped and the permission lookup then raised KeyError on the empty
+        user listing.
+        """
+        from librouteros.exceptions import TrapError
+
+        from custom_components.mikrotik_extended.mikrotikapi import MikrotikAPI
+
+        coordinator = _make_coordinator(hass)
+
+        # A real API object with a mocked router, so the real query() logic
+        # decides what a refusal means. Mocking the API away would skip it.
+        api = MikrotikAPI("192.168.88.1", "admin", "pass", use_ssl=False)
+        api._connected = True
+        api._connection = MagicMock()
+        refused = MagicMock()
+        refused.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        refused.side_effect = TrapError("not enough permissions (9)")
+        api._connection.path.return_value = refused
+        api._reconnected = True
+        coordinator.api = api
+
+        with (
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", MagicMock()) as create_issue,
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
+        ):
+            result = await coordinator._async_update_data()
+
+        assert result is coordinator.ds
+        # The user is told why there is no data instead of being left guessing.
+        reported = [c.args[2] for c in create_issue.call_args_list]
+        assert "insufficient_permissions" in reported
+
+    def test_user_not_in_local_list_does_not_raise(self, hass):
+        """A remotely authenticated user is not in /user, and must not crash.
+
+        RouterOS can validate router logins against RADIUS, in which case the
+        account exists on the server rather than on the router. Indexing the
+        local listing with that name raised KeyError out of the update cycle.
+        """
+        coord = _make_coordinator(hass)
+        tmp_user = {"someone-else": {"name": "someone-else", "group": "full"}}
+        tmp_group = {"full": {"name": "full", "policy": "read,write,policy,test,reboot,api"}}
+        aaa = {"default-group": "full"}
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[tmp_user, tmp_group, aaa],
+        ):
+            coord.get_access()
+
+        # The rights come from the group RouterOS assigns to remote logins.
+        assert "read" in coord.ds["access"]
+        assert coord.ds["access_missing"] == []
+
+    def test_unknown_user_without_aaa_group_leaves_access_unresolved(self, hass):
+        """No local user and no usable default group: unresolved, still no crash."""
+        coord = _make_coordinator(hass)
+        tmp_user = {"someone-else": {"name": "someone-else", "group": "full"}}
+        tmp_group = {"full": {"name": "full", "policy": "read,write"}}
+        aaa = {"default-group": ""}
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[tmp_user, tmp_group, aaa],
+        ):
+            coord.get_access()
+
+        assert coord.ds["access"] == {}
+        assert "write" in coord.ds["access_missing"]
+
+    def test_empty_user_listing_does_not_raise(self, hass):
+        """An unreadable /user must not take the update cycle down either."""
+        coord = _make_coordinator(hass)
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[{}, {}, {}],
+        ):
+            coord.get_access()
+
+        assert coord.ds["access"] == {}
+
     def test_access_already_reported(self, hass):
         coord = _make_coordinator(hass)
         coord.accessrights_reported = True

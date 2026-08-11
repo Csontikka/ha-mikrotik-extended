@@ -1163,6 +1163,22 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.last_hwinfo_update = datetime(1970, 1, 1)
 
     # ---------------------------
+    #   _remote_login_group
+    # ---------------------------
+    def _remote_login_group(self) -> str:
+        """Return the group RouterOS gives to remotely authenticated logins.
+
+        Empty when the router cannot tell us, in which case the rights stay
+        unresolved rather than being guessed at.
+        """
+        aaa = parse_api(
+            data={},
+            source=self.api.query("/user/aaa"),
+            vals=[{"name": "default-group", "default": ""}],
+        )
+        return str(aaa.get("default-group", "") or "")
+
+    # ---------------------------
     #   get_access
     # ---------------------------
     def get_access(self) -> None:
@@ -1187,8 +1203,26 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             ],
         )
 
-        if tmp_user[self.config_entry.data[CONF_USERNAME]]["group"] in tmp_group:
-            self.ds["access"] = tmp_group[tmp_user[self.config_entry.data[CONF_USERNAME]]["group"]]["policy"].split(",")
+        username = self.config_entry.data[CONF_USERNAME]
+        group_name = tmp_user.get(username, {}).get("group")
+        if not group_name:
+            # Not a local user. RouterOS can validate router logins against a
+            # RADIUS server (/user/aaa use-radius), and such an account exists
+            # on the server rather than on the router, so it is absent from
+            # /user. Those logins get the configured default group, which is
+            # where their policies come from. Indexing /user directly used to
+            # raise KeyError straight out of the update cycle here.
+            group_name = self._remote_login_group()
+
+        policy = tmp_group.get(group_name, {}).get("policy") if group_name else None
+        if policy:
+            self.ds["access"] = policy.split(",")
+        elif not self.ds["access"]:
+            _LOGGER.debug(
+                "Mikrotik %s could not resolve the access rights of user %s, features that require explicit rights stay off",
+                self.host,
+                username,
+            )
 
         required = ("write", "policy", "reboot", "test")
         missing = [p for p in required if p not in self.ds["access"]]
