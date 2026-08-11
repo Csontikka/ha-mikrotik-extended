@@ -931,7 +931,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected():
             await self.async_process_host()
 
-        if self.api.connected():
+        # Its whole output is the client-ip/client-mac attributes on interface
+        # entities, and it needs the bonding data that the reduced interface
+        # pass does not fetch. With no interface entities there is nothing to
+        # fill and nothing to read it, so the work is skipped rather than run
+        # against data it cannot resolve.
+        if self.api.connected() and self.option_sensor_interfaces:
             await self.hass.async_add_executor_job(self.process_interface_client)
 
         if self.api.connected() and self.option_sensor_nat:

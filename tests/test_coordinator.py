@@ -868,6 +868,38 @@ class TestClientCountsWithoutInterfaceEntities:
         assert coord._is_wifi_bridge_port_host(self.WIFI_HOST) is True
         assert coord._is_wifi_bridge_port_host(self.WIRED_HOST) is False
 
+    async def test_real_get_interface_feeds_real_process_host(self, hass):
+        """The two units share ds["interface"], so exercise them together.
+
+        Every other test hand-seeds the store, which is how the 0.7.0 defect
+        survived: get_interface was allowed to not run at all and no test
+        noticed, because no test ever fed its real output into the real
+        consumer. Here the only thing mocked is the router itself.
+        """
+        coord = self._coordinator(hass)
+        coord.ds["interface"] = {}
+
+        rows = [
+            {".id": "*1", "name": "ether1", "default-name": "ether1", "type": "ether", "mac-address": "AA:01"},
+            {".id": "*2", "name": "veth1", "default-name": "veth1", "type": "veth", "mac-address": "AA:02"},
+            {".id": "*3", "name": "bridge1", "default-name": "bridge1", "type": "bridge", "mac-address": "AA:03"},
+            {".id": "*4", "name": "wifi2-home", "default-name": "wifi2", "type": "wifi", "mac-address": "AA:04"},
+        ]
+        coord.api.query = MagicMock(return_value=rows)
+
+        # Real get_interface, no parse_api patch: the reduced pass must fill
+        # the store from a single query when interface entities are off.
+        coord.get_interface()
+        assert coord.api.query.call_count == 1
+        assert coord.ds["interface"]["veth1"]["type"] == "veth"
+
+        # Real consumer, on the real output of the line above.
+        await coord.async_process_host()
+
+        assert coord.ds["host"][self.VETH_HOST]["available"] is False
+        assert coord.ds["resource"]["clients_wireless"] == 1
+        assert coord.ds["resource"]["clients_wired"] == 1
+
 
 # ---------------------------------------------------------------------------
 # get_interface
