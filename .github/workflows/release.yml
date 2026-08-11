@@ -3,6 +3,13 @@ name: Release
 on:
   release:
     types: [published]
+  # Lets the upload be retried for a tag without cutting a new release, which
+  # is what was needed when the previous upload step broke on the runner.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and attach the archive to"
+        required: true
 
 jobs:
 
@@ -14,17 +21,32 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Zip mikrotik_extended dir
         run: |
           cd ${{ github.workspace }}/custom_components/mikrotik_extended
           zip mikrotik_extended.zip -r ./
 
+      # Uses the gh CLI that ships with the runner rather than a third party
+      # action. The previous one targeted Node 20, and once the runner started
+      # forcing Node 24 it failed to reach the API at all, so a release went
+      # out with no archive attached.
       - name: Upload zip to release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ github.workspace }}/custom_components/mikrotik_extended/mikrotik_extended.zip
-          asset_name: mikrotik_extended.zip
-          tag: ${{ github.ref }}
-          overwrite: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release upload "$TAG" \
+            "${{ github.workspace }}/custom_components/mikrotik_extended/mikrotik_extended.zip" \
+            --clobber
+
+      - name: Confirm the archive is attached
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release view "$TAG" --json assets \
+            --jq '.assets[] | select(.name == "mikrotik_extended.zip") | "attached: \(.name) \(.size) bytes"' \
+            | grep attached
