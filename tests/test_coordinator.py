@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from time import monotonic as _monotonic
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -1184,6 +1185,74 @@ class TestGetInterface:
         coord.ds["interface"] = iface
         coord._compute_interface_traffic_deltas()
         assert coord.ds["interface"]["ether1"]["tx"] == expected_tx
+
+    def _traffic_iface(self, tx_current, tx_previous):
+        return {
+            "ether1": {
+                ".id": "*1",
+                "name": "ether1",
+                "default-name": "ether1",
+                "type": "ether",
+                "comment": "",
+                "port-mac-address": "AA:BB",
+                "tx-current": tx_current,
+                "tx-previous": tx_previous,
+                "rx-current": 1,
+                "rx-previous": 1,
+                "tx": 0,
+                "rx": 0,
+                "tx-total": 0,
+                "rx-total": 0,
+                "sfp-shutdown-temperature": "",
+            },
+        }
+
+    def test_rate_uses_the_time_that_actually_passed(self, hass):
+        """A late or missed cycle must not inflate the reported rate.
+
+        The counter accumulates over the real gap, so dividing it by the
+        configured interval reports roughly one spike per skipped cycle, which
+        looks like traffic that never happened.
+        """
+        coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
+        coord.ds["interface"] = self._traffic_iface(60001, 1)
+
+        # A previous read 60 s ago, twice the configured interval.
+        coord._traffic_read_at = _monotonic() - 60
+        coord._compute_interface_traffic_deltas()
+
+        # 60000 bytes over the 60 s that really passed, not over the nominal 30.
+        assert coord.ds["interface"]["ether1"]["tx"] == 1000
+
+    def test_first_read_reports_no_rate(self, hass):
+        """Nothing to measure against yet, so report nothing rather than a spike."""
+        coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
+        coord.ds["interface"] = self._traffic_iface(60001, 0)
+
+        coord._compute_interface_traffic_deltas()
+
+        assert coord.ds["interface"]["ether1"]["tx"] == 0
+
+    def test_two_reads_in_the_same_instant_do_not_divide_by_zero(self, hass):
+        """A refresh on top of a poll can land in the same instant."""
+        coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
+        coord.ds["interface"] = self._traffic_iface(30001, 1)
+
+        coord._traffic_read_at = _monotonic()
+        coord._compute_interface_traffic_deltas()
+
+        # Falls back to the configured interval rather than raising.
+        assert coord.ds["interface"]["ether1"]["tx"] == 1000
+
+    def test_counter_reset_still_reports_zero(self, hass):
+        """A router reboot zeroes the counters, which is not negative traffic."""
+        coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": 30})
+        coord.ds["interface"] = self._traffic_iface(5, 900000)
+
+        coord._traffic_read_at = _monotonic() - 30
+        coord._compute_interface_traffic_deltas()
+
+        assert coord.ds["interface"]["ether1"]["tx"] == 0
 
     def test_get_interface_with_sfp_branch(self, hass):
         coord = _make_coordinator(hass)

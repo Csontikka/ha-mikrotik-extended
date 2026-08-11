@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Network
+from time import monotonic
 
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.config_entries import ConfigEntry
@@ -486,6 +487,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.accessrights_reported = False
 
         self.last_hwinfo_update = datetime(1970, 1, 1)
+        # When the traffic counters were last read, so the rate can be based on
+        # the gap that really passed rather than on the configured interval.
+        self._traffic_read_at = None
         self.rebootcheck = 0
         self._rule_uids_migrated = False
 
@@ -1340,12 +1344,23 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             self._load_bonding_slaves()
 
     def _compute_interface_traffic_deltas(self) -> None:
-        """Convert rx/tx byte counters into per-interval rates."""
-        # total_seconds, not seconds: the latter is the within-a-day component,
-        # so a poll interval of exactly one day would divide by zero and
-        # anything above a day would divide by the wrong number. The configured
-        # minimum keeps this comfortably above zero.
-        interval_seconds = self.option_scan_interval.total_seconds()
+        """Convert rx/tx byte counters into per-second rates."""
+        # Measure the gap instead of assuming it. A cycle that runs late, or is
+        # missed entirely, still accumulates bytes on the router, so dividing
+        # by the configured interval reports a rate as many times too high as
+        # the cycle was long, which shows up as traffic that never happened.
+        # monotonic, because a clock change must not turn into a traffic spike.
+        now = monotonic()
+        previous_at, self._traffic_read_at = self._traffic_read_at, now
+        interval_seconds = now - previous_at if previous_at is not None else 0.0
+        if interval_seconds <= 0:
+            # First read of this entry, or a second read within the same
+            # instant. The per interface priming below already reports zero for
+            # a first read, so this only has to be a sane non-zero divisor.
+            # total_seconds, not seconds: the latter is the within-a-day part,
+            # so a day long interval would divide by zero and a longer one by
+            # the wrong number.
+            interval_seconds = self.option_scan_interval.total_seconds()
         for uid, vals in self.ds["interface"].items():
             entry = self.ds["interface"][uid]
 
