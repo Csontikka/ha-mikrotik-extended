@@ -1300,7 +1300,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _compute_interface_traffic_deltas(self) -> None:
         """Convert rx/tx byte counters into per-interval rates."""
-        interval_seconds = self.option_scan_interval.seconds
+        # total_seconds, not seconds: the latter is the within-a-day component,
+        # so a poll interval of exactly one day would divide by zero and
+        # anything above a day would divide by the wrong number. The configured
+        # minimum keeps this comfortably above zero.
+        interval_seconds = self.option_scan_interval.total_seconds()
         for uid, vals in self.ds["interface"].items():
             entry = self.ds["interface"][uid]
 

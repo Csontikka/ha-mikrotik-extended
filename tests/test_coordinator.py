@@ -1015,6 +1015,49 @@ class TestGetInterface:
         assert mock_parse.call_count == 3
         assert coord.api.query.call_count > 1
 
+    @pytest.mark.parametrize(
+        ("scan_interval", "expected_tx"),
+        [
+            (30, 1000),  # 30000 bytes over 30 s
+            (86399, 0),  # just under a day, rounds to zero but must not raise
+            (86400, 0),  # exactly a day: timedelta.seconds is 0 here
+            (90000, 0),  # over a day: timedelta.seconds would be 3600
+        ],
+    )
+    def test_traffic_rate_divides_by_the_whole_interval(self, hass, scan_interval, expected_tx):
+        """A poll interval of a day or more must not break the rate maths.
+
+        timedelta.seconds is the within-a-day component, so at exactly one day
+        it is zero and the division raises, and above a day it is far too
+        small. The configuration schema has no upper bound, so these values
+        are reachable.
+        """
+        coord = _make_coordinator(hass, options={"sensor_port_traffic": True, "scan_interval": scan_interval})
+        iface = {
+            "ether1": {
+                ".id": "*1",
+                "name": "ether1",
+                "default-name": "ether1",
+                "type": "ether",
+                "comment": "",
+                "port-mac-address": "AA:BB",
+                # A zero previous value means "first read" and primes to a zero
+                # rate, so start from one to get a real delta of 30000.
+                "tx-current": 30001,
+                "tx-previous": 1,
+                "rx-current": 1,
+                "rx-previous": 1,
+                "tx": 0,
+                "rx": 0,
+                "tx-total": 0,
+                "rx-total": 0,
+                "sfp-shutdown-temperature": "",
+            },
+        }
+        coord.ds["interface"] = iface
+        coord._compute_interface_traffic_deltas()
+        assert coord.ds["interface"]["ether1"]["tx"] == expected_tx
+
     def test_get_interface_with_sfp_branch(self, hass):
         coord = _make_coordinator(hass)
         iface_first = {
