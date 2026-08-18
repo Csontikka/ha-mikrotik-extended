@@ -411,6 +411,9 @@
       }
     },
     "button": {
+      "backup": {
+        "name": "Konfiguráció mentése"
+      },
       "reboot": {
         "name": "Újraindítás"
       }

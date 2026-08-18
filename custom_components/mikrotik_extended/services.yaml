@@ -122,3 +122,21 @@ refresh_data:
       example: "192.168.88.1"
       selector:
         text:
+
+shutdown:
+  name: Shut down router
+  description: >
+    Powers off the router. It cannot be started again over the network, so it
+    stays off until power is cycled or someone starts it on site. Intended for
+    automations, for example a clean shutdown while a UPS still has charge, or
+    when a temperature reading is dangerously high. The router must be named.
+  fields:
+    host:
+      name: Host
+      description: >
+        The router to shut down. Required, so that one call cannot take down
+        every configured router at once.
+      required: true
+      example: "192.168.88.1"
+      selector:
+        text:

@@ -48,6 +48,18 @@ SENSOR_TYPES: tuple[MikrotikButtonEntityDescription, ...] = (
         func="MikrotikRebootButton",
     ),
     MikrotikButtonEntityDescription(
+        key="backup",
+        name="Configuration backup",
+        translation_key="backup",
+        icon="mdi:content-save-cog-outline",
+        device_class=None,
+        entity_category=EntityCategory.CONFIG,
+        ha_group="System",
+        data_path="resource",
+        data_attribute="board-name",
+        func="MikrotikBackupButton",
+    ),
+    MikrotikButtonEntityDescription(
         key="script",
         name="",
         icon="mdi:script-text-outline",

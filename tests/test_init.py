@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -300,6 +301,7 @@ async def test_async_setup_registers_services(hass):
     assert "api_test" in services
     assert "refresh_data" in services
     assert "set_environment" in services
+    assert "shutdown" in services
 
 
 # ---------------------------------------------------------------------------
@@ -901,3 +903,69 @@ def test_integration_logger_level_not_forced():
     integration_logger = logging.getLogger("custom_components.mikrotik_extended")
     assert integration_logger.level == logging.NOTSET
     assert any(isinstance(h, _RingBufferHandler) for h in integration_logger.handlers)
+
+
+# ---------------------------------------------------------------------------
+# shutdown service
+# ---------------------------------------------------------------------------
+
+
+async def test_shutdown_requires_a_host(hass):
+    """Naming the router is the safety catch.
+
+    A router that has been shut down cannot be started again over the network,
+    so there is no call that takes every router down at once.
+    """
+    await async_setup(hass, {})
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(DOMAIN, "shutdown", {}, blocking=True)
+
+
+async def test_shutdown_powers_off_the_named_router(hass):
+    """The named router is shut down, and only that one."""
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    coord = MagicMock()
+    coord.api = MagicMock()
+    coord.config_entry = entry
+    coord.ds = {"access": {"reboot"}}
+    coord.execute = MagicMock(return_value=True)
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
+
+    coord.execute.assert_called_once_with("/system", "shutdown", None, None)
+
+
+async def test_shutdown_skips_a_router_that_was_not_named(hass):
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    coord = MagicMock()
+    coord.api = MagicMock()
+    coord.config_entry = entry
+    coord.ds = {"access": {"reboot"}}
+    coord.execute = MagicMock(return_value=True)
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    await hass.services.async_call(DOMAIN, "shutdown", {"host": "10.9.9.9"}, blocking=True)
+
+    coord.execute.assert_not_called()
+
+
+async def test_shutdown_needs_reboot_rights(hass):
+    """Without the rights the command would fail on the router anyway."""
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    coord = MagicMock()
+    coord.api = MagicMock()
+    coord.config_entry = entry
+    coord.ds = {"access": {"read"}}
+    coord.execute = MagicMock()
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
+
+    coord.execute.assert_not_called()

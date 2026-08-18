@@ -14,6 +14,7 @@ from homeassistant.const import (
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mikrotik_extended.button import (
+    MikrotikBackupButton,
     MikrotikButton,
     MikrotikRebootButton,
     MikrotikScriptButton,
@@ -77,7 +78,12 @@ async def test_async_setup_entry_invokes_add_entities(hass):
         await async_setup_entry(hass, entry, add_entities)
     mock_add.assert_awaited_once()
     _, _, dispatcher = mock_add.await_args.args
-    assert set(dispatcher.keys()) == {"MikrotikButton", "MikrotikScriptButton", "MikrotikRebootButton"}
+    assert set(dispatcher.keys()) == {
+        "MikrotikButton",
+        "MikrotikScriptButton",
+        "MikrotikRebootButton",
+        "MikrotikBackupButton",
+    }
 
 
 async def test_mikrotik_button_press_is_noop(hass):
@@ -172,3 +178,57 @@ async def test_script_button_aborts_on_failure(hass):
 
     coord.async_refresh.assert_not_awaited()
     tracker.async_request_refresh.assert_not_awaited()
+
+
+async def test_backup_button_aborts_without_write_access(hass):
+    """A read only account cannot write a backup, so do not even try.
+
+    Measured on a live router: the save is refused with a permission error
+    for an account that may only read.
+    """
+    desc = _make_description(func="MikrotikBackupButton")
+    coord = _make_coordinator(hass, data={"resource": {"x": "y"}})
+    coord.ds = {"access": {"read"}}
+    coord.execute = MagicMock()
+    button = MikrotikBackupButton(coord, desc)
+    await button.async_press()
+    coord.execute.assert_not_called()
+
+
+async def test_backup_button_saves_under_a_fixed_name(hass):
+    """The name is fixed so repeated presses overwrite one file.
+
+    Without a name RouterOS stamps the date into the file name, so every press
+    leaves another copy behind and eventually fills the storage of a small
+    device.
+    """
+    desc = _make_description(func="MikrotikBackupButton")
+    coord = _make_coordinator(hass, data={"resource": {"x": "y"}})
+    coord.ds = {"access": {"write"}}
+    coord.execute = MagicMock(return_value=True)
+    button = MikrotikBackupButton(coord, desc)
+    button.hass = hass
+    await button.async_press()
+    coord.execute.assert_called_once_with("/system/backup", "save", None, None, {"name": "homeassistant"})
+
+
+async def test_backup_button_survives_a_refused_save(hass):
+    """A refusal is reported, not raised."""
+    desc = _make_description(func="MikrotikBackupButton")
+    coord = _make_coordinator(hass, data={"resource": {"x": "y"}})
+    coord.ds = {"access": {"write"}}
+    coord.execute = MagicMock(return_value=False)
+    button = MikrotikBackupButton(coord, desc)
+    button.hass = hass
+    await button.async_press()
+    coord.execute.assert_called_once()
+
+
+def test_backup_button_is_declared():
+    """The description has to exist for the entity to be created at all."""
+    from custom_components.mikrotik_extended.button_types import SENSOR_TYPES
+
+    keys = {d.key for d in SENSOR_TYPES}
+    assert "backup" in keys
+    backup = next(d for d in SENSOR_TYPES if d.key == "backup")
+    assert backup.func == "MikrotikBackupButton"

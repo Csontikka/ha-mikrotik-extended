@@ -411,6 +411,9 @@
       }
     },
     "button": {
+      "backup": {
+        "name": "Configuration backup"
+      },
       "reboot": {
         "name": "Restartovat"
       }
