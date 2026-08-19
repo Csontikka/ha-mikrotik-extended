@@ -92,7 +92,7 @@ CPU load, memory/HDD usage, uptime, temperatures (CPU, board, PHY, switch), volt
 
 ### Network Interfaces
 
-Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status and consumption, connected device MAC/IP info per interface.
+Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status and consumption (the selector is part of the interface entities, so it follows that option), connected device MAC/IP info per interface.
 
 ![Interface Traffic](docs/assets/images/screenshots/interface_tx.png)
 
@@ -419,7 +419,7 @@ automation:
 |---------|:---:|:---:|:---:|
 | System monitoring (CPU, memory, temps, fans, PSU, uptime) | ✓ | ✓ | No |
 | Network interfaces (status, traffic, IP address) | ✓ | ✓ | Traffic: Yes |
-| PoE out control (per port) | ✓ | ? | No |
+| PoE out control (per port) | ✓ | ? | With interfaces |
 | Firewall rules (NAT, mangle, filter) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
 | Device tracking (ARP) | ✓ | ✓ | Yes |
