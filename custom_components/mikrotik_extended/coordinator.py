@@ -91,6 +91,7 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_TIME_ZONE = None
 
 PATH_INTERFACE_ETHERNET = "/interface/ethernet"
+PATH_INTERFACE_ETHERNET_POE = "/interface/ethernet/poe"
 PATH_IP_KID_CONTROL = "/ip/kid-control"
 PPP_NOT_CONNECTED = "not connected"
 
@@ -1342,6 +1343,33 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         bonding = self._post_process_interfaces()
         if bonding:
             self._load_bonding_slaves()
+
+        self._fetch_poe_status()
+
+    def _fetch_poe_status(self) -> None:
+        """Read whether power is actually flowing on the PoE capable ports.
+
+        The port listing only carries the configured mode, so the live status
+        comes from a monitor call. That call takes a list of ports, which keeps
+        this to a single query however many PoE ports the device has, unlike
+        the per port ethernet monitor above.
+        """
+        names = [vals["name"] for vals in self.ds["interface"].values() if vals.get("poe-out") not in (None, "", "N/A")]
+        if not names:
+            return
+
+        self.ds["interface"] = parse_api(
+            data=self.ds["interface"],
+            source=self.api.query(
+                PATH_INTERFACE_ETHERNET_POE,
+                command="monitor",
+                args={"numbers": ",".join(names), "once": True},
+            ),
+            key_search="name",
+            vals=[
+                {"name": "poe-out-status", "default": "unknown"},
+            ],
+        )
 
     def _compute_interface_traffic_deltas(self) -> None:
         """Convert rx/tx byte counters into per-second rates."""

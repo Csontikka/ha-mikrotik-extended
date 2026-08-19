@@ -1278,6 +1278,45 @@ class TestGetInterface:
 
         assert coord.ds["interface"]["ether1"]["tx"] == 0
 
+    def test_poe_status_is_one_call_for_every_port(self, hass):
+        """The port list only carries the configured mode, not the live state.
+
+        The monitor call takes a list of ports, so this stays a single query
+        however many PoE ports the device has, unlike the ethernet monitor
+        that runs once per port.
+        """
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {
+            "ether1": {"name": "ether1", "poe-out": "auto-on"},
+            "ether2": {"name": "ether2", "poe-out": "off"},
+            "ether3": {"name": "ether3", "poe-out": "N/A"},
+            "bridge1": {"name": "bridge1"},
+        }
+        coord.api.query = MagicMock(return_value=[{"name": "ether1", "poe-out-status": "powered-on"}])
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=lambda **kw: kw["data"],
+        ):
+            coord._fetch_poe_status()
+
+        coord.api.query.assert_called_once()
+        args, kwargs = coord.api.query.call_args
+        assert args[0] == "/interface/ethernet/poe"
+        assert kwargs["command"] == "monitor"
+        # Only the ports that can supply power, and both of them in one go.
+        assert kwargs["args"]["numbers"] == "ether1,ether2"
+
+    def test_poe_status_skipped_without_a_poe_port(self, hass):
+        """Most devices have none, and they should pay nothing for the feature."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether1": {"name": "ether1", "poe-out": "N/A"}}
+        coord.api.query = MagicMock()
+
+        coord._fetch_poe_status()
+
+        coord.api.query.assert_not_called()
+
     def test_get_interface_with_sfp_branch(self, hass):
         coord = _make_coordinator(hass)
         iface_first = {

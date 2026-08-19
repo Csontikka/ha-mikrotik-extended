@@ -17,8 +17,10 @@ POE_OPTIONS = {
 }
 POE_VALUES = {value: key for key, value in POE_OPTIONS.items()}
 
+# The configured mode is the entity state itself; the attribute says whether
+# power is actually flowing, which is what the mode alone cannot tell you.
 DEVICE_ATTRIBUTES_POE = [
-    "poe-priority",
+    "poe-out-status",
 ]
 
 
