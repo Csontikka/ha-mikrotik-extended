@@ -263,6 +263,41 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "system_ups": {
+        "name": "ДБЖ"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "З'єднання"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Підключено"
+      }
+    },
+    "button": {
+      "backup": {
+        "name": "Configuration backup"
+      },
+      "reboot": {
+        "name": "Перезавантаження"
+      }
+    },
+    "select": {
+      "poe_out": {
+        "name": "PoE out",
+        "state": {
+          "off": "Off",
+          "auto_on": "Automatic",
+          "forced_on": "Forced on"
+        }
+      }
+    },
     "sensor": {
       "system_temperature": {
         "name": "Температура"
@@ -388,23 +423,6 @@
         "name": "Статус"
       }
     },
-    "binary_sensor": {
-      "system_ups": {
-        "name": "ДБЖ"
-      },
-      "ppp_tracker": {
-        "name": "PPP"
-      },
-      "interface_connection": {
-        "name": "З'єднання"
-      },
-      "netwatch": {
-        "name": "Netwatch"
-      },
-      "wireguard_peer": {
-        "name": "Підключено"
-      }
-    },
     "switch": {
       "interface_port": {
         "name": "Порт"
@@ -414,14 +432,6 @@
       },
       "kidcontrol_paused": {
         "name": "Призупинено"
-      }
-    },
-    "button": {
-      "backup": {
-        "name": "Configuration backup"
-      },
-      "reboot": {
-        "name": "Перезавантаження"
       }
     }
   }

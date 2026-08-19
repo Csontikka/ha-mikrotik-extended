@@ -263,6 +263,41 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "system_ups": {
+        "name": "Onduleur"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Connexion"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Connecté"
+      }
+    },
+    "button": {
+      "backup": {
+        "name": "Configuration backup"
+      },
+      "reboot": {
+        "name": "Redémarrer"
+      }
+    },
+    "select": {
+      "poe_out": {
+        "name": "PoE out",
+        "state": {
+          "off": "Off",
+          "auto_on": "Automatic",
+          "forced_on": "Forced on"
+        }
+      }
+    },
     "sensor": {
       "system_temperature": {
         "name": "Température"
@@ -388,23 +423,6 @@
         "name": "Statut"
       }
     },
-    "binary_sensor": {
-      "system_ups": {
-        "name": "Onduleur"
-      },
-      "ppp_tracker": {
-        "name": "PPP"
-      },
-      "interface_connection": {
-        "name": "Connexion"
-      },
-      "netwatch": {
-        "name": "Netwatch"
-      },
-      "wireguard_peer": {
-        "name": "Connecté"
-      }
-    },
     "switch": {
       "interface_port": {
         "name": "Port"
@@ -414,14 +432,6 @@
       },
       "kidcontrol_paused": {
         "name": "En pause"
-      }
-    },
-    "button": {
-      "backup": {
-        "name": "Configuration backup"
-      },
-      "reboot": {
-        "name": "Redémarrer"
       }
     }
   }

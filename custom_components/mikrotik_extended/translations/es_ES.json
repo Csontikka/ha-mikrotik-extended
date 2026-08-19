@@ -263,6 +263,41 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "system_ups": {
+        "name": "SAI"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Conexión"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Conectado"
+      }
+    },
+    "button": {
+      "backup": {
+        "name": "Configuration backup"
+      },
+      "reboot": {
+        "name": "Reiniciar"
+      }
+    },
+    "select": {
+      "poe_out": {
+        "name": "PoE out",
+        "state": {
+          "off": "Off",
+          "auto_on": "Automatic",
+          "forced_on": "Forced on"
+        }
+      }
+    },
     "sensor": {
       "system_temperature": {
         "name": "Temperatura"
@@ -388,23 +423,6 @@
         "name": "Estado"
       }
     },
-    "binary_sensor": {
-      "system_ups": {
-        "name": "SAI"
-      },
-      "ppp_tracker": {
-        "name": "PPP"
-      },
-      "interface_connection": {
-        "name": "Conexión"
-      },
-      "netwatch": {
-        "name": "Netwatch"
-      },
-      "wireguard_peer": {
-        "name": "Conectado"
-      }
-    },
     "switch": {
       "interface_port": {
         "name": "Puerto"
@@ -414,14 +432,6 @@
       },
       "kidcontrol_paused": {
         "name": "Pausado"
-      }
-    },
-    "button": {
-      "backup": {
-        "name": "Configuration backup"
-      },
-      "reboot": {
-        "name": "Reiniciar"
       }
     }
   }

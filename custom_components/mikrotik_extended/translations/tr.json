@@ -263,6 +263,41 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "system_ups": {
+        "name": "UPS"
+      },
+      "ppp_tracker": {
+        "name": "PPP"
+      },
+      "interface_connection": {
+        "name": "Bağlantı"
+      },
+      "netwatch": {
+        "name": "Netwatch"
+      },
+      "wireguard_peer": {
+        "name": "Bağlı"
+      }
+    },
+    "button": {
+      "backup": {
+        "name": "Configuration backup"
+      },
+      "reboot": {
+        "name": "Yeniden başlat"
+      }
+    },
+    "select": {
+      "poe_out": {
+        "name": "PoE out",
+        "state": {
+          "off": "Off",
+          "auto_on": "Automatic",
+          "forced_on": "Forced on"
+        }
+      }
+    },
     "sensor": {
       "system_temperature": {
         "name": "Sıcaklık"
@@ -388,23 +423,6 @@
         "name": "Durum"
       }
     },
-    "binary_sensor": {
-      "system_ups": {
-        "name": "UPS"
-      },
-      "ppp_tracker": {
-        "name": "PPP"
-      },
-      "interface_connection": {
-        "name": "Bağlantı"
-      },
-      "netwatch": {
-        "name": "Netwatch"
-      },
-      "wireguard_peer": {
-        "name": "Bağlı"
-      }
-    },
     "switch": {
       "interface_port": {
         "name": "Port"
@@ -414,14 +432,6 @@
       },
       "kidcontrol_paused": {
         "name": "Duraklatıldı"
-      }
-    },
-    "button": {
-      "backup": {
-        "name": "Configuration backup"
-      },
-      "reboot": {
-        "name": "Yeniden başlat"
       }
     }
   }

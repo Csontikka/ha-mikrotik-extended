@@ -243,3 +243,37 @@ class TestNoSkip:
         desc = _make_desc(func="SomeOtherSensor", data_path="something")
         data = {"uid1": {"type": "ether"}}
         assert _skip_sensor(entry, desc, data, "uid1") is False
+
+
+# ---------------------------------------------------------------------------
+# PoE selector skips
+# ---------------------------------------------------------------------------
+
+
+class TestSkipNonPoePort:
+    """Only a port that can supply power gets a PoE selector."""
+
+    def test_skip_port_without_poe(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: True})
+        desc = _make_desc(func="MikrotikPoeSelect")
+        data = {"ether2": {"type": "ether", "poe-out": "N/A"}}
+        assert _skip_sensor(entry, desc, data, "ether2") is True
+
+    def test_skip_port_where_the_field_is_absent(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: True})
+        desc = _make_desc(func="MikrotikPoeSelect")
+        data = {"bridge1": {"type": "bridge"}}
+        assert _skip_sensor(entry, desc, data, "bridge1") is True
+
+    def test_no_skip_for_a_poe_capable_port(self):
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: True})
+        desc = _make_desc(func="MikrotikPoeSelect")
+        data = {"ether1": {"type": "ether", "poe-out": "off"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is False
+
+    def test_poe_selector_follows_the_interface_option(self):
+        """It is an interface entity, so it goes when interfaces go."""
+        entry = _make_config_entry(**{CONF_SENSOR_INTERFACES: False})
+        desc = _make_desc(func="MikrotikPoeSelect")
+        data = {"ether1": {"type": "ether", "poe-out": "off"}}
+        assert _skip_sensor(entry, desc, data, "ether1") is True

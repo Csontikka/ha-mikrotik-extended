@@ -65,6 +65,17 @@ _IFACE_TYPE_CATEGORY = {
 }
 
 
+def _skip_non_poe_port(entity_description, item) -> bool:
+    """Only a port that can actually supply power gets a PoE selector.
+
+    Ports without the capability report a placeholder instead of a mode, so
+    creating a selector for them would offer a control that does nothing.
+    """
+    if entity_description.func != "MikrotikPoeSelect":
+        return False
+    return item.get("poe-out") in (None, "", "N/A", "unknown")
+
+
 def _skip_interface_entity(config_entry, entity_description) -> bool:
     """Skip every interface-derived entity when interface entities are disabled.
 
@@ -120,6 +131,8 @@ def _skip_host_tracker(config_entry, entity_description, item) -> bool:
 def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
     item = data[uid]
     if _skip_interface_entity(config_entry, entity_description):
+        return True
+    if _skip_non_poe_port(entity_description, item):
         return True
     if _skip_interface_traffic_sensor(config_entry, entity_description, item):
         return True

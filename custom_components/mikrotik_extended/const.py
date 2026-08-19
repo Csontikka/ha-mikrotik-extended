@@ -8,6 +8,7 @@ PLATFORMS = [
     Platform.DEVICE_TRACKER,
     Platform.SWITCH,
     Platform.BUTTON,
+    Platform.SELECT,
     Platform.UPDATE,
 ]
 
