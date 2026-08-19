@@ -277,7 +277,7 @@ The file stays on the device: RouterOS does not expose file contents over its AP
 
 - **Shut down router** (`mikrotik_extended.shutdown`): powers off the router. It cannot be started again over the network, so it stays off until power is cycled or someone starts it on site. Intended for automations, for example a clean shutdown while a UPS still has charge, or when a temperature reading is dangerously high. Deliberately an action rather than a button, so a stray click on a dashboard cannot trigger it.
 
-  **Parameters:** `host` (required — naming the router is the safety catch, so one call cannot power off every configured router at once).
+  **Parameters:** `host` (required, because naming the router is the safety catch: one call cannot power off every configured router at once).
 
   ```yaml
   action: mikrotik_extended.shutdown
@@ -285,7 +285,7 @@ The file stays on the device: RouterOS does not expose file contents over its AP
     host: "192.168.88.1"
   ```
 
-  **Example — clean shutdown while the UPS still has charge:**
+  **Example, a clean shutdown while the UPS still has charge:**
 
   ```yaml
   automation:
