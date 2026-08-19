@@ -245,6 +245,12 @@
     },
     "missing_value": {
       "message": "A value is required for add or set actions."
+    },
+    "shutdown_host_required": {
+      "message": "Add meg, melyik routert kell leállítani. Ez a művelet a hálózaton keresztül nem vonható vissza, ezért soha nem vonatkozik egyszerre az összes routerre."
+    },
+    "router_not_found": {
+      "message": "A(z) {host} címhez nem tartozik beállított router, semmi nem lett leállítva."
     }
   },
   "selector": {

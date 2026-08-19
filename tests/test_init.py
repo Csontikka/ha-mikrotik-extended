@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import voluptuous as vol
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -914,10 +913,12 @@ async def test_shutdown_requires_a_host(hass):
     """Naming the router is the safety catch.
 
     A router that has been shut down cannot be started again over the network,
-    so there is no call that takes every router down at once.
+    so there is no call that takes every router down at once. The check lives
+    in the handler rather than the schema so the user gets a readable message
+    instead of the raw "required key not provided".
     """
     await async_setup(hass, {})
-    with pytest.raises(vol.Invalid):
+    with pytest.raises(ServiceValidationError):
         await hass.services.async_call(DOMAIN, "shutdown", {}, blocking=True)
 
 
@@ -938,7 +939,8 @@ async def test_shutdown_powers_off_the_named_router(hass):
     coord.execute.assert_called_once_with("/system", "shutdown", None, None)
 
 
-async def test_shutdown_skips_a_router_that_was_not_named(hass):
+async def test_shutdown_reports_an_unknown_router(hass):
+    """Silence would read as success on something that cannot be undone."""
     await async_setup(hass, {})
 
     entry = _make_entry(hass)
@@ -949,7 +951,8 @@ async def test_shutdown_skips_a_router_that_was_not_named(hass):
     coord.execute = MagicMock(return_value=True)
     entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
 
-    await hass.services.async_call(DOMAIN, "shutdown", {"host": "10.9.9.9"}, blocking=True)
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(DOMAIN, "shutdown", {"host": "10.9.9.9"}, blocking=True)
 
     coord.execute.assert_not_called()
 
