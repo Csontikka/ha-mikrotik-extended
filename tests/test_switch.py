@@ -239,18 +239,22 @@ async def test_port_switch_async_turn_on_and_off(hass):
     assert await sw.async_turn_off() == "managed by CAPsMAN"
     coord.set_value.assert_not_called()
 
-    # Normal turn_on with poe-out off → second call toggles PoE to auto-on
+    # Normal turn_on must write the port state and nothing else: poe-out
+    # has its own entity, and power the user switched off must not come
+    # back because the port was cycled.
     sw._data["about"] = ""
     sw._data["port-mac-address"] = "AA-BB"  # triggers the '-' branch changing param to 'name'
     await sw.async_turn_on()
-    assert coord.set_value.call_count >= 2  # main disable + poe-out auto-on
+    assert coord.set_value.call_count == 1
+    assert not any("poe-out" in c.args for c in coord.set_value.call_args_list)
     tracker.async_request_refresh.assert_awaited()
 
-    # Normal turn_off with poe-out auto-on → extra poe-out off call
+    # Same on turn_off: one write, poe-out untouched
     coord.set_value.reset_mock()
     sw._data["poe-out"] = "auto-on"
     await sw.async_turn_off()
-    assert coord.set_value.call_count >= 2
+    assert coord.set_value.call_count == 1
+    assert not any("poe-out" in c.args for c in coord.set_value.call_args_list)
 
 
 async def test_nat_switch_async_turn_on_off(hass):

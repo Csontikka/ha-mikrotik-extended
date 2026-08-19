@@ -170,10 +170,10 @@ class MikrotikPortSwitch(MikrotikSwitch):
         mod_param = self.entity_description.data_switch_parameter
         await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, mod_param, False)
 
-        if "poe-out" in self._data and self._data["poe-out"] == "off":
-            path = "/interface/ethernet"
-            await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, "poe-out", "auto-on")
-
+        # The port switch used to drag poe-out along with it, re-enabling
+        # power on turn_on and cutting it on turn_off. PoE has its own
+        # entity now, and power the user switched off must not come back
+        # because something cycled the port.
         await self.coordinator.async_refresh()
         await self._config_entry.runtime_data.tracker_coordinator.async_request_refresh()
 
@@ -192,10 +192,6 @@ class MikrotikPortSwitch(MikrotikSwitch):
         value = self._data[self.entity_description.data_reference]
         mod_param = self.entity_description.data_switch_parameter
         await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, mod_param, True)
-
-        if "poe-out" in self._data and self._data["poe-out"] == "auto-on":
-            path = "/interface/ethernet"
-            await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, "poe-out", "off")
 
         await self.coordinator.async_refresh()
         await self._config_entry.runtime_data.tracker_coordinator.async_request_refresh()
