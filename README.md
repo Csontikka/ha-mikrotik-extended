@@ -28,54 +28,54 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | Feature | Core<br>2026.8.2 | Core<br>expected 2026.9 | MikroTik<br>Extended |
 | --- | :---: | :---: | :---: |
 | **System** | | | |
-| CPU load, memory and disk usage, uptime | &#10003; | &#10003; | &#10003; |
-| Temperature and voltage | &#10003; | &#10003; | &#10003; |
-| Separate CPU, board, PHY and switch temperatures | &#10007; | CPU and board | &#10003; |
-| PSU current and voltage (PSU1, PSU2) | &#10007; | &#10003; | &#10003; |
-| Fan speeds (fan1 to fan4) | &#10007; | &#10007; | &#10003; |
-| UPS status | &#10007; | &#10007; | &#10003; |
-| GPS coordinates | &#10007; | &#10007; | &#10003; |
-| Reboot | &#10003; | &#10003; | &#10003; |
+| CPU load, memory and disk usage, uptime | ✅ | ✅ | ✅ |
+| Temperature and voltage | ✅ | ✅ | ✅ |
+| Separate CPU, board, PHY and switch temperatures | ❌ | CPU and board | ✅ |
+| PSU current and voltage (PSU1, PSU2) | ❌ | ✅ | ✅ |
+| Fan speeds (fan1 to fan4) | ❌ | ❌ | ✅ |
+| UPS status | ❌ | ❌ | ✅ |
+| GPS coordinates | ❌ | ❌ | ✅ |
+| Reboot | ✅ | ✅ | ✅ |
 | Shut down | button | button | action |
-| Configuration backup | &#10003; | &#10003; | &#10003; |
+| Configuration backup | ✅ | ✅ | ✅ |
 | **Interfaces** | | | |
-| Link status | &#10007; | &#10003; | &#10003; |
-| Enable and disable | &#10007; | ether, wlan | &#10003; |
-| TX and RX traffic rates and totals | &#10007; | &#10007; | &#10003; |
-| IP address per interface | &#10007; | &#10007; | &#10003; |
-| SFP status and information | &#10007; | &#10007; | &#10003; |
-| PoE output mode control | &#10007; | &#10003; | &#10003; |
-| PoE consumption | &#10007; | &#10003; | &#10003; |
-| Live PoE output status per port | &#10007; | &#10007; | &#10003; |
+| Link status | ❌ | ✅ | ✅ |
+| Enable and disable | ❌ | ether, wlan | ✅ |
+| TX and RX traffic rates and totals | ❌ | ❌ | ✅ |
+| IP address per interface | ❌ | ❌ | ✅ |
+| SFP status and information | ❌ | ❌ | ✅ |
+| PoE output mode control | ❌ | ✅ | ✅ |
+| PoE consumption | ❌ | ✅ | ✅ |
+| Live PoE output status per port | ❌ | ❌ | ✅ |
 | **Firewall and routing** | | | |
-| NAT, mangle, filter and routing rules as switches | &#10007; | &#10007; | &#10003; |
-| Simple queues | &#10007; | &#10007; | &#10003; |
+| NAT, mangle, filter and routing rules as switches | ❌ | ❌ | ✅ |
+| Simple queues | ❌ | ❌ | ✅ |
 | **Network** | | | |
-| Device tracking by ARP | &#10003; | &#10003; | &#10003; |
-| Force DHCP leases instead of ARP | &#10003; | &#10003; | &#10007; |
-| Wired and wireless client counts | &#10007; | &#10007; | &#10003; |
-| Wireless clients (CAPsMAN and WiFi) | &#10007; | &#10007; | &#10003; |
-| WireGuard peers | &#10007; | &#10007; | &#10003; |
-| Containers | &#10007; | &#10007; | &#10003; |
-| NetWatch | &#10007; | &#10007; | &#10003; |
-| PPP users | &#10007; | &#10007; | &#10003; |
-| Captive portal clients | &#10007; | &#10007; | &#10003; |
-| Kid Control | &#10007; | &#10007; | &#10003; |
-| Per-client traffic | &#10007; | &#10007; | &#10003; |
-| IP Cloud | &#10007; | &#10007; | &#10003; |
-| Scripts | &#10007; | &#10007; | &#10003; |
+| Device tracking by ARP | ✅ | ✅ | ✅ |
+| Force DHCP leases instead of ARP | ✅ | ✅ | ❌ |
+| Wired and wireless client counts | ❌ | ❌ | ✅ |
+| Wireless clients (CAPsMAN and WiFi) | ❌ | ❌ | ✅ |
+| WireGuard peers | ❌ | ❌ | ✅ |
+| Containers | ❌ | ❌ | ✅ |
+| NetWatch | ❌ | ❌ | ✅ |
+| PPP users | ❌ | ❌ | ✅ |
+| Captive portal clients | ❌ | ❌ | ✅ |
+| Kid Control | ❌ | ❌ | ✅ |
+| Per-client traffic | ❌ | ❌ | ✅ |
+| IP Cloud | ❌ | ❌ | ✅ |
+| Scripts | ❌ | ❌ | ✅ |
 | **Firmware** | | | |
-| RouterOS update | &#10003; | &#10003; | &#10003; |
-| RouterBoard firmware update | &#10003; | &#10003; | &#10003; |
+| RouterOS update | ✅ | ✅ | ✅ |
+| RouterBoard firmware update | ✅ | ✅ | ✅ |
 | **Actions** | | | |
-| Wake-on-LAN | &#10007; | &#10007; | &#10003; |
-| RouterOS environment variables | &#10007; | &#10007; | &#10003; |
-| Raw API test | &#10007; | &#10007; | &#10003; |
-| Manual data refresh | &#10007; | &#10007; | &#10003; |
+| Wake-on-LAN | ❌ | ❌ | ✅ |
+| RouterOS environment variables | ❌ | ❌ | ✅ |
+| Raw API test | ❌ | ❌ | ✅ |
+| Manual data refresh | ❌ | ❌ | ✅ |
 | **Setup** | | | |
-| Config flow, multiple routers, SSL, ARP ping | &#10003; | &#10003; | &#10003; |
-| Entity categories individually switchable | &#10007; | &#10007; | &#10003; |
-| Automatic discovery over MNDP | &#10007; | &#10007; | &#10003; |
+| Config flow, multiple routers, SSL, ARP ping | ✅ | ✅ | ✅ |
+| Entity categories individually switchable | ❌ | ❌ | ✅ |
+| Automatic discovery over MNDP | ❌ | ❌ | ✅ |
 
 The core integration is under active development, so this table will age. If you spot a
 row that is out of date, open an issue and it will be corrected.
