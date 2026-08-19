@@ -251,7 +251,14 @@ def _make_shutdown(hass: HomeAssistant):
             _LOGGER.warning("Shutting down Mikrotik device %s", router_host)
             success = await hass.async_add_executor_job(coordinator.execute, "/system", "shutdown", None, None)
             if not success:
-                _LOGGER.error("shutdown: the command was refused on %s", router_host)
+                # A router that obeys takes the API session down with it,
+                # so no confirmation is the expected shape of success here.
+                # Permission was checked above; a genuinely unreachable
+                # router is already reported by the API layer.
+                _LOGGER.info(
+                    "shutdown: no confirmation from %s, which is expected when the router powers off",
+                    router_host,
+                )
 
         # Saying nothing would look like success on an action that cannot be
         # undone, so a name that matches no router is an error.
