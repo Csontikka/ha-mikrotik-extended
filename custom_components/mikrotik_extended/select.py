@@ -5,7 +5,6 @@ from __future__ import annotations
 PARALLEL_UPDATES = 0
 
 from logging import getLogger
-from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -16,8 +15,8 @@ from .entity import MikrotikEntity, async_add_entities
 from .select_types import (
     POE_OPTIONS,
     POE_VALUES,
-    SENSOR_SERVICES,  # noqa: F401 — accessed via platform.platform.SENSOR_SERVICES
-    SENSOR_TYPES,  # noqa: F401 — accessed via platform.platform.SENSOR_TYPES
+    SENSOR_SERVICES,  # noqa: F401, accessed via platform.platform.SENSOR_SERVICES
+    SENSOR_TYPES,  # noqa: F401, accessed via platform.platform.SENSOR_TYPES
 )
 
 _LOGGER = getLogger(__name__)
@@ -69,11 +68,6 @@ class MikrotikPoeSelect(MikrotikSelect):
         anything unrecognised is reported as no value.
         """
         return POE_VALUES.get(self._data.get(self.entity_description.data_attribute))
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the state attributes."""
-        return super().extra_state_attributes
 
     async def async_select_option(self, option: str) -> None:
         """Set the PoE output mode of the port.
