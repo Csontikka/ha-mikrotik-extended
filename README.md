@@ -19,8 +19,8 @@ Full-featured Home Assistant integration for MikroTik routers running **RouterOS
 
 Home Assistant ships a core `mikrotik` integration, but it is limited to **device tracking / presence detection**. MikroTik Extended is a full RouterOS management integration:
 
-- **System** — CPU, memory, temperatures, voltage/power, PSU and fan metrics, UPS, GPS, uptime, reboot button
-- **Interfaces** — link status, enable/disable, TX/RX traffic, per-interface IP, SFP and PoE status/control
+- **System** — CPU, memory, temperatures, voltage/power, PSU and fan metrics, UPS, GPS, uptime, reboot and configuration backup buttons, shutdown action
+- **Interfaces** — link status, enable/disable, TX/RX traffic, per-interface IP, SFP information, PoE output mode control with live power status
 - **Firewall & routing** — NAT, mangle, filter and routing rules as individual switches
 - **Network** — WireGuard peers, wireless clients (CAPsMAN/WiFi, auto-detected), DHCP leases, NetWatch, PPP users, simple queues, captive portal, IP Cloud
 - **Containers** — start/stop and status for RouterOS containers
@@ -41,7 +41,7 @@ CPU load, memory/HDD usage, uptime, temperatures (CPU, board, PHY, switch), volt
 
 ### Network Interfaces
 
-Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE status/control/consumption, connected device MAC/IP info per interface.
+Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status and consumption, connected device MAC/IP info per interface.
 
 ![Interface Traffic](docs/assets/images/screenshots/interface_tx.png)
 
@@ -169,6 +169,12 @@ Update RouterOS and RouterBoard firmware directly from Home Assistant.
 
 ![RouterOS Update](docs/assets/images/screenshots/update_routeros.png)
 
+### Configuration Backup
+
+The **Configuration backup** button writes a backup on the router itself, under a fixed name so that pressing it again replaces the previous one instead of filling the storage with dated copies. Handy right before changing something on the router.
+
+The file stays on the device: RouterOS does not expose file contents over its API, so there is nothing for Home Assistant to fetch. Retrieve it the usual way, through the router's Files list, FTP or SFTP.
+
 ### Actions (Services)
 
 - **Wake-on-LAN** (`mikrotik_extended.send_magic_packet`): send a WoL magic packet through the router to wake up a network device.
@@ -268,6 +274,31 @@ Update RouterOS and RouterBoard firmware directly from Home Assistant.
   ```
 
   > **Note:** Creating a new variable takes ~2 seconds (uses a one-shot RouterOS scheduler internally). Updating an existing variable is instant. The variable is accessible from RouterOS scripts via `:global myVar; :put $myVar`.
+
+- **Shut down router** (`mikrotik_extended.shutdown`): powers off the router. It cannot be started again over the network, so it stays off until power is cycled or someone starts it on site. Intended for automations, for example a clean shutdown while a UPS still has charge, or when a temperature reading is dangerously high. Deliberately an action rather than a button, so a stray click on a dashboard cannot trigger it.
+
+  **Parameters:** `host` (required — naming the router is the safety catch, so one call cannot power off every configured router at once).
+
+  ```yaml
+  action: mikrotik_extended.shutdown
+  data:
+    host: "192.168.88.1"
+  ```
+
+  **Example — clean shutdown while the UPS still has charge:**
+
+  ```yaml
+  automation:
+    - alias: "Shut the router down on low UPS battery"
+      triggers:
+        - trigger: numeric_state
+          entity_id: sensor.ups_battery
+          below: 15
+      actions:
+        - action: mikrotik_extended.shutdown
+          data:
+            host: "192.168.88.1"
+  ```
 
 ## Automation Examples
 
