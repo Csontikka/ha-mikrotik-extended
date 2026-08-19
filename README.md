@@ -419,6 +419,7 @@ automation:
 |---------|:---:|:---:|:---:|
 | System monitoring (CPU, memory, temps, fans, PSU, uptime) | ✓ | ✓ | No |
 | Network interfaces (status, traffic, IP address) | ✓ | ✓ | Traffic: Yes |
+| PoE out control (per port) | ✓ | ? | No |
 | Firewall rules (NAT, mangle, filter) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
 | Device tracking (ARP) | ✓ | ✓ | Yes |
@@ -445,6 +446,8 @@ automation:
 | Refresh Data service | ✓ | ? | No |
 | Set Environment service | ✓ | ? | No |
 | Reboot button | ✓ | ✓ | No |
+| Configuration backup button | ✓ | ? | No |
+| Shutdown service | ✓ | ? | No |
 | Multi-router support | ✓ | ✓ | No |
 
 > **?** = not tested on RouterOS 6.
