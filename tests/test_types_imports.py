@@ -8,6 +8,7 @@ from custom_components.mikrotik_extended import (
     binary_sensor_types,
     button_types,
     device_tracker_types,
+    select_types,
     sensor_types,
     switch_types,
     update_types,
@@ -58,6 +59,15 @@ def test_sfp_temperature_sensor_defined():
     assert desc.data_path == "health"
     assert desc.data_attribute == "sfp-temperature"
     assert desc.device_class == SensorDeviceClass.TEMPERATURE
+
+
+def test_select_types_definitions():
+    assert select_types.SENSOR_TYPES
+    for desc in select_types.SENSOR_TYPES:
+        assert desc.key
+        assert desc.data_path
+        assert desc.options, "a select without options cannot be displayed"
+    assert set(select_types.POE_OPTIONS) == set(select_types.POE_VALUES.values())
 
 
 def test_switch_types_definitions():
