@@ -534,16 +534,26 @@ class TestSetValue:
         assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
         assert self.api.connected() is True
 
-    def test_refused_set_lookup_keeps_the_session(self):
-        """The lookup before the write can be refused too, and that is still a trap."""
+    def test_refused_set_lookup_keeps_the_session(self, caplog):
+        """The lookup before the write can be refused too, and that is still a trap.
+
+        The message has to say the listing was refused, not the write,
+        because the write never started.
+        """
         from librouteros.exceptions import TrapError
 
         mock_path = MagicMock()
         mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
         self.api._connection.path.return_value = mock_path
 
-        assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+        with caplog.at_level("WARNING"):
+            assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+
         assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "refused listing /interface/ethernet" in refusals[0]
+        assert "set poe-out" not in refusals[0]
 
     def test_refused_set_is_logged_every_time(self, caplog):
         """A write is one action somebody took, so every refusal is reported.
@@ -718,7 +728,7 @@ class TestExecute:
         assert self.api.execute("/system/backup", "save", None, None) is False
         assert self.api.connected() is True
 
-    def test_refused_command_lookup_keeps_the_session(self):
+    def test_refused_command_lookup_keeps_the_session(self, caplog):
         """The lookup before the command can be refused too, and that is still a trap."""
         from librouteros.exceptions import TrapError
 
@@ -726,8 +736,14 @@ class TestExecute:
         mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
         self.api._connection.path.return_value = mock_path
 
-        assert self.api.execute("/system/script", "run", "name", "script1") is False
+        with caplog.at_level("WARNING"):
+            assert self.api.execute("/system/script", "run", "name", "script1") is False
+
         assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "refused listing /system/script" in refusals[0]
+        assert " run" not in refusals[0]
 
     def test_refused_command_lets_the_next_query_through(self):
         """The point of keeping the session: the next read needs no reconnect."""
@@ -909,10 +925,13 @@ class TestRunScript:
             assert self.api.run_script("myscript") is False
 
         assert self.api.connected() is True
-        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
-        assert len(refusals) == 1, refusals
-        assert "myscript" in refusals[0]
-        assert "refused on purpose" in refusals[0]
+        kept = [r.getMessage() for r in caplog.records if "The connection stays up" in r.getMessage()]
+        assert len(kept) == 1, kept
+        # The script ran and failed, which is not the router refusing it.
+        # Calling it refused would read as "nothing happened".
+        assert "reported an error running script myscript" in kept[0]
+        assert "refused on purpose" in kept[0]
+        assert not kept[0].startswith("Mikrotik 192.168.88.1 refused")
 
     def test_refused_run_multi_trap_keeps_the_session(self):
         from librouteros.exceptions import MultiTrapError
@@ -925,7 +944,7 @@ class TestRunScript:
         assert self.api.run_script("myscript") is False
         assert self.api.connected() is True
 
-    def test_refused_run_lookup_keeps_the_session(self):
+    def test_refused_run_lookup_keeps_the_session(self, caplog):
         """Listing the scripts can be refused too, and that is still a trap."""
         from librouteros.exceptions import TrapError
 
@@ -933,8 +952,13 @@ class TestRunScript:
         mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
         self.api._connection.path.return_value = mock_path
 
-        assert self.api.run_script("myscript") is False
+        with caplog.at_level("WARNING"):
+            assert self.api.run_script("myscript") is False
+
         assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "refused listing /system/script" in refusals[0]
 
     def test_connection_closed_on_run_still_disconnects(self):
         from librouteros.exceptions import ConnectionClosed

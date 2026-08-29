@@ -237,13 +237,19 @@ class MikrotikAPI:
         everything the slow block covers. Anything that is not a trap is a
         broken link and still disconnects.
 
+        ``what`` is the phrase after the host name, and it has to say what
+        actually happened: "refused X" only for a request the router turned
+        down whole. A script that errors part way through has run that far,
+        and a message that reads as "nothing happened" would invite pressing
+        the button again.
+
         Unlike a refused read, a refused write is logged every time. A read
         repeats every cycle, a write is one action somebody took, and they
         need to see that it did not happen.
         """
         if isinstance(error, (TrapError, MultiTrapError)):
             _LOGGER.warning(
-                "Mikrotik %s refused %s: %s. The connection stays up.",
+                "Mikrotik %s %s: %s. The connection stays up.",
                 self._host,
                 what,
                 error,
@@ -339,6 +345,9 @@ class MikrotikAPI:
         if not self.connection_check():
             return False
 
+        # The lookup can be refused on its own, and then the write never
+        # started, so the phrase follows the phase.
+        what = f"refused listing {path}"
         with self.lock:
             try:
                 _LOGGER.debug("API query: %s", path)
@@ -365,9 +374,10 @@ class MikrotikAPI:
                     return False
 
                 params = {".id": entry_found, mod_param: mod_value}
+                what = f"refused {path} set {mod_param}={mod_value}"
                 response.update(**params)
             except Exception as e:
-                self._write_failed("set_value", f"{path} set {mod_param}={mod_value}", e)
+                self._write_failed("set_value", what, e)
                 return False
 
         return True
@@ -383,6 +393,7 @@ class MikrotikAPI:
         if not self.connection_check():
             return False
 
+        what = f"refused listing {path}"
         with self.lock:
             try:
                 _LOGGER.debug("API query: %s", path)
@@ -415,9 +426,10 @@ class MikrotikAPI:
                 if attributes:
                     params.update(attributes)
 
+                what = f"refused {path} {command}"
                 tuple(response(command, **params))
             except Exception as e:
-                self._write_failed("execute", f"{path} {command}", e)
+                self._write_failed("execute", what, e)
                 return False
 
         return True
@@ -444,7 +456,7 @@ class MikrotikAPI:
                 response = self._connection.path("/tool")
                 tuple(response("wol", **args))
             except Exception as e:
-                self._write_failed("wol", f"/tool wol {mac}", e)
+                self._write_failed("wol", f"refused /tool wol {mac}", e)
                 return False
 
         return True
@@ -458,6 +470,7 @@ class MikrotikAPI:
         if not self.connection_check():
             return False
 
+        what = "refused listing /system/script"
         with self.lock:
             try:
                 _LOGGER.debug("API query: %s", "/system/script")
@@ -478,9 +491,12 @@ class MikrotikAPI:
                     _LOGGER.error("Mikrotik %s Script %s not found", self._host, name)
                     return False
 
+                # A trap here is usually the script itself failing part way,
+                # after the router accepted the run, so it is not a refusal.
+                what = f"reported an error running script {name}"
                 tuple(response("run", **{".id": entry_found}))
             except Exception as e:
-                self._write_failed("run_script", f"script {name}", e)
+                self._write_failed("run_script", what, e)
                 return False
 
         return True
@@ -499,7 +515,7 @@ class MikrotikAPI:
         try:
             env.update(**{".id": entry_id, "value": str(value)})
         except Exception as e:
-            self._write_failed("set_env_variable", f"environment variable {name}", e)
+            self._write_failed("set_env_variable", f"refused environment variable {name}", e)
             return False
         return True
 
@@ -518,7 +534,7 @@ class MikrotikAPI:
             sched = self._connection.path("/system/scheduler")
             tuple(sched("add", name=sched_name, **{"on-event": on_event, "interval": "1s"}))
         except Exception as e:
-            self._write_failed("set_env_variable", f"scheduler entry creating environment variable {name}", e)
+            self._write_failed("set_env_variable", f"refused the scheduler entry creating environment variable {name}", e)
             return False
         return True
 
@@ -530,7 +546,7 @@ class MikrotikAPI:
                 if e.get("name") == name:
                     return True
         except Exception as e:
-            self._write_failed("set_env_variable", f"check of environment variable {name}", e)
+            self._write_failed("set_env_variable", f"refused the check of environment variable {name}", e)
             return False
         return None
 
@@ -554,7 +570,7 @@ class MikrotikAPI:
                 env = self._connection.path(SCRIPT_ENVIRONMENT_PATH)
                 entry_id = self._find_env_entry_id(env, name)
             except Exception as e:
-                self._write_failed("set_env_variable", "environment variable listing", e)
+                self._write_failed("set_env_variable", "refused listing the environment variables", e)
                 return False
 
             if entry_id:
@@ -598,7 +614,7 @@ class MikrotikAPI:
                         env.remove(e[".id"])
                         return True
             except Exception as e:
-                self._write_failed("remove_env_variable", f"removal of environment variable {name}", e)
+                self._write_failed("remove_env_variable", f"refused removing environment variable {name}", e)
                 return False
 
         _LOGGER.warning("Mikrotik %s env variable %s not found", self._host, name)
