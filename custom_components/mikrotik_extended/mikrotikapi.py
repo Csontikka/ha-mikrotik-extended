@@ -625,14 +625,16 @@ class MikrotikAPI:
         }
         with self.lock:
             try:
-                # _LOGGER.debug("Ping host query: %s", args["address"])
-                ping = response("/ping", **args)
-            except Exception as e:
-                self.disconnect("arp_ping", e)
+                ping = list(response("/ping", **args))
+            except (TrapError, MultiTrapError) as e:
+                # The router answered: most often an interface name it no
+                # longer knows, because the port was renamed after the host
+                # was first seen. The host counts as unreachable and the
+                # session stays. This runs for every host on every tracker
+                # cycle, so the refusal is reported once per interface,
+                # the way a refused read is, not once per ping.
+                self._note_refusal(f"/ping interface={interface}", e)
                 return False
-
-            try:
-                ping = list(ping)
             except Exception as e:
                 self.disconnect("arp_ping", e)
                 return False

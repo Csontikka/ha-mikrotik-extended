@@ -1164,6 +1164,59 @@ class TestArpPing:
         assert self.api.arp_ping("1.2.3.4", "ether1") is False
         assert self.api.connected() is False
 
+    def test_refused_ping_keeps_the_session(self):
+        """An interface the router does not know is a trap, and the router is still there.
+
+        This runs for every host on every tracker cycle. A teardown here
+        meant the tracker session reconnected every ten seconds for as long
+        as one host sat on a renamed port.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{"seq": 1}]))
+        ping_gen = MagicMock()
+        ping_gen.__iter__ = MagicMock(side_effect=TrapError("input does not match any value of interface"))
+        mock_path.return_value = ping_gen
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.arp_ping("1.2.3.4", "does-not-exist") is False
+        assert self.api.connected() is True
+
+    def test_refused_ping_is_logged_once_per_interface(self, caplog):
+        """Per host per cycle would fill the log in minutes."""
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=lambda: iter([{"seq": 1}]))
+        ping_gen = MagicMock()
+        ping_gen.__iter__ = MagicMock(side_effect=TrapError("input does not match any value of interface"))
+        mock_path.return_value = ping_gen
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            for address in ("1.2.3.4", "1.2.3.5", "1.2.3.6"):
+                self.api.arp_ping(address, "does-not-exist")
+            self.api.arp_ping("1.2.3.7", "other-missing")
+
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 2, refusals
+        assert "does-not-exist" in refusals[0]
+        assert "other-missing" in refusals[1]
+
+    def test_connection_closed_on_ping_still_disconnects(self):
+        from librouteros.exceptions import ConnectionClosed
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{"seq": 1}]))
+        ping_gen = MagicMock()
+        ping_gen.__iter__ = MagicMock(side_effect=ConnectionClosed("gone"))
+        mock_path.return_value = ping_gen
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.arp_ping("1.2.3.4", "ether1") is False
+        assert self.api.connected() is False
+
 
 class TestScheduleEnvCreate:
     def setup_method(self):
