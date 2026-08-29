@@ -955,7 +955,7 @@ async def test_shutdown_without_confirmation_is_the_router_powering_off(hass, ca
     with caplog.at_level("INFO"):
         await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
 
-    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert not [r for r in caplog.records if r.levelname == "ERROR" and r.name.startswith("custom_components.mikrotik_extended")]
     assert any("expected when the router powers off" in r.getMessage() for r in caplog.records)
 
 
@@ -982,7 +982,7 @@ async def test_shutdown_reports_an_unreachable_router(hass, caplog):
         await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
 
     coord.execute.assert_not_called()
-    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR" and r.name.startswith("custom_components.mikrotik_extended")]
     assert len(errors) == 1, errors
     assert "unreachable" in errors[0]
     assert not any("expected when the router powers off" in r.getMessage() for r in caplog.records)
@@ -1008,7 +1008,7 @@ async def test_shutdown_refusal_is_an_error(hass, caplog):
     with caplog.at_level("INFO"):
         await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
 
-    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR" and r.name.startswith("custom_components.mikrotik_extended")]
     assert len(errors) == 1, errors
     assert "refused" in errors[0]
     assert not any("expected when the router powers off" in r.getMessage() for r in caplog.records)

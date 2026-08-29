@@ -380,10 +380,10 @@ class TestQuery:
 
     def test_multi_trap_keeps_the_session(self):
         """A missing path arrives as a MultiTrapError on librouteros 4."""
-        from librouteros.exceptions import MultiTrapError
+        from librouteros.exceptions import MultiTrapError, TrapError
 
         mock_path = MagicMock()
-        mock_path.__iter__ = MagicMock(side_effect=MultiTrapError("no such command prefix"))
+        mock_path.__iter__ = MagicMock(side_effect=MultiTrapError(TrapError("no such command prefix")))
         self.api._connection.path.return_value = mock_path
 
         assert self.api.query("/nope") is None
@@ -524,11 +524,11 @@ class TestSetValue:
 
     def test_refused_set_multi_trap_keeps_the_session(self):
         """librouteros 4 wraps some refusals in a MultiTrapError."""
-        from librouteros.exceptions import MultiTrapError
+        from librouteros.exceptions import MultiTrapError, TrapError
 
         mock_path = MagicMock()
         mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
-        mock_path.update = MagicMock(side_effect=MultiTrapError("not enough permissions (9)"))
+        mock_path.update = MagicMock(side_effect=MultiTrapError(TrapError("not enough permissions (9)")))
         self.api._connection.path.return_value = mock_path
 
         assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
@@ -586,11 +586,46 @@ class TestSetValue:
         allowed.__iter__ = MagicMock(return_value=iter([{"name": "ether1"}]))
         self.api._connection.path.side_effect = [refused, allowed]
 
+        self.api._reconnected = False
         with patch.object(self.api, "connect") as reconnect:
             assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
             assert self.api.query("/interface") == [{"name": "ether1"}]
 
         reconnect.assert_not_called()
+        # This is what keeps the slow block from running again on the next poll.
+        assert self.api.has_reconnected() is False
+
+    def test_fatal_error_on_set_still_disconnects(self):
+        """A fatal reply is the router closing the connection, trap or not.
+
+        All three are ProtocolError subclasses, so a later "simplification"
+        to isinstance(error, ProtocolError) would swallow this one too.
+        """
+        from librouteros.exceptions import FatalError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        mock_path.update = MagicMock(side_effect=FatalError("session closed"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+        assert self.api.connected() is False
+
+    def test_refused_set_spells_a_bool_the_router_way(self, caplog):
+        """The switches pass Python bools; the wire and the router say yes and no."""
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        mock_path.update = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            self.api.set_value("/interface", "name", "ether1", "disabled", False)
+
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert "set disabled=no" in refusals[0], refusals
+        assert "False" not in refusals[0]
 
     def test_connection_closed_on_set_still_disconnects(self):
         """A closed connection is not a refusal, the session really is gone."""
@@ -718,11 +753,11 @@ class TestExecute:
 
     def test_refused_command_multi_trap_keeps_the_session(self):
         """librouteros 4 wraps some refusals in a MultiTrapError."""
-        from librouteros.exceptions import MultiTrapError
+        from librouteros.exceptions import MultiTrapError, TrapError
 
         mock_path = MagicMock()
         mock_path.__iter__ = MagicMock(return_value=iter([]))
-        mock_path.side_effect = MultiTrapError("not enough permissions (9)")
+        mock_path.side_effect = MultiTrapError(TrapError("not enough permissions (9)"))
         self.api._connection.path.return_value = mock_path
 
         assert self.api.execute("/system/backup", "save", None, None) is False
@@ -756,11 +791,24 @@ class TestExecute:
         allowed.__iter__ = MagicMock(return_value=iter([{"name": "ether1"}]))
         self.api._connection.path.side_effect = [refused, allowed]
 
+        self.api._reconnected = False
         with patch.object(self.api, "connect") as reconnect:
             assert self.api.execute("/system/backup", "save", None, None) is False
             assert self.api.query("/interface") == [{"name": "ether1"}]
 
         reconnect.assert_not_called()
+        assert self.api.has_reconnected() is False
+
+    def test_fatal_error_on_command_still_disconnects(self):
+        from librouteros.exceptions import FatalError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([]))
+        mock_path.side_effect = FatalError("session closed")
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.execute("/system/backup", "save", None, None) is False
+        assert self.api.connected() is False
 
     def test_connection_closed_on_command_still_disconnects(self):
         """A router that powers off on shutdown closes the connection, and that is real."""
@@ -934,11 +982,11 @@ class TestRunScript:
         assert not kept[0].startswith("Mikrotik 192.168.88.1 refused")
 
     def test_refused_run_multi_trap_keeps_the_session(self):
-        from librouteros.exceptions import MultiTrapError
+        from librouteros.exceptions import MultiTrapError, TrapError
 
         mock_path = MagicMock()
         mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "myscript"}]))
-        mock_path.side_effect = MultiTrapError("refused on purpose")
+        mock_path.side_effect = MultiTrapError(TrapError("refused on purpose"))
         self.api._connection.path.return_value = mock_path
 
         assert self.api.run_script("myscript") is False
