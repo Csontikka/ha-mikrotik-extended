@@ -862,6 +862,62 @@ class TestRunScript:
         assert self.api.run_script("myscript") is False
         assert self.api.connected() is False
 
+    def test_refused_run_keeps_the_session(self, caplog):
+        """A script that errors out, or one whose policy exceeds the user's, is a trap.
+
+        The router answered, so the session stays. Verified against a router
+        with a script that fails on purpose: the run raises TrapError and the
+        connection is still usable afterwards.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "myscript"}]))
+        mock_path.side_effect = TrapError("refused on purpose")
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            assert self.api.run_script("myscript") is False
+
+        assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "myscript" in refusals[0]
+        assert "refused on purpose" in refusals[0]
+
+    def test_refused_run_multi_trap_keeps_the_session(self):
+        from librouteros.exceptions import MultiTrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "myscript"}]))
+        mock_path.side_effect = MultiTrapError("refused on purpose")
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.run_script("myscript") is False
+        assert self.api.connected() is True
+
+    def test_refused_run_lookup_keeps_the_session(self):
+        """Listing the scripts can be refused too, and that is still a trap."""
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.run_script("myscript") is False
+        assert self.api.connected() is True
+
+    def test_connection_closed_on_run_still_disconnects(self):
+        from librouteros.exceptions import ConnectionClosed
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "myscript"}]))
+        mock_path.side_effect = ConnectionClosed("gone")
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.run_script("myscript") is False
+        assert self.api.connected() is False
+
 
 class TestSetEnvVariable:
     """Covers lines 411-472: set_env_variable."""

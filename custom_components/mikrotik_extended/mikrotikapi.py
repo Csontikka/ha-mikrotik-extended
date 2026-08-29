@@ -480,7 +480,7 @@ class MikrotikAPI:
 
                 tuple(response("run", **{".id": entry_found}))
             except Exception as e:
-                self.disconnect("run_script", e)
+                self._write_failed("run_script", f"script {name}", e)
                 return False
 
         return True
