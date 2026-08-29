@@ -374,7 +374,10 @@ class MikrotikAPI:
                     return False
 
                 params = {".id": entry_found, mod_param: mod_value}
-                what = f"refused {path} set {mod_param}={mod_value}"
+                # Spell a bool the way it goes over the wire and the way the
+                # user sees it on the router, not as Python's True or False.
+                shown = ("yes" if mod_value else "no") if isinstance(mod_value, bool) else mod_value
+                what = f"refused {path} set {mod_param}={shown}"
                 response.update(**params)
             except Exception as e:
                 self._write_failed("set_value", what, e)
