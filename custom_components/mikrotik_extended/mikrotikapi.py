@@ -444,7 +444,7 @@ class MikrotikAPI:
                 response = self._connection.path("/tool")
                 tuple(response("wol", **args))
             except Exception as e:
-                self.disconnect("wol", e)
+                self._write_failed("wol", f"/tool wol {mac}", e)
                 return False
 
         return True

@@ -799,6 +799,35 @@ class TestWol:
         assert result is False
         assert self.api.connected() is False
 
+    def test_refused_wol_keeps_the_session(self, caplog):
+        """The magic packet action has no host filter, so one bad interface
+        name reaches every router, and each one refusing it must not cost
+        each one its session.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.side_effect = TrapError("input does not match any value of interface")
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            assert self.api.wol("AA:BB:CC:DD:EE:FF", "does-not-exist") is False
+
+        assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "AA:BB:CC:DD:EE:FF" in refusals[0]
+
+    def test_connection_closed_on_wol_still_disconnects(self):
+        from librouteros.exceptions import ConnectionClosed
+
+        mock_path = MagicMock()
+        mock_path.side_effect = ConnectionClosed("gone")
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.wol("AA:BB:CC:DD:EE:FF") is False
+        assert self.api.connected() is False
+
 
 class TestRunScript:
     """Covers lines 375-404: run_script."""
