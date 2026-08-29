@@ -498,6 +498,102 @@ class TestSetValue:
         assert result is False
         assert self.api.connected() is False
 
+    def test_refused_set_keeps_the_session(self, caplog):
+        """A trap on the write is the router saying no, not the link dying.
+
+        Tearing the session down here cost a whole reconnect for one refused
+        change and cut short whatever update cycle was running.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        mock_path.update = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            result = self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off")
+
+        assert result is False
+        assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "/interface/ethernet" in refusals[0]
+        assert "poe-out" in refusals[0]
+        assert "not enough permissions" in refusals[0]
+
+    def test_refused_set_multi_trap_keeps_the_session(self):
+        """librouteros 4 wraps some refusals in a MultiTrapError."""
+        from librouteros.exceptions import MultiTrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        mock_path.update = MagicMock(side_effect=MultiTrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+        assert self.api.connected() is True
+
+    def test_refused_set_lookup_keeps_the_session(self):
+        """The lookup before the write can be refused too, and that is still a trap."""
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+        assert self.api.connected() is True
+
+    def test_refused_set_is_logged_every_time(self, caplog):
+        """A write is one action somebody took, so every refusal is reported.
+
+        The once-per-path silence of a refused read would hide the second
+        press of a button that does not work.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=lambda: iter([{".id": "*1", "name": "ether1"}]))
+        mock_path.update = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            for _ in range(3):
+                self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off")
+
+        refusals = [r for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 3
+
+    def test_refused_set_lets_the_next_query_through(self):
+        """The point of keeping the session: the next read needs no reconnect."""
+        from librouteros.exceptions import TrapError
+
+        refused = MagicMock()
+        refused.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        refused.update = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        allowed = MagicMock()
+        allowed.__iter__ = MagicMock(return_value=iter([{"name": "ether1"}]))
+        self.api._connection.path.side_effect = [refused, allowed]
+
+        with patch.object(self.api, "connect") as reconnect:
+            assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+            assert self.api.query("/interface") == [{"name": "ether1"}]
+
+        reconnect.assert_not_called()
+
+    def test_connection_closed_on_set_still_disconnects(self):
+        """A closed connection is not a refusal, the session really is gone."""
+        from librouteros.exceptions import ConnectionClosed
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        mock_path.update = MagicMock(side_effect=ConnectionClosed("gone"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.set_value("/interface/ethernet", "name", "ether1", "poe-out", "off") is False
+        assert self.api.connected() is False
+
 
 class TestExecute:
     def setup_method(self):

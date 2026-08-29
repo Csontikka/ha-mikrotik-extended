@@ -227,6 +227,30 @@ class MikrotikAPI:
             error,
         )
 
+    def _write_failed(self, location, what, error) -> None:
+        """Sort out an exception raised by a write.
+
+        A trap is the router answering and refusing this one request, so the
+        connection is fine. Tearing it down here cost the whole session for a
+        single refused change: the update cycle running at the time was cut
+        short, the next poll had to reconnect, and the reconnect re-read
+        everything the slow block covers. Anything that is not a trap is a
+        broken link and still disconnects.
+
+        Unlike a refused read, a refused write is logged every time. A read
+        repeats every cycle, a write is one action somebody took, and they
+        need to see that it did not happen.
+        """
+        if isinstance(error, (TrapError, MultiTrapError)):
+            _LOGGER.warning(
+                "Mikrotik %s refused %s: %s. The connection stays up.",
+                self._host,
+                what,
+                error,
+            )
+            return
+        self.disconnect(location, error)
+
     def _materialize_list(self, response, path):
         """Convert the API generator into a list; returns (response, missing_sentinel).
 
@@ -343,7 +367,7 @@ class MikrotikAPI:
                 params = {".id": entry_found, mod_param: mod_value}
                 response.update(**params)
             except Exception as e:
-                self.disconnect("set_value", e)
+                self._write_failed("set_value", f"{path} set {mod_param}={mod_value}", e)
                 return False
 
         return True
