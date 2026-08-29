@@ -683,6 +683,81 @@ class TestExecute:
         assert result is False
         assert self.api.connected() is False
 
+    def test_refused_command_keeps_the_session(self, caplog):
+        """The backup button and the shutdown action both end here.
+
+        A router that refuses a backup for lack of a policy, or for lack of
+        space, has answered. The session is fine and must stay up.
+        """
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([]))
+        mock_path.side_effect = TrapError("not enough permissions (9)")
+        self.api._connection.path.return_value = mock_path
+
+        with caplog.at_level("WARNING"):
+            result = self.api.execute("/system/backup", "save", None, None, {"name": "homeassistant"})
+
+        assert result is False
+        assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "/system/backup save" in refusals[0]
+        assert "not enough permissions" in refusals[0]
+
+    def test_refused_command_multi_trap_keeps_the_session(self):
+        """librouteros 4 wraps some refusals in a MultiTrapError."""
+        from librouteros.exceptions import MultiTrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([]))
+        mock_path.side_effect = MultiTrapError("not enough permissions (9)")
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.execute("/system/backup", "save", None, None) is False
+        assert self.api.connected() is True
+
+    def test_refused_command_lookup_keeps_the_session(self):
+        """The lookup before the command can be refused too, and that is still a trap."""
+        from librouteros.exceptions import TrapError
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.execute("/system/script", "run", "name", "script1") is False
+        assert self.api.connected() is True
+
+    def test_refused_command_lets_the_next_query_through(self):
+        """The point of keeping the session: the next read needs no reconnect."""
+        from librouteros.exceptions import TrapError
+
+        refused = MagicMock()
+        refused.__iter__ = MagicMock(return_value=iter([]))
+        refused.side_effect = TrapError("not enough permissions (9)")
+        allowed = MagicMock()
+        allowed.__iter__ = MagicMock(return_value=iter([{"name": "ether1"}]))
+        self.api._connection.path.side_effect = [refused, allowed]
+
+        with patch.object(self.api, "connect") as reconnect:
+            assert self.api.execute("/system/backup", "save", None, None) is False
+            assert self.api.query("/interface") == [{"name": "ether1"}]
+
+        reconnect.assert_not_called()
+
+    def test_connection_closed_on_command_still_disconnects(self):
+        """A router that powers off on shutdown closes the connection, and that is real."""
+        from librouteros.exceptions import ConnectionClosed
+
+        mock_path = MagicMock()
+        mock_path.__iter__ = MagicMock(return_value=iter([]))
+        mock_path.side_effect = ConnectionClosed("gone")
+        self.api._connection.path.return_value = mock_path
+
+        assert self.api.execute("/system", "shutdown", None, None) is False
+        assert self.api.connected() is False
+
 
 class TestWol:
     def setup_method(self):

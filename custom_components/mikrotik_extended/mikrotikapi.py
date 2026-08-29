@@ -417,7 +417,7 @@ class MikrotikAPI:
 
                 tuple(response(command, **params))
             except Exception as e:
-                self.disconnect("execute", e)
+                self._write_failed("execute", f"{path} {command}", e)
                 return False
 
         return True
