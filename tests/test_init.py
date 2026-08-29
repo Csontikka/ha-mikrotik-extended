@@ -939,6 +939,52 @@ async def test_shutdown_powers_off_the_named_router(hass):
     coord.execute.assert_called_once_with("/system", "shutdown", None, None)
 
 
+async def test_shutdown_without_confirmation_is_the_router_powering_off(hass, caplog):
+    """A router that obeys takes the session down with it, so no answer is success."""
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    coord = MagicMock()
+    coord.api = MagicMock()
+    coord.config_entry = entry
+    coord.ds = {"access": {"reboot"}}
+    coord.execute = MagicMock(return_value=False)
+    coord.connected = MagicMock(return_value=False)
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    with caplog.at_level("INFO"):
+        await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
+
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert any("expected when the router powers off" in r.getMessage() for r in caplog.records)
+
+
+async def test_shutdown_refusal_is_an_error(hass, caplog):
+    """A refused shutdown leaves the session up and the router running.
+
+    Before the write path learned to tell a trap from a dead link, both
+    looked the same here, and a refusal was logged as the router obeying.
+    """
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    coord = MagicMock()
+    coord.api = MagicMock()
+    coord.config_entry = entry
+    coord.ds = {"access": {"reboot"}}
+    coord.execute = MagicMock(return_value=False)
+    coord.connected = MagicMock(return_value=True)
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    with caplog.at_level("INFO"):
+        await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
+
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert len(errors) == 1, errors
+    assert "refused" in errors[0]
+    assert not any("expected when the router powers off" in r.getMessage() for r in caplog.records)
+
+
 async def test_shutdown_reports_an_unknown_router(hass):
     """Silence would read as success on something that cannot be undone."""
     await async_setup(hass, {})
