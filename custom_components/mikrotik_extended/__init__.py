@@ -248,6 +248,14 @@ def _make_shutdown(hass: HomeAssistant):
                 )
                 continue
 
+            if not await hass.async_add_executor_job(coordinator.api.connection_check):
+                # Nothing was sent. Without this check the silence of a
+                # router that is down reads exactly like the silence of a
+                # router that obeyed, and the API layer says nothing while
+                # it is inside its retry window.
+                _LOGGER.error("shutdown: %s is unreachable, the command was not sent", router_host)
+                continue
+
             _LOGGER.warning("Shutting down Mikrotik device %s", router_host)
             success = await hass.async_add_executor_job(coordinator.execute, "/system", "shutdown", None, None)
             if success:
@@ -263,8 +271,7 @@ def _make_shutdown(hass: HomeAssistant):
                 continue
             # A router that obeys takes the API session down with it,
             # so no confirmation is the expected shape of success here.
-            # Permission was checked above; a genuinely unreachable
-            # router is already reported by the API layer.
+            # Permission and reachability were both checked above.
             _LOGGER.info(
                 "shutdown: no confirmation from %s, which is expected when the router powers off",
                 router_host,

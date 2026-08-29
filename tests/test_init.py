@@ -959,6 +959,35 @@ async def test_shutdown_without_confirmation_is_the_router_powering_off(hass, ca
     assert any("expected when the router powers off" in r.getMessage() for r in caplog.records)
 
 
+async def test_shutdown_reports_an_unreachable_router(hass, caplog):
+    """A router that is down gives the same silence as one that obeyed.
+
+    Inside its retry window the API layer refuses to even try, and says
+    nothing about it, so the handler has to check reachability itself
+    before it can read silence as success.
+    """
+    await async_setup(hass, {})
+
+    entry = _make_entry(hass)
+    coord = MagicMock()
+    coord.api = MagicMock()
+    coord.api.connection_check = MagicMock(return_value=False)
+    coord.config_entry = entry
+    coord.ds = {"access": {"reboot"}}
+    coord.execute = MagicMock(return_value=False)
+    coord.connected = MagicMock(return_value=False)
+    entry.runtime_data = SimpleNamespace(data_coordinator=coord, tracker_coordinator=MagicMock())
+
+    with caplog.at_level("INFO"):
+        await hass.services.async_call(DOMAIN, "shutdown", {"host": "192.168.88.1"}, blocking=True)
+
+    coord.execute.assert_not_called()
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert len(errors) == 1, errors
+    assert "unreachable" in errors[0]
+    assert not any("expected when the router powers off" in r.getMessage() for r in caplog.records)
+
+
 async def test_shutdown_refusal_is_an_error(hass, caplog):
     """A refused shutdown leaves the session up and the router running.
 
