@@ -495,11 +495,11 @@ class MikrotikAPI:
                 return e[".id"]
         return None
 
-    def _update_env_entry(self, env, entry_id, value) -> bool:
+    def _update_env_entry(self, env, name, entry_id, value) -> bool:
         try:
             env.update(**{".id": entry_id, "value": str(value)})
         except Exception as e:
-            self.disconnect("set_env_variable", e)
+            self._write_failed("set_env_variable", f"environment variable {name}", e)
             return False
         return True
 
@@ -518,7 +518,7 @@ class MikrotikAPI:
             sched = self._connection.path("/system/scheduler")
             tuple(sched("add", name=sched_name, **{"on-event": on_event, "interval": "1s"}))
         except Exception as e:
-            self.disconnect("set_env_variable", e)
+            self._write_failed("set_env_variable", f"scheduler entry creating environment variable {name}", e)
             return False
         return True
 
@@ -530,7 +530,7 @@ class MikrotikAPI:
                 if e.get("name") == name:
                     return True
         except Exception as e:
-            self.disconnect("set_env_variable", e)
+            self._write_failed("set_env_variable", f"check of environment variable {name}", e)
             return False
         return None
 
@@ -554,11 +554,11 @@ class MikrotikAPI:
                 env = self._connection.path(SCRIPT_ENVIRONMENT_PATH)
                 entry_id = self._find_env_entry_id(env, name)
             except Exception as e:
-                self.disconnect("set_env_variable", e)
+                self._write_failed("set_env_variable", "environment variable listing", e)
                 return False
 
             if entry_id:
-                return self._update_env_entry(env, entry_id, value)
+                return self._update_env_entry(env, name, entry_id, value)
 
             # Variable doesn't exist — create via one-shot scheduler
             sched_name = "_ha_env_set"
@@ -598,7 +598,7 @@ class MikrotikAPI:
                         env.remove(e[".id"])
                         return True
             except Exception as e:
-                self.disconnect("remove_env_variable", e)
+                self._write_failed("remove_env_variable", f"removal of environment variable {name}", e)
                 return False
 
         _LOGGER.warning("Mikrotik %s env variable %s not found", self._host, name)

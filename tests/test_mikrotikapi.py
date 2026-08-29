@@ -1062,6 +1062,37 @@ class TestSetEnvVariable:
         # Should return False but not raise
         assert self.api.set_env_variable("myvar", "x") is False
 
+    def test_refused_env_update_keeps_the_session(self, caplog):
+        """The environment action is one somebody called, and a router can refuse it."""
+        from librouteros.exceptions import TrapError
+
+        env_path = MagicMock()
+        env_path.__iter__ = MagicMock(return_value=iter([{".id": "*e1", "name": "myvar", "value": "old"}]))
+        env_path.update = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = env_path
+
+        with caplog.at_level("WARNING"):
+            assert self.api.set_env_variable("myvar", "new_val") is False
+
+        assert self.api.connected() is True
+        refusals = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+        assert len(refusals) == 1, refusals
+        assert "myvar" in refusals[0]
+
+    @patch("custom_components.mikrotik_extended.mikrotikapi.sleep")
+    def test_refused_env_scheduler_keeps_the_session(self, mock_sleep):
+        """Creating goes through a scheduler entry, which needs policies the user may lack."""
+        from librouteros.exceptions import TrapError
+
+        env_path = MagicMock()
+        env_path.__iter__ = MagicMock(return_value=iter([]))
+        sched_path = MagicMock()
+        sched_path.side_effect = TrapError("not enough permissions (9)")
+        self.api._connection.path.side_effect = [env_path, sched_path]
+
+        assert self.api.set_env_variable("myvar", "x") is False
+        assert self.api.connected() is True
+
 
 class TestRemoveEnvVariable:
     """Covers lines 479-495: remove_env_variable."""
@@ -1094,6 +1125,17 @@ class TestRemoveEnvVariable:
         self.api._connection.path.side_effect = Exception("remove failed")
         assert self.api.remove_env_variable("myvar") is False
         assert self.api.connected() is False
+
+    def test_refused_env_removal_keeps_the_session(self):
+        from librouteros.exceptions import TrapError
+
+        env_path = MagicMock()
+        env_path.__iter__ = MagicMock(return_value=iter([{".id": "*e1", "name": "myvar"}]))
+        env_path.remove = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = env_path
+
+        assert self.api.remove_env_variable("myvar") is False
+        assert self.api.connected() is True
 
 
 class TestArpPing:
