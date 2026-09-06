@@ -17,65 +17,66 @@ Full-featured Home Assistant integration for MikroTik routers running **RouterOS
 
 ## Comparison with the core integration
 
-Home Assistant ships its own `mikrotik` integration, and it has been growing quickly
-through 2026. The table below is a snapshot taken on **19 August 2026**, checked against
-the source of both projects: the released core integration as of **2026.8.2**, and the
-core development branch, whose entries are expected in 2026.9, due 2 September 2026.
+Home Assistant ships its own `mikrotik` integration, and it grew a lot in 2026: the
+**2026.9** release added PoE control, interface switches and link status. The table
+below is a snapshot taken on **6 September 2026**, checked against the source of both
+projects, with the core integration as released in **2026.9.1**. At that date the core
+development branch carried no further MikroTik changes.
 
 The two can be installed side by side. This one is a standalone integration with its own
 domain, `mikrotik_extended`, so nothing conflicts.
 
-| Feature | Core<br>2026.8.2 | Core<br>expected 2026.9 | MikroTik<br>Extended |
-| --- | :---: | :---: | :---: |
-| **System** | | | |
-| CPU load, memory and disk usage, uptime | ✅ | ✅ | ✅ |
-| Temperature and voltage | ✅ | ✅ | ✅ |
-| Separate CPU, board, PHY and switch temperatures | ❌ | CPU and board | ✅ |
-| PSU current and voltage (PSU1, PSU2) | ❌ | ✅ | ✅ |
-| Fan speeds (fan1 to fan4) | ❌ | ❌ | ✅ |
-| UPS status | ❌ | ❌ | ✅ |
-| GPS coordinates | ❌ | ❌ | ✅ |
-| Reboot | ✅ | ✅ | ✅ |
-| Shut down | button | button | action |
-| Configuration backup | ✅ | ✅ | ✅ |
-| **Interfaces** | | | |
-| Link status | ❌ | ✅ | ✅ |
-| Enable and disable | ❌ | ether, wlan | ✅ |
-| TX and RX traffic rates and totals | ❌ | ❌ | ✅ |
-| IP address per interface | ❌ | ❌ | ✅ |
-| SFP status and information | ❌ | ❌ | ✅ |
-| PoE output mode control | ❌ | ✅ | ✅ |
-| PoE consumption | ❌ | ✅ | ✅ |
-| Live PoE output status per port | ❌ | ❌ | ✅ |
-| **Firewall and routing** | | | |
-| NAT, mangle, filter and routing rules as switches | ❌ | ❌ | ✅ |
-| Simple queues | ❌ | ❌ | ✅ |
-| **Network** | | | |
-| Device tracking by ARP | ✅ | ✅ | ✅ |
-| Force DHCP leases instead of ARP | ✅ | ✅ | ❌ |
-| Wired and wireless client counts | ❌ | ❌ | ✅ |
-| Wireless clients (CAPsMAN and WiFi) | ❌ | ❌ | ✅ |
-| WireGuard peers | ❌ | ❌ | ✅ |
-| Containers | ❌ | ❌ | ✅ |
-| NetWatch | ❌ | ❌ | ✅ |
-| PPP users | ❌ | ❌ | ✅ |
-| Captive portal clients | ❌ | ❌ | ✅ |
-| Kid Control | ❌ | ❌ | ✅ |
-| Per-client traffic | ❌ | ❌ | ✅ |
-| IP Cloud | ❌ | ❌ | ✅ |
-| Scripts | ❌ | ❌ | ✅ |
-| **Firmware** | | | |
-| RouterOS update | ✅ | ✅ | ✅ |
-| RouterBoard firmware update | ✅ | ✅ | ✅ |
-| **Actions** | | | |
-| Wake-on-LAN | ❌ | ❌ | ✅ |
-| RouterOS environment variables | ❌ | ❌ | ✅ |
-| Raw API test | ❌ | ❌ | ✅ |
-| Manual data refresh | ❌ | ❌ | ✅ |
-| **Setup** | | | |
-| Config flow, multiple routers, SSL, ARP ping | ✅ | ✅ | ✅ |
-| Entity categories individually switchable | ❌ | ❌ | ✅ |
-| Automatic discovery over MNDP | ❌ | ❌ | ✅ |
+| Feature | Core<br>2026.9.1 | MikroTik<br>Extended |
+| --- | :---: | :---: |
+| **System** | | |
+| CPU load, memory and disk usage, uptime | ✅ | ✅ |
+| Temperature and voltage | ✅ | ✅ |
+| Separate CPU, board, PHY and switch temperatures | CPU and board | ✅ |
+| PSU current and voltage (PSU1, PSU2) | ✅ | ✅ |
+| Fan speeds (fan1 to fan4) | ❌ | ✅ |
+| UPS status | ❌ | ✅ |
+| GPS coordinates | ❌ | ✅ |
+| Reboot | ✅ | ✅ |
+| Shut down | button | action |
+| Configuration backup | ✅ | ✅ |
+| **Interfaces** | | |
+| Link status | ✅ | ✅ |
+| Enable and disable | ether, wlan | ✅ |
+| TX and RX traffic rates and totals | ❌ | ✅ |
+| IP address per interface | ❌ | ✅ |
+| SFP status and information | ❌ | ✅ |
+| PoE output mode control | ✅ | ✅ |
+| PoE consumption | ✅ | ✅ |
+| Live PoE output status per port | ❌ | ✅ |
+| **Firewall and routing** | | |
+| NAT, mangle, filter and routing rules as switches | ❌ | ✅ |
+| Simple queues | ❌ | ✅ |
+| **Network** | | |
+| Device tracking by ARP | ✅ | ✅ |
+| Force DHCP leases instead of ARP | ✅ | ❌ |
+| Wired and wireless client counts | ❌ | ✅ |
+| Wireless clients (CAPsMAN and WiFi) | ❌ | ✅ |
+| WireGuard peers | ❌ | ✅ |
+| Containers | ❌ | ✅ |
+| NetWatch | ❌ | ✅ |
+| PPP users | ❌ | ✅ |
+| Captive portal clients | ❌ | ✅ |
+| Kid Control | ❌ | ✅ |
+| Per-client traffic | ❌ | ✅ |
+| IP Cloud | ❌ | ✅ |
+| Scripts | ❌ | ✅ |
+| **Firmware** | | |
+| RouterOS update | ✅ | ✅ |
+| RouterBoard firmware update | ✅ | ✅ |
+| **Actions** | | |
+| Wake-on-LAN | ❌ | ✅ |
+| RouterOS environment variables | ❌ | ✅ |
+| Raw API test | ❌ | ✅ |
+| Manual data refresh | ❌ | ✅ |
+| **Setup** | | |
+| Config flow, multiple routers, SSL, ARP ping | ✅ | ✅ |
+| Entity categories individually switchable | ❌ | ✅ |
+| Automatic discovery over MNDP | ❌ | ✅ |
 
 The core integration is under active development, so this table will age. If you spot a
 row that is out of date, open an issue and it will be corrected.
