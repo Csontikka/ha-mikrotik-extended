@@ -1176,11 +1176,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """
         serial = self.ds.get("routerboard", {}).get("serial-number", "unknown")
         version = self.ds.get("resource", {}).get("version", "unknown")
-        if serial in ("unknown", "", "N/A") or version in ("unknown", ""):
+        if version in ("unknown", ""):
             return
 
         registry = dr.async_get(self.hass)
         device = registry.async_get(self.core_device_id) if self.core_device_id else None
+        if device is None and serial in ("unknown", "", "N/A"):
+            return
         if device is None:
             # The Core device was not registered at setup (the serial was not
             # known yet), or it was deleted since, so look it up.
@@ -1212,8 +1214,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         exists, which is why it is created here rather than left to whichever
         System entity happens to load first.
         """
-        serial = self.ds.get("routerboard", {}).get("serial-number", "unknown")
-        if serial in ("unknown", "", "N/A"):
+        # A CHR has no routerboard and reports no serial, so its Core device
+        # has always been keyed on the literal "unknown". The System entities
+        # do exactly that, and this has to describe the same device they do,
+        # so the serial is taken as it comes. Only missing data is a reason
+        # to wait.
+        if "serial-number" not in self.ds.get("routerboard", {}) or not self.ds.get("resource"):
             return
         device = dr.async_get(self.hass).async_get_or_create(
             config_entry_id=self.config_entry.entry_id,

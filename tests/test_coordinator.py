@@ -4697,10 +4697,28 @@ class TestRegisterCoreDevice:
         assert coord.core_device_id == first
         assert dr.async_get(hass).async_get(first).sw_version == "7.24"
 
-    async def test_unknown_serial_registers_nothing(self, hass):
+    async def test_unknown_serial_still_registers_the_device_the_entities_describe(self, hass):
+        """A CHR reports no serial; its Core device has always been keyed on "unknown".
+
+        Skipping here left every host on the test CHR without a Core link on
+        2026.9, while the System entities kept describing that very device.
+        """
+        from homeassistant.helpers import device_registry as dr
+
         coord = _make_coordinator(hass)
         coord.ds["routerboard"] = {"serial-number": "unknown"}
-        coord.ds["resource"] = {"board-name": "RB", "platform": "P", "version": "v"}
+        coord.ds["resource"] = {"board-name": "CHR", "platform": "MikroTik", "version": "7.23"}
+
+        coord.register_core_device()
+
+        assert coord.core_device_id
+        device = dr.async_get(hass).async_get(coord.core_device_id)
+        assert (DOMAIN, f"{coord.config_entry.entry_id}-unknown") in device.identifiers
+
+    async def test_missing_data_registers_nothing(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {}
+        coord.ds["resource"] = {}
 
         coord.register_core_device()
 
