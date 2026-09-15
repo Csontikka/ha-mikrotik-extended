@@ -753,8 +753,8 @@ class TestDeviceInfo:
         )
         entity = _make_entity(coord, desc, uid="ether1")
         info = entity.device_info
-        assert info["default_name"] == "my-laptop"
-        assert info["default_manufacturer"] == "Apple"
+        assert info["name"] == "my-laptop"
+        assert info["manufacturer"] == "Apple"
 
     def test_mac_address_reference_no_host_lookup(self, hass):
         """When data_reference contains 'mac-address' but host lookup missing."""
@@ -782,8 +782,8 @@ class TestDeviceInfo:
         entity = _make_entity(coord, desc, uid="ether1")
         info = entity.device_info
         # Falls back to the interface's data_name
-        assert info["default_name"] == "ether1-name"
-        assert info["default_manufacturer"] == ""
+        assert info["name"] == "ether1-name"
+        assert info["manufacturer"] == ""
 
     def test_interface_data_group_with_ether_type(self, hass):
         """ha_group starts with 'data__' and type='ether' → category 'port'."""
@@ -810,7 +810,7 @@ class TestDeviceInfo:
         entity = _make_entity(coord, desc, uid="ether1")
         info = entity.device_info
         # dev_display_name includes "port" + dev_group (the resolved data__ value)
-        assert "port" in info["default_name"]
+        assert "port" in info["name"]
 
     def test_interface_data_group_with_vlan_type(self, hass):
         """ha_group starts with 'data__' and type='vlan' → category 'vlan'."""
@@ -835,7 +835,7 @@ class TestDeviceInfo:
         )
         entity = _make_entity(coord, desc, uid="v10")
         info = entity.device_info
-        assert "vlan" in info["default_name"]
+        assert "vlan" in info["name"]
 
     def test_firewall_group(self, hass):
         """ha_group in _FIREWALL_GROUPS produces 'firewall <group>' display name."""
@@ -855,8 +855,8 @@ class TestDeviceInfo:
         )
         entity = _make_entity(coord, desc, uid="u1")
         info = entity.device_info
-        assert "firewall" in info["default_name"]
-        assert "NAT" in info["default_name"]
+        assert "firewall" in info["name"]
+        assert "NAT" in info["name"]
 
     def test_generic_group(self, hass):
         """Non-System, non-data__, non-firewall group → plain 'router <group>'."""
@@ -876,7 +876,7 @@ class TestDeviceInfo:
         )
         entity = _make_entity(coord, desc, uid="s1")
         info = entity.device_info
-        assert "Scripts" in info["default_name"]
+        assert "Scripts" in info["name"]
 
     def test_ha_connection_override(self, hass):
         """ha_connection override replaces the connection namespace."""
@@ -950,8 +950,8 @@ class TestDeviceInfo:
         info = entity.device_info
         # After dev_group resolves to data[name]='wg0-resolved', dev_connection_value = same
         # and since wireguard is in _IFACE_TYPE_CATEGORY as 'vpn', category=vpn
-        assert "vpn" in info["default_name"]
-        assert "wg0-resolved" in info["default_name"]
+        assert "vpn" in info["name"]
+        assert "wg0-resolved" in info["name"]
 
 
 # ---------------------------------------------------------------------------

@@ -418,10 +418,15 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             dev_group = self.coordinator.data["host"][dev_connection_value]["host-name"]
             dev_manufacturer = self.coordinator.data["host"][dev_connection_value]["manufacturer"]
 
+        # The default_ prefixed fields are deprecated in Home Assistant 2026.9
+        # and go away in 2027.9. The plain fields also refresh an existing
+        # device, which is the better behaviour here anyway: a host that
+        # changed its name shows the new one. A name the user typed in is
+        # stored separately and stays.
         return DeviceInfo(
             connections={(dev_connection, f"{dev_connection_value}")},
-            default_name=f"{dev_group}",
-            default_manufacturer=f"{dev_manufacturer}",
+            name=f"{dev_group}",
+            manufacturer=f"{dev_manufacturer}",
             via_device=(
                 DOMAIN,
                 f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
@@ -440,9 +445,9 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             dev_display_name = f"{self._inst} router {dev_group}"
         return DeviceInfo(
             connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-            default_name=dev_display_name,
-            default_model=f"{self.coordinator.data['resource']['board-name']}",
-            default_manufacturer=f"{self.coordinator.data['resource']['platform']}",
+            name=dev_display_name,
+            model=f"{self.coordinator.data['resource']['board-name']}",
+            manufacturer=f"{self.coordinator.data['resource']['platform']}",
             via_device=(
                 DOMAIN,
                 f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
