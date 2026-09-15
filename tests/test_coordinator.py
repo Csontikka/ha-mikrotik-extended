@@ -4619,6 +4619,81 @@ class TestRefreshCoreDeviceSwVersion:
         old_registry.async_get_device.assert_called_once_with(identifiers={(DOMAIN, f"{coord.config_entry.entry_id}-ABC123")})
         old_registry.async_update_device.assert_called_once_with("dev1", sw_version="7.23.2")
 
+    async def test_uses_the_registered_core_device_id_without_any_lookup(self, hass):
+        """Once setup registered the Core device, no lookup is needed at all."""
+        coord = _make_coordinator(hass)
+        registry, device, serial = self._register_core(hass, coord, "7.23.1")
+        coord.core_device_id = device.id
+        coord.ds["routerboard"] = {"serial-number": serial}
+        coord.ds["resource"] = {"version": "7.23.2"}
+
+        with patch.object(registry, "async_get_device") as old_lookup:
+            coord._refresh_core_device_sw_version()
+
+        old_lookup.assert_not_called()
+        assert registry.async_get(device.id).sw_version == "7.23.2"
+
+
+# ---------------------------------------------------------------------------
+# register_core_device / core_device_kwargs
+# ---------------------------------------------------------------------------
+
+
+class TestRegisterCoreDevice:
+    def test_core_device_kwargs_is_the_one_definition(self):
+        from custom_components.mikrotik_extended.coordinator import core_device_kwargs
+
+        data = {"routerboard": {"serial-number": "S1"}, "resource": {"board-name": "RB5009", "platform": "MikroTik", "version": "7.23"}}
+        kw = core_device_kwargs("entry1", "nagyhaz", "192.168.88.1", data)
+        assert kw["identifiers"] == {(DOMAIN, "entry1-S1")}
+        assert kw["connections"] == {(DOMAIN, "entry1-S1")}
+        assert kw["name"] == "nagyhaz router Core"
+        assert kw["model"] == "RB5009"
+        assert kw["manufacturer"] == "MikroTik"
+        assert kw["sw_version"] == "7.23"
+        assert kw["configuration_url"] == "http://192.168.88.1"
+
+    async def test_registers_the_core_device_and_remembers_its_id(self, hass):
+        """The device exists before any platform loads, so the others can point at it by id."""
+        from homeassistant.helpers import device_registry as dr
+
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {"serial-number": "S1"}
+        coord.ds["resource"] = {"board-name": "RB5009", "platform": "MikroTik", "version": "7.23"}
+
+        coord.register_core_device()
+
+        assert coord.core_device_id
+        device = dr.async_get(hass).async_get(coord.core_device_id)
+        assert device is not None
+        assert (DOMAIN, f"{coord.config_entry.entry_id}-S1") in device.identifiers
+        assert device.name == f"{coord.name} router Core"
+        assert device.sw_version == "7.23"
+
+    async def test_registering_twice_keeps_one_device(self, hass):
+        from homeassistant.helpers import device_registry as dr
+
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {"serial-number": "S1"}
+        coord.ds["resource"] = {"board-name": "RB5009", "platform": "MikroTik", "version": "7.23"}
+
+        coord.register_core_device()
+        first = coord.core_device_id
+        coord.ds["resource"]["version"] = "7.24"
+        coord.register_core_device()
+
+        assert coord.core_device_id == first
+        assert dr.async_get(hass).async_get(first).sw_version == "7.24"
+
+    async def test_unknown_serial_registers_nothing(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {"serial-number": "unknown"}
+        coord.ds["resource"] = {"board-name": "RB", "platform": "P", "version": "v"}
+
+        coord.register_core_device()
+
+        assert coord.core_device_id is None
+
 
 # ---------------------------------------------------------------------------
 # text encoding (free-text decode)

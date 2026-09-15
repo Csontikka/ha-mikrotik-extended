@@ -37,7 +37,11 @@ from .const import (
     DEFAULT_TRACK_HOSTS,
     DOMAIN,
 )
-from .coordinator import MikrotikCoordinator, MikrotikTrackerCoordinator
+from .coordinator import MikrotikCoordinator, MikrotikTrackerCoordinator, core_device_kwargs
+
+# Home Assistant 2026.9 links a device to its parent by registry id; earlier
+# releases only know the (domain, identifier) tuple and reject the id.
+_VIA_DEVICE_BY_ID = "via_device_id" in DeviceInfo.__annotations__
 from .helper import format_attribute
 
 _LOGGER = getLogger(__name__)
@@ -402,14 +406,33 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
 
     def _build_system_device_info(self, entry_id, dev_connection, dev_connection_value) -> DeviceInfo:
         return DeviceInfo(
-            connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-            identifiers={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-            name=f"{self._inst} router Core",
-            model=f"{self.coordinator.data['resource']['board-name']}",
-            manufacturer=f"{self.coordinator.data['resource']['platform']}",
-            sw_version=f"{self.coordinator.data['resource']['version']}",
-            configuration_url=f"http://{self.coordinator.config_entry.data[CONF_HOST]}",  # NOSONAR
+            **core_device_kwargs(
+                entry_id,
+                self._inst,
+                self.coordinator.config_entry.data[CONF_HOST],
+                self.coordinator.data,
+            )
         )
+
+    def _via_core(self, entry_id) -> dict:
+        """Link a device to the router Core device.
+
+        Home Assistant 2026.9 replaced the via_device tuple with via_device_id
+        and removes the tuple in 2027.8; releases before 2026.9 do not accept
+        the id. Each release gets the form it understands. The Core device is
+        registered at setup, before the platforms load, so its id is known
+        here; when it is not (the serial was unknown), the link is left out
+        rather than pointed at nothing.
+        """
+        if _VIA_DEVICE_BY_ID:
+            core_id = getattr(self.coordinator, "core_device_id", None)
+            return {"via_device_id": core_id} if isinstance(core_id, str) else {}
+        return {
+            "via_device": (
+                DOMAIN,
+                f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
+            )
+        }
 
     def _build_mac_device_info(self, entry_id, dev_connection, dev_connection_value) -> DeviceInfo:
         dev_group = self._data[self.entity_description.data_name]
@@ -438,10 +461,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         info = DeviceInfo(
             connections={(dev_connection, f"{dev_connection_value}")},
             name=f"{dev_group}",
-            via_device=(
-                DOMAIN,
-                f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
-            ),
+            **self._via_core(entry_id),
         )
         if dev_manufacturer:
             info["manufacturer"] = dev_manufacturer
@@ -462,10 +482,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             name=dev_display_name,
             model=f"{self.coordinator.data['resource']['board-name']}",
             manufacturer=f"{self.coordinator.data['resource']['platform']}",
-            via_device=(
-                DOMAIN,
-                f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
-            ),
+            **self._via_core(entry_id),
         )
 
     @property

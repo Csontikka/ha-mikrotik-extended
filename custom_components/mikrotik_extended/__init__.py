@@ -369,6 +369,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     coordinator = MikrotikCoordinator(hass, config_entry)
     await coordinator.async_config_entry_first_refresh()
+    # The Core device exists before any platform loads, so the other devices
+    # can point at it by registry id.
+    coordinator.register_core_device()
     coordinator_tracker = MikrotikTrackerCoordinator(hass, config_entry, coordinator)
     await coordinator_tracker.async_config_entry_first_refresh()
     config_entry.runtime_data = MikrotikData(

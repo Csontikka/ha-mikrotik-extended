@@ -383,6 +383,25 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
 # ---------------------------
 #   MikrotikControllerData
 # ---------------------------
+def core_device_kwargs(entry_id: str, instance_name: str, host: str, data: dict) -> dict:
+    """The router Core device, as one definition for two callers.
+
+    The registry entry is created from this at setup, before any platform
+    loads, and the System entities describe their device with the same
+    values, so the two cannot drift apart.
+    """
+    ident = (DOMAIN, f"{entry_id}-{data['routerboard']['serial-number']}")
+    return {
+        "identifiers": {ident},
+        "connections": {ident},
+        "name": f"{instance_name} router Core",
+        "model": f"{data['resource']['board-name']}",
+        "manufacturer": f"{data['resource']['platform']}",
+        "sw_version": f"{data['resource']['version']}",
+        "configuration_url": f"http://{host}",  # NOSONAR
+    }
+
+
 class MikrotikCoordinator(DataUpdateCoordinator[None]):
     """MikrotikCoordinator Class"""
 
@@ -398,6 +417,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
         self.name = config_entry.data[CONF_NAME]
         self.host = config_entry.data[CONF_HOST]
+        # Registry id of the router Core device, set by register_core_device
+        # at setup. Every other device of this entry points at it.
+        self.core_device_id: str | None = None
 
         self.ds = {
             "access": {},
@@ -1158,19 +1180,46 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             return
 
         registry = dr.async_get(self.hass)
-        identifier = (DOMAIN, f"{self.config_entry.entry_id}-{serial}")
-        # async_get_device is deprecated since 2026.9 (identifiers are no
-        # longer unique across config entries) and goes away in 2027.8. The
-        # per-entry lookup that replaces it only exists from 2026.8, and this
-        # integration still runs on older releases, so fall back there. Our
-        # identifier carries the entry id, so the old call is unambiguous.
-        lookup = getattr(registry, "async_get_device_by_identifier", None)
-        if lookup is not None:
-            device = lookup(identifier, self.config_entry.entry_id)
+        if self.core_device_id:
+            device = registry.async_get(self.core_device_id)
         else:
-            device = registry.async_get_device(identifiers={identifier})
+            # The Core device was not registered at setup (the serial was not
+            # known yet), so look it up. async_get_device is deprecated since
+            # 2026.9 (identifiers are no longer unique across config entries)
+            # and goes away in 2027.8; the per-entry lookup that replaces it
+            # only exists from 2026.8, and this integration still runs on
+            # older releases, so fall back there. Our identifier carries the
+            # entry id, so the old call is unambiguous.
+            identifier = (DOMAIN, f"{self.config_entry.entry_id}-{serial}")
+            lookup = getattr(registry, "async_get_device_by_identifier", None)
+            if lookup is not None:
+                device = lookup(identifier, self.config_entry.entry_id)
+            else:
+                device = registry.async_get_device(identifiers={identifier})
         if device is not None and device.sw_version != version:
             registry.async_update_device(device.id, sw_version=version)
+
+    # ---------------------------
+    #   register_core_device
+    # ---------------------------
+    def register_core_device(self) -> None:
+        """Create or refresh the router Core device and remember its id.
+
+        Runs at setup, before the platforms load, so that a host or interface
+        device created a moment later can name the Core device by id. Home
+        Assistant 2026.9 replaced the via_device tuple with via_device_id and
+        removes the tuple in 2027.8; the id is only knowable once the device
+        exists, which is why it is created here rather than left to whichever
+        System entity happens to load first.
+        """
+        serial = self.ds.get("routerboard", {}).get("serial-number", "unknown")
+        if serial in ("unknown", "", "N/A"):
+            return
+        device = dr.async_get(self.hass).async_get_or_create(
+            config_entry_id=self.config_entry.entry_id,
+            **core_device_kwargs(self.config_entry.entry_id, self.name, self.host, self.ds),
+        )
+        self.core_device_id = device.id
 
     # ---------------------------
     #   force_hwinfo_refresh

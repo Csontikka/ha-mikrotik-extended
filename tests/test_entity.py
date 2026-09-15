@@ -815,6 +815,80 @@ class TestDeviceInfo:
         assert "None" not in info["name"]
         assert "manufacturer" not in info
 
+    @pytest.mark.parametrize("host_name", [None, "", "unknown"])
+    def test_host_tracker_without_a_host_name_is_named_by_its_mac(self, hass, host_name):
+        """For a host tracker the entity's own record is the host, so the
+        interface fallback is the same None; the MAC is what is left.
+        """
+        from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
+
+        desc = _make_entity_description(
+            ha_group="",
+            ha_connection=CONNECTION_NETWORK_MAC,
+            ha_connection_value="data__mac-address",
+            data_path="host",
+            data_name="host-name",
+            data_reference="mac-address",
+            func="MikrotikHostDeviceTracker",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={
+                "host": {"AA:BB:CC:DD:EE:FF": {"host-name": host_name, "mac-address": "AA:BB:CC:DD:EE:FF", "manufacturer": ""}},
+                "routerboard": {"serial-number": "XYZ"},
+                "resource": {"board-name": "RB", "platform": "P", "version": "v"},
+            },
+        )
+        info = _make_entity(coord, desc, uid="AA:BB:CC:DD:EE:FF").device_info
+        assert info["name"] == "AA:BB:CC:DD:EE:FF"
+        assert "manufacturer" not in info
+
+    def _port_entity(self, hass, coord_kwargs=None):
+        desc = _make_entity_description(ha_group="Port", data_reference="name", data_name="name", data_path="interface")
+        coord = _make_coordinator(
+            hass,
+            data={
+                "interface": {"ether1": {"name": "ether1", "type": "ether"}},
+                "host": {},
+                "routerboard": {"serial-number": "XYZ"},
+                "resource": {"board-name": "RB", "platform": "P", "version": "v"},
+            },
+        )
+        for k, v in (coord_kwargs or {}).items():
+            setattr(coord, k, v)
+        return _make_entity(coord, desc, uid="ether1")
+
+    def test_via_link_uses_the_tuple_on_releases_before_2026_9(self, hass):
+        """Older releases only know the (domain, identifier) tuple."""
+        from custom_components.mikrotik_extended import entity as entity_module
+
+        with patch.object(entity_module, "_VIA_DEVICE_BY_ID", False):
+            info = self._port_entity(hass, {"core_device_id": "core1"}).device_info
+
+        assert info["via_device"][0] == DOMAIN
+        assert info["via_device"][1].endswith("-XYZ")
+        assert "via_device_id" not in info
+
+    def test_via_link_uses_the_core_device_id_from_2026_9(self, hass):
+        """2026.9 replaced the tuple with the registry id and removes the tuple in 2027.8."""
+        from custom_components.mikrotik_extended import entity as entity_module
+
+        with patch.object(entity_module, "_VIA_DEVICE_BY_ID", True):
+            info = self._port_entity(hass, {"core_device_id": "core1"}).device_info
+
+        assert info["via_device_id"] == "core1"
+        assert "via_device" not in info
+
+    def test_via_link_is_left_out_when_the_core_device_is_unknown(self, hass):
+        """Pointing at nothing is worse than no link; a MagicMock id is not an id either."""
+        from custom_components.mikrotik_extended import entity as entity_module
+
+        with patch.object(entity_module, "_VIA_DEVICE_BY_ID", True):
+            info = self._port_entity(hass, {"core_device_id": None}).device_info
+
+        assert "via_device_id" not in info
+        assert "via_device" not in info
+
     def test_interface_data_group_with_ether_type(self, hass):
         """ha_group starts with 'data__' and type='ether' → category 'port'."""
         desc = _make_entity_description(

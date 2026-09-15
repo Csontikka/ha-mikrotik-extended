@@ -91,6 +91,9 @@ async def test_setup_entry_sets_runtime_data(hass):
     assert hasattr(entry, "runtime_data")
     assert entry.runtime_data.data_coordinator is mock_coord
     assert entry.runtime_data.tracker_coordinator is mock_tracker
+    # The Core device is registered before the platforms load, so every
+    # other device can point at it by registry id.
+    mock_coord.register_core_device.assert_called_once_with()
 
 
 async def test_setup_entry_raises_auth_failed_on_wrong_login(hass):
