@@ -440,9 +440,11 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             existing = lookup(connection, entry_id)
         else:
             existing = registry.async_get_device(connections={connection})
-        # A device that earlier releases created as "None" (the string, from
-        # default_name=f"{None}") is not one to preserve; it gets a name now.
-        if existing is not None and existing.name not in _NOT_A_NAME:
+        # A device that an earlier release of ours created as "None" (the
+        # string, from default_name=f"{None}") is not one to preserve; it gets
+        # a name now. Another integration's device is left alone whatever it
+        # is called.
+        if existing is not None and (entry_id not in existing.config_entries or existing.name not in _NOT_A_NAME):
             return {}
         return {key: value for key, value in fields.items() if value not in _NOT_A_NAME}
 

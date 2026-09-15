@@ -922,6 +922,21 @@ class TestDeviceInfo:
 
         assert device.name == "AA:BB:CC:DD:EE:FF"
 
+    async def test_another_integrations_device_is_left_alone_whatever_it_is_called(self, hass):
+        """The "None" repair is for our own leftovers, not for a name someone else chose."""
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
+
+        other = MockConfigEntry(domain="esphome", data={})
+        other.add_to_hass(hass)
+        registry = dr.async_get(hass)
+        registry.async_get_or_create(config_entry_id=other.entry_id, connections={(CONNECTION_NETWORK_MAC, "AA:BB:CC:DD:EE:FF")}, name="unknown")
+        coord, entity = self._host_tracker(hass)
+
+        device = registry.async_get_or_create(config_entry_id=coord.config_entry.entry_id, **entity.device_info)
+
+        assert device.name == "unknown"
+
     def _port_entity(self, hass, coord_kwargs=None):
         desc = _make_entity_description(ha_group="Port", data_reference="name", data_name="name", data_path="interface")
         coord = _make_coordinator(
