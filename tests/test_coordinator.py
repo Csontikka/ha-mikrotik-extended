@@ -4581,6 +4581,44 @@ class TestRefreshCoreDeviceSwVersion:
         coord.ds["resource"] = {"version": "7.23.2"}
         coord._refresh_core_device_sw_version()  # device absent -> no-op, no raise
 
+    async def test_uses_the_per_entry_lookup_when_the_registry_has_it(self, hass):
+        """Home Assistant 2026.8 added async_get_device_by_identifier and 2026.9
+        deprecated async_get_device; on such a registry the old call must not run.
+        """
+        coord = _make_coordinator(hass)
+        registry, device, serial = self._register_core(hass, coord, "7.23.1")
+        coord.ds["routerboard"] = {"serial-number": serial}
+        coord.ds["resource"] = {"version": "7.23.2"}
+        new_lookup = MagicMock(return_value=device)
+        identifier = (DOMAIN, f"{coord.config_entry.entry_id}-{serial}")
+
+        with (
+            patch.object(registry, "async_get_device_by_identifier", new_lookup, create=True),
+            patch.object(registry, "async_get_device") as old_lookup,
+        ):
+            coord._refresh_core_device_sw_version()
+
+        new_lookup.assert_called_once_with(identifier, coord.config_entry.entry_id)
+        old_lookup.assert_not_called()
+        assert registry.async_get(device.id).sw_version == "7.23.2"
+
+    async def test_falls_back_to_async_get_device_on_older_home_assistant(self, hass):
+        """Releases before 2026.8 have no per-entry lookup; the old call still works
+        there because the identifier already carries the entry id.
+        """
+        coord = _make_coordinator(hass)
+        coord.ds["routerboard"] = {"serial-number": "ABC123"}
+        coord.ds["resource"] = {"version": "7.23.2"}
+        device = MagicMock(id="dev1", sw_version="7.23.1")
+        old_registry = MagicMock(spec=["async_get_device", "async_update_device"])
+        old_registry.async_get_device.return_value = device
+
+        with patch("custom_components.mikrotik_extended.coordinator.dr.async_get", return_value=old_registry):
+            coord._refresh_core_device_sw_version()
+
+        old_registry.async_get_device.assert_called_once_with(identifiers={(DOMAIN, f"{coord.config_entry.entry_id}-ABC123")})
+        old_registry.async_update_device.assert_called_once_with("dev1", sw_version="7.23.2")
+
 
 # ---------------------------------------------------------------------------
 # text encoding (free-text decode)

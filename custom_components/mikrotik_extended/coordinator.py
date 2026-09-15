@@ -1158,7 +1158,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             return
 
         registry = dr.async_get(self.hass)
-        device = registry.async_get_device(identifiers={(DOMAIN, f"{self.config_entry.entry_id}-{serial}")})
+        identifier = (DOMAIN, f"{self.config_entry.entry_id}-{serial}")
+        # async_get_device is deprecated since 2026.9 (identifiers are no
+        # longer unique across config entries) and goes away in 2027.8. The
+        # per-entry lookup that replaces it only exists from 2026.8, and this
+        # integration still runs on older releases, so fall back there. Our
+        # identifier carries the entry id, so the old call is unambiguous.
+        lookup = getattr(registry, "async_get_device_by_identifier", None)
+        if lookup is not None:
+            device = lookup(identifier, self.config_entry.entry_id)
+        else:
+            device = registry.async_get_device(identifiers={identifier})
         if device is not None and device.sw_version != version:
             registry.async_update_device(device.id, sw_version=version)
 
