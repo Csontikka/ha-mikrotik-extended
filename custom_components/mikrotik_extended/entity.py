@@ -42,6 +42,13 @@ from .coordinator import MikrotikCoordinator, MikrotikTrackerCoordinator, core_d
 # Home Assistant 2026.9 links a device to its parent by registry id; earlier
 # releases only know the (domain, identifier) tuple and reject the id.
 _VIA_DEVICE_BY_ID = "via_device_id" in DeviceInfo.__annotations__
+
+# Values that arrive where a name is expected without being one. A host
+# without a resolvable name carries None or "unknown"; a host restored from a
+# previous run may carry the string "None", which is what f"{None}" made of
+# it before, and that string is also what earlier releases stored as the
+# device name.
+_NOT_A_NAME = (None, "", "None", "unknown")
 from .helper import format_attribute
 
 _LOGGER = getLogger(__name__)
@@ -414,6 +421,31 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             )
         )
 
+    def _fields_for_new_device(self, connection: tuple[str, str], entry_id: str, **fields) -> dict:
+        """Descriptive fields for a device, set on creation only.
+
+        This is what default_name and its siblings used to do, and the plain
+        fields that replaced them in 2026.9 do not: they also overwrite an
+        existing device on every start. On releases before 2026.9 a MAC
+        connection is shared across integrations, so the plain name would
+        rename a Shelly or ESPHome device to whatever the router calls the
+        host, on every reload. A live diff of 243 devices also showed our own
+        devices renamed wholesale on update. So: an existing device keeps
+        what it has, a new one gets the fields, and empty values are never
+        sent. A name the user typed in is stored separately either way.
+        """
+        registry = dr.async_get(self.coordinator.hass)
+        lookup = getattr(registry, "async_get_device_by_connection", None)
+        if lookup is not None:
+            existing = lookup(connection, entry_id)
+        else:
+            existing = registry.async_get_device(connections={connection})
+        # A device that earlier releases created as "None" (the string, from
+        # default_name=f"{None}") is not one to preserve; it gets a name now.
+        if existing is not None and existing.name not in _NOT_A_NAME:
+            return {}
+        return {key: value for key, value in fields.items() if value not in _NOT_A_NAME}
+
     def _via_core(self, entry_id) -> dict:
         """Link a device to the router Core device.
 
@@ -444,28 +476,20 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             # string "None" on new devices, and the plain name field would
             # now overwrite a good existing name with it on every restart.
             # Fall back to the interface's own value, which is the MAC.
-            if host.get("host-name") not in (None, "", "unknown"):
+            if host.get("host-name") not in _NOT_A_NAME:
                 dev_group = host["host-name"]
             dev_manufacturer = host.get("manufacturer") or ""
-        if dev_group in (None, "", "unknown"):
+        if dev_group in _NOT_A_NAME:
             # For a host tracker the entity's own record is the host, so the
             # first fallback above is the same None; the MAC is what is left.
             dev_group = dev_connection_value
 
-        # The default_ prefixed fields are deprecated in Home Assistant 2026.9
-        # and go away in 2027.9. The plain fields also refresh an existing
-        # device, which is the better behaviour here: a host that changed its
-        # name shows the new one. A name the user typed in is stored
-        # separately and stays. An empty manufacturer is left out rather than
-        # passed, so it cannot blank a value the registry already holds.
-        info = DeviceInfo(
-            connections={(dev_connection, f"{dev_connection_value}")},
-            name=f"{dev_group}",
+        connection = (dev_connection, f"{dev_connection_value}")
+        return DeviceInfo(
+            connections={connection},
+            **self._fields_for_new_device(connection, entry_id, name=f"{dev_group}", manufacturer=dev_manufacturer),
             **self._via_core(entry_id),
         )
-        if dev_manufacturer:
-            info["manufacturer"] = dev_manufacturer
-        return info
 
     def _build_generic_device_info(self, entry_id, dev_connection, dev_connection_value, dev_group) -> DeviceInfo:
         orig_ha_group = self.entity_description.ha_group
@@ -477,11 +501,16 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             dev_display_name = f"{self._inst} router firewall {dev_group}"
         else:
             dev_display_name = f"{self._inst} router {dev_group}"
+        connection = (dev_connection, f"{entry_id}-{dev_connection_value}")
         return DeviceInfo(
-            connections={(dev_connection, f"{entry_id}-{dev_connection_value}")},
-            name=dev_display_name,
-            model=f"{self.coordinator.data['resource']['board-name']}",
-            manufacturer=f"{self.coordinator.data['resource']['platform']}",
+            connections={connection},
+            **self._fields_for_new_device(
+                connection,
+                entry_id,
+                name=dev_display_name,
+                model=f"{self.coordinator.data['resource']['board-name']}",
+                manufacturer=f"{self.coordinator.data['resource']['platform']}",
+            ),
             **self._via_core(entry_id),
         )
 

@@ -815,7 +815,7 @@ class TestDeviceInfo:
         assert "None" not in info["name"]
         assert "manufacturer" not in info
 
-    @pytest.mark.parametrize("host_name", [None, "", "unknown"])
+    @pytest.mark.parametrize("host_name", [None, "", "unknown", "None"])
     def test_host_tracker_without_a_host_name_is_named_by_its_mac(self, hass, host_name):
         """For a host tracker the entity's own record is the host, so the
         interface fallback is the same None; the MAC is what is left.
@@ -842,6 +842,85 @@ class TestDeviceInfo:
         info = _make_entity(coord, desc, uid="AA:BB:CC:DD:EE:FF").device_info
         assert info["name"] == "AA:BB:CC:DD:EE:FF"
         assert "manufacturer" not in info
+
+    def _host_tracker(self, hass, host_name="printer", mac="AA:BB:CC:DD:EE:FF", manufacturer="Brother"):
+        from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
+
+        desc = _make_entity_description(
+            ha_group="",
+            ha_connection=CONNECTION_NETWORK_MAC,
+            ha_connection_value="data__mac-address",
+            data_path="host",
+            data_name="host-name",
+            data_reference="mac-address",
+            func="MikrotikHostDeviceTracker",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={
+                "host": {mac: {"host-name": host_name, "mac-address": mac, "manufacturer": manufacturer}},
+                "routerboard": {"serial-number": "XYZ"},
+                "resource": {"board-name": "RB", "platform": "P", "version": "v"},
+            },
+        )
+        return coord, _make_entity(coord, desc, uid=mac)
+
+    async def test_an_existing_device_keeps_its_name_through_the_registry(self, hass):
+        """The regression the plain name field would have shipped.
+
+        Before 2026.9 a MAC connection is shared across integrations, so a
+        Shelly or ESPHome device and our host tracker are one registry entry.
+        The old default_name only applied on creation; the plain name would
+        rename that device to the router's host-name on every reload. Run the
+        device info through the real registry, as the platform does.
+        """
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
+
+        other = MockConfigEntry(domain="esphome", data={})
+        other.add_to_hass(hass)
+        registry = dr.async_get(hass)
+        theirs = registry.async_get_or_create(
+            config_entry_id=other.entry_id,
+            connections={(CONNECTION_NETWORK_MAC, "AA:BB:CC:DD:EE:FF")},
+            name="Living Room Node",
+            manufacturer="Espressif",
+        )
+        coord, entity = self._host_tracker(hass)
+
+        info = entity.device_info
+        assert "name" not in info and "manufacturer" not in info
+        merged = registry.async_get_or_create(config_entry_id=coord.config_entry.entry_id, **info)
+
+        assert merged.id == theirs.id
+        assert merged.name == "Living Room Node"
+        assert merged.manufacturer == "Espressif"
+
+    async def test_a_new_device_gets_its_name_through_the_registry(self, hass):
+        from homeassistant.helpers import device_registry as dr
+
+        coord, entity = self._host_tracker(hass)
+        device = dr.async_get(hass).async_get_or_create(config_entry_id=coord.config_entry.entry_id, **entity.device_info)
+
+        assert device.name == "printer"
+        assert device.manufacturer == "Brother"
+
+    async def test_a_device_named_None_by_an_earlier_release_is_repaired(self, hass):
+        """default_name=f"{None}" stored the string "None"; that is not worth keeping."""
+        from homeassistant.helpers import device_registry as dr
+        from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
+
+        coord, entity = self._host_tracker(hass, host_name="None")
+        registry = dr.async_get(hass)
+        registry.async_get_or_create(
+            config_entry_id=coord.config_entry.entry_id,
+            connections={(CONNECTION_NETWORK_MAC, "AA:BB:CC:DD:EE:FF")},
+            name="None",
+        )
+
+        device = registry.async_get_or_create(config_entry_id=coord.config_entry.entry_id, **entity.device_info)
+
+        assert device.name == "AA:BB:CC:DD:EE:FF"
 
     def _port_entity(self, hass, coord_kwargs=None):
         desc = _make_entity_description(ha_group="Port", data_reference="name", data_name="name", data_path="interface")
