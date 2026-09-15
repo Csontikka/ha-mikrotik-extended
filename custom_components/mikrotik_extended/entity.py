@@ -424,6 +424,10 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             if host.get("host-name") not in (None, "", "unknown"):
                 dev_group = host["host-name"]
             dev_manufacturer = host.get("manufacturer") or ""
+        if dev_group in (None, "", "unknown"):
+            # For a host tracker the entity's own record is the host, so the
+            # first fallback above is the same None; the MAC is what is left.
+            dev_group = dev_connection_value
 
         # The default_ prefixed fields are deprecated in Home Assistant 2026.9
         # and go away in 2027.9. The plain fields also refresh an existing
