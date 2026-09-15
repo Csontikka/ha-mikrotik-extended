@@ -1198,6 +1198,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 device = lookup(identifier, self.config_entry.entry_id)
             else:
                 device = registry.async_get_device(identifiers={identifier})
+            if device is not None:
+                # The Core device came back under a new id (the System
+                # entities recreated it); new entities link to this one.
+                self.core_device_id = device.id
         if device is not None and device.sw_version != version:
             registry.async_update_device(device.id, sw_version=version)
 

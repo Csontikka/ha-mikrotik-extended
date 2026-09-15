@@ -4630,6 +4630,8 @@ class TestRefreshCoreDeviceSwVersion:
         coord._refresh_core_device_sw_version()
 
         assert registry.async_get(device.id).sw_version == "7.23.2"
+        # and the remembered id heals, so new entities link to the new device
+        assert coord.core_device_id == device.id
 
     async def test_uses_the_registered_core_device_id_without_any_lookup(self, hass):
         """Once setup registered the Core device, no lookup is needed at all."""
