@@ -948,22 +948,59 @@ class TestDeviceInfo:
         assert info["via_device"][1].endswith("-XYZ")
         assert "via_device_id" not in info
 
+    def _registered_core(self, hass, entry_id):
+        from homeassistant.helpers import device_registry as dr
+
+        return dr.async_get(hass).async_get_or_create(config_entry_id=entry_id, identifiers={(DOMAIN, f"{entry_id}-XYZ")}, name="Core").id
+
     def test_via_link_uses_the_core_device_id_from_2026_9(self, hass):
         """2026.9 replaced the tuple with the registry id and removes the tuple in 2027.8."""
         from custom_components.mikrotik_extended import entity as entity_module
 
+        entity = self._port_entity(hass)
+        core_id = self._registered_core(hass, entity.coordinator.config_entry.entry_id)
+        entity.coordinator.core_device_id = core_id
         with patch.object(entity_module, "_VIA_DEVICE_BY_ID", True):
-            info = self._port_entity(hass, {"core_device_id": "core1"}).device_info
+            info = entity.device_info
 
-        assert info["via_device_id"] == "core1"
+        assert info["via_device_id"] == core_id
         assert "via_device" not in info
 
-    def test_via_link_is_left_out_when_the_core_device_is_unknown(self, hass):
-        """Pointing at nothing is worse than no link; a MagicMock id is not an id either."""
+    def test_via_link_for_a_host_tracker_comes_from_the_main_coordinator(self, hass):
+        """Host trackers run on the tracker coordinator; the Core device id lives on the main one.
+
+        Without this every tracked host on 2026.9+ would lose its link to the
+        router, which is most of the devices the change was made for.
+        """
+        from custom_components.mikrotik_extended import entity as entity_module
+        from custom_components.mikrotik_extended.coordinator import MikrotikTrackerCoordinator
+
+        main, entity = self._host_tracker(hass)
+        core_id = self._registered_core(hass, main.config_entry.entry_id)
+        main.core_device_id = core_id
+        tracker = MagicMock(spec=MikrotikTrackerCoordinator)
+        tracker.coordinator = main
+        tracker.data = main.data
+        tracker.hass = hass
+        tracker.config_entry = main.config_entry
+        entity.coordinator = tracker
+        with patch.object(entity_module, "_VIA_DEVICE_BY_ID", True):
+            info = entity.device_info
+
+        assert info["via_device_id"] == core_id
+
+    @pytest.mark.parametrize("core_id", [None, "gone-from-the-registry"])
+    def test_via_link_is_left_out_when_the_core_device_is_unknown(self, hass, core_id):
+        """Pointing at nothing is worse than no link.
+
+        On 2026.9 the registry rejects a via_device_id it does not know and the
+        platform then drops the entity, so an id left over from a Core device
+        the user deleted must not go out.
+        """
         from custom_components.mikrotik_extended import entity as entity_module
 
         with patch.object(entity_module, "_VIA_DEVICE_BY_ID", True):
-            info = self._port_entity(hass, {"core_device_id": None}).device_info
+            info = self._port_entity(hass, {"core_device_id": core_id}).device_info
 
         assert "via_device_id" not in info
         assert "via_device" not in info

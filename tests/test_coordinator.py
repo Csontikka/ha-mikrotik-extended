@@ -4619,6 +4619,18 @@ class TestRefreshCoreDeviceSwVersion:
         old_registry.async_get_device.assert_called_once_with(identifiers={(DOMAIN, f"{coord.config_entry.entry_id}-ABC123")})
         old_registry.async_update_device.assert_called_once_with("dev1", sw_version="7.23.2")
 
+    async def test_falls_back_to_a_lookup_when_the_remembered_device_is_gone(self, hass):
+        """The user can delete the Core device; the next start recreates it under a new id."""
+        coord = _make_coordinator(hass)
+        registry, device, serial = self._register_core(hass, coord, "7.23.1")
+        coord.core_device_id = "no-such-device"
+        coord.ds["routerboard"] = {"serial-number": serial}
+        coord.ds["resource"] = {"version": "7.23.2"}
+
+        coord._refresh_core_device_sw_version()
+
+        assert registry.async_get(device.id).sw_version == "7.23.2"
+
     async def test_uses_the_registered_core_device_id_without_any_lookup(self, hass):
         """Once setup registered the Core device, no lookup is needed at all."""
         coord = _make_coordinator(hass)

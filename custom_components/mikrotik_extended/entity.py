@@ -457,8 +457,16 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         rather than pointed at nothing.
         """
         if _VIA_DEVICE_BY_ID:
-            core_id = getattr(self.coordinator, "core_device_id", None)
-            return {"via_device_id": core_id} if isinstance(core_id, str) else {}
+            # Host trackers run on the tracker coordinator, which hangs off
+            # the main one; the Core device id lives on the main one.
+            main = self.coordinator.coordinator if isinstance(self.coordinator, MikrotikTrackerCoordinator) else self.coordinator
+            core_id = getattr(main, "core_device_id", None)
+            # An id the registry no longer knows (the user deleted the Core
+            # device) would make the registry reject the whole device info
+            # and the platform drop the entity. No link beats no entity.
+            if isinstance(core_id, str) and dr.async_get(self.coordinator.hass).async_get(core_id) is not None:
+                return {"via_device_id": core_id}
+            return {}
         return {
             "via_device": (
                 DOMAIN,

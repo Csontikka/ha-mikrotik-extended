@@ -1180,11 +1180,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             return
 
         registry = dr.async_get(self.hass)
-        if self.core_device_id:
-            device = registry.async_get(self.core_device_id)
-        else:
+        device = registry.async_get(self.core_device_id) if self.core_device_id else None
+        if device is None:
             # The Core device was not registered at setup (the serial was not
-            # known yet), so look it up. async_get_device is deprecated since
+            # known yet), or it was deleted since, so look it up.
+            # async_get_device is deprecated since
             # 2026.9 (identifiers are no longer unique across config entries)
             # and goes away in 2027.8; the per-entry lookup that replaces it
             # only exists from 2026.8, and this integration still runs on
