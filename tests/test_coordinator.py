@@ -4633,6 +4633,19 @@ class TestRefreshCoreDeviceSwVersion:
         # and the remembered id heals, so new entities link to the new device
         assert coord.core_device_id == device.id
 
+    async def test_a_chr_heals_too_when_its_core_device_was_deleted(self, hass):
+        """The lookup finds the device keyed on "N/A" like any other; only "unknown" is not worth a lookup."""
+        coord = _make_coordinator(hass)
+        registry, device, serial = self._register_core(hass, coord, "7.23.1", serial="N/A")
+        coord.core_device_id = "no-such-device"
+        coord.ds["routerboard"] = {"serial-number": serial}
+        coord.ds["resource"] = {"version": "7.23.2"}
+
+        coord._refresh_core_device_sw_version()
+
+        assert registry.async_get(device.id).sw_version == "7.23.2"
+        assert coord.core_device_id == device.id
+
     async def test_uses_the_registered_core_device_id_without_any_lookup(self, hass):
         """Once setup registered the Core device, no lookup is needed at all."""
         coord = _make_coordinator(hass)
@@ -4699,8 +4712,8 @@ class TestRegisterCoreDevice:
         assert coord.core_device_id == first
         assert dr.async_get(hass).async_get(first).sw_version == "7.24"
 
-    async def test_unknown_serial_still_registers_the_device_the_entities_describe(self, hass):
-        """A CHR reports no serial; its Core device has always been keyed on "unknown".
+    async def test_a_chr_registers_the_device_the_entities_describe(self, hass):
+        """A CHR reports its serial as "N/A"; its Core device has always been keyed on that.
 
         Skipping here left every host on the test CHR without a Core link on
         2026.9, while the System entities kept describing that very device.
@@ -4708,19 +4721,26 @@ class TestRegisterCoreDevice:
         from homeassistant.helpers import device_registry as dr
 
         coord = _make_coordinator(hass)
-        coord.ds["routerboard"] = {"serial-number": "unknown"}
+        coord.ds["routerboard"] = {"serial-number": "N/A"}
         coord.ds["resource"] = {"board-name": "CHR", "platform": "MikroTik", "version": "7.23"}
 
         coord.register_core_device()
 
         assert coord.core_device_id
         device = dr.async_get(hass).async_get(coord.core_device_id)
-        assert (DOMAIN, f"{coord.config_entry.entry_id}-unknown") in device.identifiers
+        assert (DOMAIN, f"{coord.config_entry.entry_id}-N/A") in device.identifiers
 
-    async def test_missing_data_registers_nothing(self, hass):
+    @pytest.mark.parametrize("routerboard", [{}, {"serial-number": "unknown"}, {"serial-number": ""}])
+    async def test_missing_serial_registers_nothing(self, hass, routerboard):
+        """ "unknown" is what an empty routerboard reply leaves behind, not a serial.
+
+        Registering on it would create a Core device that the entities abandon
+        once the real serial arrives, and every other device would link to the
+        orphan.
+        """
         coord = _make_coordinator(hass)
-        coord.ds["routerboard"] = {}
-        coord.ds["resource"] = {}
+        coord.ds["routerboard"] = routerboard
+        coord.ds["resource"] = {"board-name": "RB", "platform": "P", "version": "v"}
 
         coord.register_core_device()
 

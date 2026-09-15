@@ -437,14 +437,19 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         registry = dr.async_get(self.coordinator.hass)
         lookup = getattr(registry, "async_get_device_by_connection", None)
         if lookup is not None:
+            # 2026.8 and later: the lookup is scoped to our config entry, so
+            # whatever it returns is ours.
             existing = lookup(connection, entry_id)
+            ours = existing is not None
         else:
+            # Earlier: one shared device per MAC across integrations.
             existing = registry.async_get_device(connections={connection})
+            ours = existing is not None and entry_id in existing.config_entries
         # A device that an earlier release of ours created as "None" (the
         # string, from default_name=f"{None}") is not one to preserve; it gets
         # a name now. Another integration's device is left alone whatever it
         # is called.
-        if existing is not None and (entry_id not in existing.config_entries or existing.name not in _NOT_A_NAME):
+        if existing is not None and (not ours or existing.name not in _NOT_A_NAME):
             return {}
         return {key: value for key, value in fields.items() if value not in _NOT_A_NAME}
 

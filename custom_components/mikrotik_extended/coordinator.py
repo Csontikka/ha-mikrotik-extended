@@ -1181,7 +1181,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         registry = dr.async_get(self.hass)
         device = registry.async_get(self.core_device_id) if self.core_device_id else None
-        if device is None and serial in ("unknown", "", "N/A"):
+        if device is None and serial in ("unknown", ""):
             return
         if device is None:
             # The Core device was not registered at setup (the serial was not
@@ -1218,12 +1218,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         exists, which is why it is created here rather than left to whichever
         System entity happens to load first.
         """
-        # A CHR has no routerboard and reports no serial, so its Core device
-        # has always been keyed on the literal "unknown". The System entities
-        # do exactly that, and this has to describe the same device they do,
-        # so the serial is taken as it comes. Only missing data is a reason
-        # to wait.
-        if "serial-number" not in self.ds.get("routerboard", {}) or not self.ds.get("resource"):
+        # A CHR has no routerboard and reports its serial as the literal
+        # "N/A", and its Core device has always been keyed on that, because
+        # the System entities take the serial as it comes. That is a stable
+        # answer and registers. "unknown" is different: it is what an empty
+        # routerboard reply leaves behind, and registering on it would create
+        # a Core device the entities abandon once the real serial arrives.
+        serial = self.ds.get("routerboard", {}).get("serial-number", "unknown")
+        if serial in ("unknown", "") or not self.ds.get("resource"):
             return
         device = dr.async_get(self.hass).async_get_or_create(
             config_entry_id=self.config_entry.entry_id,
