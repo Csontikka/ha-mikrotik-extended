@@ -415,23 +415,33 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         dev_group = self._data[self.entity_description.data_name]
         dev_manufacturer = ""
         if dev_connection_value in self.coordinator.data["host"]:
-            dev_group = self.coordinator.data["host"][dev_connection_value]["host-name"]
-            dev_manufacturer = self.coordinator.data["host"][dev_connection_value]["manufacturer"]
+            host = self.coordinator.data["host"][dev_connection_value]
+            # A host without a resolvable name carries None or "unknown" here.
+            # Neither is a name: the old default_name silently stored the
+            # string "None" on new devices, and the plain name field would
+            # now overwrite a good existing name with it on every restart.
+            # Fall back to the interface's own value, which is the MAC.
+            if host.get("host-name") not in (None, "", "unknown"):
+                dev_group = host["host-name"]
+            dev_manufacturer = host.get("manufacturer") or ""
 
         # The default_ prefixed fields are deprecated in Home Assistant 2026.9
         # and go away in 2027.9. The plain fields also refresh an existing
-        # device, which is the better behaviour here anyway: a host that
-        # changed its name shows the new one. A name the user typed in is
-        # stored separately and stays.
-        return DeviceInfo(
+        # device, which is the better behaviour here: a host that changed its
+        # name shows the new one. A name the user typed in is stored
+        # separately and stays. An empty manufacturer is left out rather than
+        # passed, so it cannot blank a value the registry already holds.
+        info = DeviceInfo(
             connections={(dev_connection, f"{dev_connection_value}")},
             name=f"{dev_group}",
-            manufacturer=f"{dev_manufacturer}",
             via_device=(
                 DOMAIN,
                 f"{entry_id}-{self.coordinator.data['routerboard']['serial-number']}",
             ),
         )
+        if dev_manufacturer:
+            info["manufacturer"] = dev_manufacturer
+        return info
 
     def _build_generic_device_info(self, entry_id, dev_connection, dev_connection_value, dev_group) -> DeviceInfo:
         orig_ha_group = self.entity_description.ha_group

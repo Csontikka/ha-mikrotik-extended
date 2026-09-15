@@ -783,7 +783,37 @@ class TestDeviceInfo:
         info = entity.device_info
         # Falls back to the interface's data_name
         assert info["name"] == "ether1-name"
-        assert info["manufacturer"] == ""
+        # An empty manufacturer is left out, so it cannot blank a stored one.
+        assert "manufacturer" not in info
+
+    @pytest.mark.parametrize("host_name", [None, "", "unknown"])
+    def test_mac_device_without_a_resolvable_host_name_keeps_the_fallback(self, hass, host_name):
+        """None or "unknown" is not a name.
+
+        default_name used to store the string "None" on new devices; the plain
+        name field would now overwrite a good existing name with it on every
+        restart, which is what a live diff of 243 devices showed: 33 renamed to
+        "None". The interface's own value, the MAC, is the honest fallback.
+        """
+        desc = _make_entity_description(
+            ha_group="Port",
+            data_reference="mac-address",
+            data_name="name",
+            data_path="interface",
+        )
+        coord = _make_coordinator(
+            hass,
+            data={
+                "interface": {"ether1": {"name": "AA:BB:CC:DD:EE:FF", "mac-address": "AA:BB:CC:DD:EE:FF", "type": "ether"}},
+                "host": {"mac-address": {"host-name": host_name, "manufacturer": ""}},
+                "routerboard": {"serial-number": "XYZ"},
+                "resource": {"board-name": "RB", "platform": "P", "version": "v"},
+            },
+        )
+        info = _make_entity(coord, desc, uid="ether1").device_info
+        assert info["name"] == "AA:BB:CC:DD:EE:FF"
+        assert "None" not in info["name"]
+        assert "manufacturer" not in info
 
     def test_interface_data_group_with_ether_type(self, hass):
         """ha_group starts with 'data__' and type='ether' → category 'port'."""
