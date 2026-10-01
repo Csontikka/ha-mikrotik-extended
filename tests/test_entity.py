@@ -192,6 +192,33 @@ class TestSkipSensor:
             is True
         )
 
+    def test_port_switch_skipped_when_option_is_off(self):
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_SWITCH
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        port = {"e": {"type": "ether"}}
+        switch = self._desc(func="MikrotikPortSwitch", data_path="interface")
+        assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_SWITCH: False}), switch, port, "e") is True
+
+    def test_port_switch_kept_by_default_and_when_on(self):
+        """An entry that never saw the option keeps its port switches."""
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_SWITCH
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        port = {"e": {"type": "ether"}}
+        switch = self._desc(func="MikrotikPortSwitch", data_path="interface")
+        assert _skip_sensor(self._entry(), switch, port, "e") is False
+        assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_SWITCH: True}), switch, port, "e") is False
+
+    def test_port_switch_option_leaves_the_other_port_entities(self):
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_SWITCH
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        port = {"e": {"type": "ether", "poe-out": "auto-on"}}
+        entry = self._entry(**{CONF_SENSOR_PORT_SWITCH: False})
+        for func in ("MikrotikPortBinarySensor", "MikrotikPoeSelect", "MikrotikSwitch", "MikrotikNATSwitch"):
+            assert _skip_sensor(entry, self._desc(func=func, data_path="interface"), port, "e") is False, func
+
     def test_netwatch_skipped_when_disabled(self):
         from custom_components.mikrotik_extended.const import CONF_SENSOR_NETWATCH_TRACKER
         from custom_components.mikrotik_extended.entity import _skip_sensor
