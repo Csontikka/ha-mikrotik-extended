@@ -1934,9 +1934,21 @@ class TestGetRaw:
         assert len(ids) == 2
         assert len(coord.raw_removed) == 1
 
-    def test_not_fetched_unless_the_option_is_on(self, hass):
+    def test_option_is_off_by_default(self, hass):
         assert _make_coordinator(hass).option_sensor_raw is False
         assert _make_coordinator(hass, options={"sensor_raw": True}).option_sensor_raw is True
+
+    def test_rules_differing_only_in_address_list_or_flags_stay_apart(self, hass):
+        base = {"chain": "prerouting", "action": "add-src-to-address-list", "protocol": "tcp"}
+        rows = [
+            {".id": "*1", **base, "address-list": "scanners"},
+            {".id": "*2", **base, "address-list": "flooders"},
+            {".id": "*3", **base, "address-list": "scanners", "tcp-flags": "fin,syn"},
+        ]
+        coord = self._fetch(hass, rows)
+        ids = [vals["uniq-id"] for vals in coord.ds["raw"].values()]
+        assert len(set(ids)) == 3
+        assert coord.raw_removed == {}, "no positional suffix should be needed"
 
 
 # ---------------------------------------------------------------------------
@@ -3756,6 +3768,26 @@ class TestAsyncUpdateDataSupportPaths:
         coordinator.get_environment.assert_called()
         coordinator.get_ups.assert_called()
         coordinator.get_gps.assert_called()
+
+    async def test_raw_is_not_fetched_with_default_options(self, hass):
+        """An entry that never saw the Raw option does not query the menu."""
+        coordinator = _make_coordinator(hass)
+        self._stub_all_get_methods(coordinator)
+        coordinator.api.has_reconnected.return_value = False
+        coordinator.last_hwinfo_update = datetime.now()
+        coordinator.api.connected.return_value = True
+        coordinator.api.error = ""
+
+        with (
+            patch("custom_components.mikrotik_extended.coordinator.IssueSeverity", _FakeIssueSeverity),
+            patch("custom_components.mikrotik_extended.coordinator.async_create_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_delete_issue", MagicMock()),
+            patch("custom_components.mikrotik_extended.coordinator.async_dispatcher_send"),
+        ):
+            await coordinator._async_update_data()
+
+        coordinator.get_filter.assert_called()
+        coordinator.get_raw.assert_not_called()
 
     async def test_insufficient_permissions_issue_created(self, hass):
         """Cover line 681: async_create_issue with insufficient_permissions when access_missing non-empty."""
