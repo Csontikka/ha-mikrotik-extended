@@ -111,6 +111,16 @@ Monitor and control individual rules — each gets a switch entity:
 
 More information: [MikroTik Firewall documentation](https://help.mikrotik.com/docs/display/ROS/Firewall)
 
+### LTE / 5G modem
+
+For a router with an LTE or 5G modem, per modem:
+
+- Sensors for the operator, the access technology, the signal levels (RSSI, RSRP, RSRQ, SINR, CQI), the primary band and the carrier aggregation bands, and a connection binary sensor.
+- For a modem set up for 5G, the matching 5G signal sensors as well. They read unknown while the modem is on LTE.
+- Cell id, eNB id, sector id, physical cell id, session uptime, modulation, modem model and firmware revision as attributes of the operator sensor.
+
+IMEI, IMSI and ICCID are not read into Home Assistant. Enable **LTE / 5G modem sensors** in the options; it costs one extra query per modem on every poll, and a router without a modem is never asked.
+
 ### Routes
 
 A binary sensor for every static IPv4 route and for every IPv4 default route, on while the route is active:
@@ -441,6 +451,7 @@ automation:
 | Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
 | Route sensors (static and default routes) | ✓ | ? | Yes |
+| LTE / 5G modem sensors | ✓ | ? | Yes |
 | Device tracking (ARP) | ✓ | ✓ | Yes |
 | WireGuard peers | ✓ | — | Yes |
 | Containers | ✓ | — | Yes |
@@ -553,7 +564,7 @@ Available during initial setup and via the **Configure** button at any time:
 | **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. The per-port link queries stop as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
-| **Full** | Everything: port traffic, client traffic, port error counters, queues, routing rules, raw rules, route sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Full** | Everything: port traffic, client traffic, port error counters, queues, routing rules, raw rules, route sensors, LTE / 5G modem sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
 | **Custom** | Manually select each sensor category |
 
 Switching presets takes effect after saving:
