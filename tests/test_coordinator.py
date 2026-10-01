@@ -172,6 +172,7 @@ class TestAsyncUpdateDataConnection:
             "get_packages",
             "get_filter",
             "get_raw",
+            "get_route",
             "get_netwatch",
             "get_ppp",
             "sync_kid_control_monitoring_profile",
@@ -1949,6 +1950,195 @@ class TestGetRaw:
         ids = [vals["uniq-id"] for vals in coord.ds["raw"].values()]
         assert len(set(ids)) == 3
         assert coord.raw_removed == {}, "no positional suffix should be needed"
+
+
+# ---------------------------------------------------------------------------
+# get_route
+# ---------------------------------------------------------------------------
+class TestGetRoute:
+    """Rows are shaped like RouterOS 7.24 sends them: an inactive route has no
+    "active" key, an enabled one has no "disabled" key."""
+
+    WAN = {".id": "*1", "dst-address": "0.0.0.0/0", "gateway": "pppoe-out1", "routing-table": "main", "distance": 1, "dynamic": True, "active": True}
+    MAIN = {".id": "*2", "dst-address": "10.20.0.0/16", "gateway": "10.0.0.2", "routing-table": "main", "distance": 1, "static": True, "active": True, "comment": "site primary"}
+    BACKUP = {".id": "*3", "dst-address": "10.20.0.0/16", "gateway": "10.0.0.3", "routing-table": "main", "distance": 2, "static": True, "inactive": True}
+
+    def _coord(self, hass, rows):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = rows
+        return coord
+
+    def _fetch(self, hass, rows):
+        coord = self._coord(hass, [dict(r) for r in rows])
+        coord.get_route()
+        return coord
+
+    def test_asks_only_for_static_and_default_routes(self, hass):
+        coord = self._fetch(hass, [self.WAN])
+        coord.api.query_where.assert_called_once_with("/ip/route", {"static": True, "dst-address": "0.0.0.0/0"})
+
+    def test_active_and_inactive_routes(self, hass):
+        routes = self._fetch(hass, [self.WAN, self.MAIN, self.BACKUP]).ds["route"]
+        assert {key: row["active"] for key, row in routes.items()} == {
+            "dynamic_0_0_0_0_0_via_pppoe_out1_main": True,
+            "10_20_0_0_16_via_10_0_0_2_main": True,
+            "10_20_0_0_16_via_10_0_0_3_main": False,
+        }
+        assert all(row["present"] and row["enabled"] for row in routes.values())
+
+    def test_name_is_destination_and_gateway_comment_is_kept(self, hass):
+        routes = self._fetch(hass, [self.MAIN, self.BACKUP]).ds["route"]
+        assert routes["10_20_0_0_16_via_10_0_0_2_main"]["name"] == "10.20.0.0/16 via 10.0.0.2"
+        assert routes["10_20_0_0_16_via_10_0_0_2_main"]["comment"] == "site primary"
+        assert routes["10_20_0_0_16_via_10_0_0_3_main"]["comment"] == ""
+
+    def test_a_comment_does_not_change_the_key(self, hass):
+        """Keyed by where the route leads, so adding or editing a comment keeps the entity."""
+        coord = self._fetch(hass, [self.BACKUP])
+        coord.api.query_where.return_value = [{**self.BACKUP, "comment": "now documented"}]
+        coord.get_route()
+        assert list(coord.ds["route"]) == ["10_20_0_0_16_via_10_0_0_3_main"]
+        assert coord.ds["route"]["10_20_0_0_16_via_10_0_0_3_main"]["comment"] == "now documented"
+
+    def test_a_new_list_id_does_not_change_the_key(self, hass):
+        coord = self._fetch(hass, [self.MAIN])
+        coord.api.query_where.return_value = [{**self.MAIN, ".id": "*99"}]
+        coord.get_route()
+        assert list(coord.ds["route"]) == ["10_20_0_0_16_via_10_0_0_2_main"]
+
+    def test_disabled_route_is_neither_enabled_nor_active(self, hass):
+        row = {**self.MAIN, "disabled": True, "inactive": True}
+        del row["active"]
+        route = self._fetch(hass, [row]).ds["route"]["10_20_0_0_16_via_10_0_0_2_main"]
+        assert route["enabled"] is False
+        assert route["active"] is False
+
+    def test_same_route_in_two_tables_are_two_entries(self, hass):
+        other = {**self.MAIN, ".id": "*7", "routing-table": "guest"}
+        assert set(self._fetch(hass, [self.MAIN, other]).ds["route"]) == {"10_20_0_0_16_via_10_0_0_2_main", "10_20_0_0_16_via_10_0_0_2_guest"}
+
+    def test_identical_routes_get_a_counter_in_list_order(self, hass):
+        twin = {**self.MAIN, ".id": "*9", "distance": 5}
+        assert set(self._fetch(hass, [twin, self.MAIN]).ds["route"]) == {"10_20_0_0_16_via_10_0_0_2_main", "10_20_0_0_16_via_10_0_0_2_main_2"}
+        routes = self._fetch(hass, [twin, self.MAIN]).ds["route"]
+        assert routes["10_20_0_0_16_via_10_0_0_2_main"]["distance"] == 1, "*2 sorts before *9"
+
+    def test_routeros_6_routing_mark_stands_in_for_the_table(self, hass):
+        row = {".id": "*4", "dst-address": "10.9.0.0/24", "gateway": "10.0.0.9", "routing-mark": "guest", "static": True, "active": True}
+        routes = self._fetch(hass, [row]).ds["route"]
+        assert routes["10_9_0_0_24_via_10_0_0_9_guest"]["routing-table"] == "guest"
+        plain = {".id": "*5", "dst-address": "10.8.0.0/24", "gateway": "10.0.0.8", "static": True, "active": True}
+        assert "10_8_0_0_24_via_10_0_0_8_main" in self._fetch(hass, [plain]).ds["route"]
+
+    def test_failed_query_leaves_everything_as_it_was(self, hass):
+        coord = self._fetch(hass, [self.WAN, self.MAIN])
+        before = {key: dict(row) for key, row in coord.ds["route"].items()}
+        coord.api.query_where.return_value = None
+        for _ in range(5):
+            coord.get_route()
+        assert coord.ds["route"] == before
+
+    def test_dynamic_route_that_left_the_table_stays_as_not_active(self, hass):
+        """The link went down: that is the state the sensor exists to show."""
+        coord = self._fetch(hass, [self.WAN, self.MAIN])
+        coord.api.query_where.return_value = [dict(self.MAIN)]
+        for _ in range(6):
+            coord.get_route()
+        wan = coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]
+        assert wan["active"] is False
+        assert wan["present"] is False
+        assert wan["gateway"] == "pppoe-out1", "the last known details stay readable"
+
+        coord.api.query_where.return_value = [dict(self.WAN), dict(self.MAIN)]
+        coord.get_route()
+        assert wan["active"] is True and wan["present"] is True
+
+    def test_empty_table_still_marks_the_dynamic_route_down(self, hass):
+        coord = self._fetch(hass, [self.WAN])
+        coord.api.query_where.return_value = []
+        coord.get_route()
+        assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["active"] is False
+
+    def test_removed_static_route_goes_after_three_cycles(self, hass):
+        coord = self._fetch(hass, [self.MAIN, self.BACKUP])
+        coord.api.query_where.return_value = [dict(self.MAIN)]
+        coord.get_route()
+        gone = coord.ds["route"]["10_20_0_0_16_via_10_0_0_3_main"]
+        assert gone["present"] is False and gone["active"] is False
+        coord.get_route()
+        assert "10_20_0_0_16_via_10_0_0_3_main" in coord.ds["route"]
+        coord.get_route()
+        assert list(coord.ds["route"]) == ["10_20_0_0_16_via_10_0_0_2_main"]
+
+    def test_a_static_route_that_comes_back_in_time_is_kept(self, hass):
+        coord = self._fetch(hass, [self.MAIN])
+        coord.api.query_where.return_value = []
+        coord.get_route()
+        coord.get_route()
+        coord.api.query_where.return_value = [dict(self.MAIN)]
+        coord.get_route()
+        coord.api.query_where.return_value = []
+        coord.get_route()
+        coord.get_route()
+        assert "10_20_0_0_16_via_10_0_0_2_main" in coord.ds["route"], "the strike count started over"
+
+
+class TestRestoreDynamicRoutes:
+    """Home Assistant restarted while the WAN link was down."""
+
+    def _register(self, hass, coord, suffix, name, domain="binary_sensor"):
+        from homeassistant.helpers import entity_registry as er
+
+        return er.async_get(hass).async_get_or_create(domain, DOMAIN, f"{coord.config_entry.entry_id}-route-{suffix}", config_entry=coord.config_entry, original_name=name)
+
+    def test_known_dynamic_route_gets_a_placeholder(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "dynamic_0_0_0_0_0_via_pppoe_out1_main", "0.0.0.0/0 via pppoe-out1")
+        coord._restore_dynamic_routes()
+        row = coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]
+        assert row["active"] is False and row["present"] is False and row["dynamic"] is True
+        assert row["name"] == "0.0.0.0/0 via pppoe-out1"
+        assert row["uid-key"] == "dynamic_0_0_0_0_0_via_pppoe_out1_main"
+
+    def test_static_routes_and_other_entities_are_not_restored(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "10_20_0_0_16_via_10_0_0_2_main", "site primary")
+        self._register(hass, coord, "dynamic_0_0_0_0_0_via_pppoe_out1_main", "a switch, not a route sensor", domain="switch")
+        coord._restore_dynamic_routes()
+        assert coord.ds["route"] == {}
+
+    def test_the_returning_route_takes_over_the_placeholder(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "dynamic_0_0_0_0_0_via_pppoe_out1_main", "0.0.0.0/0 via pppoe-out1")
+        coord._restore_dynamic_routes()
+        coord.api.query_where.return_value = []
+        coord.get_route()
+        assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["active"] is False
+
+        coord.api.query_where.return_value = [dict(TestGetRoute.WAN)]
+        coord.get_route()
+        assert list(coord.ds["route"]) == ["dynamic_0_0_0_0_0_via_pppoe_out1_main"]
+        row = coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]
+        assert row["active"] is True and row["present"] is True and row["gateway"] == "pppoe-out1"
+
+    def test_placeholder_does_not_replace_a_live_route(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [dict(TestGetRoute.WAN)]
+        coord.get_route()
+        self._register(hass, coord, "dynamic_0_0_0_0_0_via_pppoe_out1_main", "0.0.0.0/0 via pppoe-out1")
+        coord._restore_dynamic_routes()
+        assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["active"] is True
+
+    def test_unique_id_built_from_a_row_matches_the_registry_one(self, hass):
+        """The placeholder only helps if the entity lands on the same unique_id."""
+        from homeassistant.util import slugify
+
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [dict(TestGetRoute.WAN)]
+        coord.get_route()
+        (key,) = coord.ds["route"]
+        assert slugify(str(coord.ds["route"][key]["uid-key"]).lower()) == key
+        assert key.startswith("dynamic_")
 
 
 # ---------------------------------------------------------------------------
@@ -3760,6 +3950,7 @@ class TestAsyncUpdateDataSupportPaths:
             "get_packages",
             "get_filter",
             "get_raw",
+            "get_route",
             "get_netwatch",
             "get_ppp",
             "sync_kid_control_monitoring_profile",
@@ -3787,6 +3978,7 @@ class TestAsyncUpdateDataSupportPaths:
                 "sensor_containers": True,
                 "sensor_filter": True,
                 "sensor_raw": True,
+                "sensor_routes": True,
                 "sensor_netwatch": True,
                 "sensor_ppp": True,
                 "sensor_client_traffic": True,
@@ -3833,6 +4025,7 @@ class TestAsyncUpdateDataSupportPaths:
         coordinator.get_containers.assert_called()
         coordinator.get_filter.assert_called()
         coordinator.get_raw.assert_called()
+        coordinator.get_route.assert_called()
         coordinator.get_netwatch.assert_called()
         coordinator.get_ppp.assert_called()
         coordinator.sync_kid_control_monitoring_profile.assert_called()
@@ -3862,6 +4055,7 @@ class TestAsyncUpdateDataSupportPaths:
 
         coordinator.get_filter.assert_called()
         coordinator.get_raw.assert_not_called()
+        coordinator.get_route.assert_not_called()
 
     async def test_insufficient_permissions_issue_created(self, hass):
         """Cover line 681: async_create_issue with insufficient_permissions when access_missing non-empty."""

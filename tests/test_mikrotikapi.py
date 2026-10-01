@@ -270,6 +270,64 @@ class TestConnected:
         assert api.connected() is False
 
 
+class TestQueryWhere:
+    """A filtered read: the router picks the rows, an empty answer is an answer."""
+
+    def setup_method(self):
+        self.api = MikrotikAPI("192.168.88.1", "admin", "pass")
+        self.api._connected = True
+        self.api._connection = MagicMock()
+        self.query = self.api._connection.path.return_value.select.return_value.where
+
+    def _rows(self, rows):
+        result = MagicMock()
+        result.__iter__ = MagicMock(return_value=iter(rows))
+        self.query.return_value = result
+
+    def test_returns_the_matching_rows(self):
+        self._rows([{"dst-address": "0.0.0.0/0"}])
+        assert self.api.query_where("/ip/route", {"static": True}) == [{"dst-address": "0.0.0.0/0"}]
+        self.api._connection.path.assert_called_once_with("/ip/route")
+
+    def test_no_match_is_an_empty_list_not_none(self):
+        self._rows([])
+        assert self.api.query_where("/ip/route", {"static": True}) == []
+
+    def test_several_fields_are_sent_as_one_or_condition(self):
+        self._rows([])
+        self.api.query_where("/ip/route", {"static": True, "dst-address": "0.0.0.0/0"})
+        (condition,) = self.query.call_args.args
+        words = list(condition)
+        assert "?=static=yes" in words
+        assert "?=dst-address=0.0.0.0/0" in words
+        assert words[-1] == "?#|", "the two tests are joined by OR"
+
+    def test_a_single_field_is_sent_on_its_own(self):
+        self._rows([])
+        self.api.query_where("/ip/route", {"static": True})
+        (condition,) = self.query.call_args.args
+        assert list(condition) == ["?=static=yes"]
+
+    def test_none_when_disconnected(self):
+        self.api._connected = False
+        self.api._connection_epoch = time()
+        assert self.api.query_where("/ip/route", {"static": True}) is None
+
+    def test_a_refusal_is_none_and_keeps_the_session(self):
+        from librouteros.exceptions import TrapError
+
+        result = MagicMock()
+        result.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.query.return_value = result
+        assert self.api.query_where("/ip/route", {"static": True}) is None
+        assert self.api.connected() is True
+
+    def test_a_broken_link_is_none_and_disconnects(self):
+        self.api._connection.path.side_effect = OSError("gone")
+        assert self.api.query_where("/ip/route", {"static": True}) is None
+        assert self.api.connected() is False
+
+
 class TestQuery:
     def setup_method(self):
         self.api = MikrotikAPI("192.168.88.1", "admin", "pass")
