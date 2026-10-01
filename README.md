@@ -538,6 +538,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
 | Sensor preset | recommended | Quick preset selector — see below. |
 | Interface entities | enabled | Per-interface entities: port switches, port trackers, traffic sensors and IP address sensors. Disable to monitor only the core device, useful on large switches. Disabling also skips the per-port link queries, which is where most of the polling load on a large switch comes from. Note that disabling removes those entities and their per-port devices from Home Assistant, so a renamed port or an assigned area is not restored when you switch back. |
+| Port error counters | disabled | Four sensors per interface: RX errors, TX errors, RX drops, TX drops. A counter that keeps climbing on one port points at a bad cable or a failing port. They come from the interface list the integration reads anyway, so they cost no extra query. |
 | Port switches | enabled | The switch on every port that disables the interface on the router. Turn it off to keep a port, the uplink for example, from being disabled by accident; the port tracker, traffic sensors and PoE selector of the port stay. |
 | Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, raw, scripts, WireGuard, containers, etc. |
 
@@ -552,7 +553,7 @@ Available during initial setup and via the **Configure** button at any time:
 | **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. The per-port link queries stop as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
-| **Full** | Everything: port traffic, client traffic, queues, routing rules, raw rules, route sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Full** | Everything: port traffic, client traffic, port error counters, queues, routing rules, raw rules, route sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
 | **Custom** | Manually select each sensor category |
 
 Switching presets takes effect after saving:
