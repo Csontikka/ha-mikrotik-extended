@@ -308,6 +308,12 @@ class TestQueryWhere:
         (condition,) = self.query.call_args.args
         assert list(condition) == ["?=static=yes"]
 
+    def test_no_fields_is_a_programming_error(self):
+        import pytest
+
+        with pytest.raises(ValueError):
+            self.api.query_where("/ip/route", {})
+
     def test_none_when_disconnected(self):
         self.api._connected = False
         self.api._connection_epoch = time()

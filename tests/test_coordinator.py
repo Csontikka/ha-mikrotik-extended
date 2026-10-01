@@ -2083,6 +2083,111 @@ class TestGetRoute:
         assert "10_20_0_0_16_via_10_0_0_2_main" in coord.ds["route"], "the strike count started over"
 
 
+class TestReplacedDynamicRoute:
+    """A new DHCP gateway replaces the default route; a second WAN going down does not."""
+
+    OLD = {".id": "*1", "dst-address": "0.0.0.0/0", "gateway": "192.0.2.1", "immediate-gw": "192.0.2.1%ether1", "routing-table": "main", "dynamic": True, "active": True}
+    NEW = {".id": "*5", "dst-address": "0.0.0.0/0", "gateway": "192.0.2.254", "immediate-gw": "192.0.2.254%ether1", "routing-table": "main", "dynamic": True, "active": True}
+    WAN2 = {".id": "*2", "dst-address": "0.0.0.0/0", "gateway": "198.51.100.1", "immediate-gw": "198.51.100.1%ether2", "routing-table": "main", "dynamic": True, "active": True}
+    OLD_KEY = "dynamic_0_0_0_0_0_via_192_0_2_1_main"
+    WAN2_KEY = "dynamic_0_0_0_0_0_via_198_51_100_1_main"
+
+    def _coord(self, hass, rows):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [dict(r) for r in rows]
+        coord.get_route()
+        return coord
+
+    def _cycles(self, coord, rows, count):
+        for _ in range(count):
+            coord.api.query_where.return_value = [dict(r) for r in rows]
+            coord.get_route()
+
+    def test_new_gateway_on_the_same_interface_drops_the_old_route(self, hass):
+        coord = self._coord(hass, [self.OLD])
+        self._cycles(coord, [self.NEW], 2)
+        assert self.OLD_KEY in coord.ds["route"], "the usual grace of three cycles"
+        self._cycles(coord, [self.NEW], 1)
+        assert list(coord.ds["route"]) == ["dynamic_0_0_0_0_0_via_192_0_2_254_main"]
+        assert coord._routes_replaced == {self.OLD_KEY}
+
+    def test_second_wan_going_down_keeps_its_sensor(self, hass):
+        """Same destination and table as the first WAN, but another interface."""
+        coord = self._coord(hass, [self.OLD, self.WAN2])
+        self._cycles(coord, [self.OLD], 6)
+        assert coord.ds["route"][self.WAN2_KEY]["active"] is False
+        assert coord._routes_replaced == set()
+
+    def test_second_wan_is_not_replaced_by_the_first_one_changing_gateway(self, hass):
+        coord = self._coord(hass, [self.OLD, self.WAN2])
+        self._cycles(coord, [self.NEW], 6)
+        assert self.WAN2_KEY in coord.ds["route"]
+        assert self.OLD_KEY not in coord.ds["route"]
+        assert coord._routes_replaced == {self.OLD_KEY}
+
+    def test_route_in_another_table_is_not_a_replacement(self, hass):
+        coord = self._coord(hass, [self.OLD])
+        self._cycles(coord, [{**self.NEW, "routing-table": "guest"}], 6)
+        assert self.OLD_KEY in coord.ds["route"]
+
+    def test_restored_placeholder_is_never_judged(self, hass):
+        """It knows no interface, so it cannot be told from a link that is down."""
+        from homeassistant.helpers import entity_registry as er
+
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        er.async_get(hass).async_get_or_create("binary_sensor", DOMAIN, f"{coord.config_entry.entry_id}-route-{self.OLD_KEY}", config_entry=coord.config_entry)
+        coord._restore_dynamic_routes()
+        self._cycles(coord, [self.NEW], 6)
+        assert self.OLD_KEY in coord.ds["route"]
+
+    def test_pppoe_route_without_an_address_is_matched_by_interface_name(self, hass):
+        down = {".id": "*1", "dst-address": "0.0.0.0/0", "gateway": "pppoe-out1", "immediate-gw": "pppoe-out1", "routing-table": "main", "dynamic": True, "active": True}
+        coord = self._coord(hass, [down, self.WAN2])
+        self._cycles(coord, [self.WAN2], 6)
+        assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["active"] is False
+
+    def test_replaced_route_loses_its_registry_entry(self, hass):
+        from homeassistant.helpers import entity_registry as er
+
+        coord = self._coord(hass, [self.OLD])
+        registry = er.async_get(hass)
+        entry_id = coord.config_entry.entry_id
+        old = registry.async_get_or_create("binary_sensor", DOMAIN, f"{entry_id}-route-{self.OLD_KEY}", config_entry=coord.config_entry)
+        kept = registry.async_get_or_create("binary_sensor", DOMAIN, f"{entry_id}-route-dynamic_0_0_0_0_0_via_192_0_2_254_main", config_entry=coord.config_entry)
+        self._cycles(coord, [self.NEW], 3)
+        coord._remove_replaced_routes()
+        assert registry.async_get(old.entity_id) is None
+        assert registry.async_get(kept.entity_id) is not None
+        assert coord._routes_replaced == set()
+
+
+class TestRouteKeys:
+    def _keys(self, hass, rows):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = rows
+        coord.get_route()
+        return coord.ds["route"]
+
+    def test_gateways_that_slug_alike_stay_two_routes(self, hass):
+        base = {"dst-address": "10.9.0.0/24", "routing-table": "main", "static": True, "active": True}
+        routes = self._keys(hass, [{".id": "*1", **base, "gateway": "10.0.0.1%wg-a"}, {".id": "*2", **base, "gateway": "10.0.0.1%wg_a"}])
+        assert len(routes) == 2
+        assert {row["gateway"] for row in routes.values()} == {"10.0.0.1%wg-a", "10.0.0.1%wg_a"}
+
+    def test_counter_does_not_land_on_a_key_already_in_use(self, hass):
+        base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "static": True, "active": True}
+        rows = [{".id": "*1", **base, "routing-table": "main"}, {".id": "*2", **base, "routing-table": "main"}, {".id": "*3", **base, "routing-table": "main 2"}]
+        assert len(self._keys(hass, rows)) == 3
+
+    def test_list_ids_are_ordered_as_numbers(self, hass):
+        """ "*10" comes after "*9" and "*A", which a text sort gets wrong."""
+        base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "routing-table": "main", "static": True, "active": True}
+        routes = self._keys(hass, [{".id": "*10", **base, "distance": 3}, {".id": "*9", **base, "distance": 1}, {".id": "*A", **base, "distance": 2}])
+        assert routes["10_9_0_0_24_via_10_0_0_1_main"]["distance"] == 1
+        assert routes["10_9_0_0_24_via_10_0_0_1_main_2"]["distance"] == 2
+        assert routes["10_9_0_0_24_via_10_0_0_1_main_3"]["distance"] == 3
+
+
 class TestRestoreDynamicRoutes:
     """Home Assistant restarted while the WAN link was down."""
 
