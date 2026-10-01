@@ -43,6 +43,7 @@ from .const import (
     CONF_SENSOR_MANGLE,
     CONF_SENSOR_NAT,
     CONF_SENSOR_NETWATCH_TRACKER,
+    CONF_SENSOR_PORT_SWITCH,
     CONF_SENSOR_PORT_TRACKER,
     CONF_SENSOR_PORT_TRAFFIC,
     CONF_SENSOR_PPP,
@@ -70,6 +71,7 @@ from .const import (
     DEFAULT_SENSOR_MANGLE,
     DEFAULT_SENSOR_NAT,
     DEFAULT_SENSOR_NETWATCH_TRACKER,
+    DEFAULT_SENSOR_PORT_SWITCH,
     DEFAULT_SENSOR_PORT_TRACKER,
     DEFAULT_SENSOR_PORT_TRAFFIC,
     DEFAULT_SENSOR_PPP,
@@ -114,6 +116,7 @@ _TRACKER_INTERVAL_FIELD = vol.All(
 _SENSOR_PRESETS = {
     "core": {
         CONF_SENSOR_INTERFACES: False,
+        CONF_SENSOR_PORT_SWITCH: False,
         CONF_SENSOR_PORT_TRACKER: False,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -136,6 +139,7 @@ _SENSOR_PRESETS = {
     },
     "minimal": {
         CONF_SENSOR_INTERFACES: True,
+        CONF_SENSOR_PORT_SWITCH: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -158,6 +162,7 @@ _SENSOR_PRESETS = {
     },
     "recommended": {
         CONF_SENSOR_INTERFACES: True,
+        CONF_SENSOR_PORT_SWITCH: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -180,6 +185,7 @@ _SENSOR_PRESETS = {
     },
     "full": {
         CONF_SENSOR_INTERFACES: True,
+        CONF_SENSOR_PORT_SWITCH: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: True,
         CONF_SENSOR_CLIENT_TRAFFIC: True,
@@ -493,6 +499,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_SENSOR_MANGLE, default=DEFAULT_SENSOR_MANGLE): bool,
                     vol.Optional(CONF_SENSOR_NAT, default=DEFAULT_SENSOR_NAT): bool,
                     vol.Optional(CONF_SENSOR_NETWATCH_TRACKER, default=DEFAULT_SENSOR_NETWATCH_TRACKER): bool,
+                    vol.Optional(CONF_SENSOR_PORT_SWITCH, default=DEFAULT_SENSOR_PORT_SWITCH): bool,
                     vol.Optional(CONF_SENSOR_PORT_TRACKER, default=DEFAULT_SENSOR_PORT_TRACKER): bool,
                     vol.Optional(CONF_SENSOR_PORT_TRAFFIC, default=DEFAULT_SENSOR_PORT_TRAFFIC): bool,
                     vol.Optional(CONF_SENSOR_PPP, default=DEFAULT_SENSOR_PPP): bool,
@@ -739,6 +746,10 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                             CONF_SENSOR_NETWATCH_TRACKER,
                             DEFAULT_SENSOR_NETWATCH_TRACKER,
                         ),
+                    ): bool,
+                    vol.Optional(
+                        CONF_SENSOR_PORT_SWITCH,
+                        default=self._config_entry.options.get(CONF_SENSOR_PORT_SWITCH, DEFAULT_SENSOR_PORT_SWITCH),
                     ): bool,
                     vol.Optional(
                         CONF_SENSOR_PORT_TRACKER,
