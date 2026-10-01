@@ -98,6 +98,21 @@ class MikrotikBinarySensor(MikrotikEntity, BinarySensorEntity):
 class MikrotikNetwatchBinarySensor(MikrotikBinarySensor):
     """Representation of a netwatch probe."""
 
+    @property
+    def custom_name(self) -> str:
+        """The probe's own name first, then what every other entity uses.
+
+        RouterOS 7 lets a probe carry a name next to its comment. Where it is
+        set it is the short label the user chose for exactly this probe, while
+        a comment is often a sentence, or shared by several probes. The
+        unique id does not depend on either, so the entity stays the same and
+        only what it is called changes.
+        """
+        label = str(self._data.get("name") or "").strip()
+        if label:
+            return f"{label} {self.entity_description.name}"
+        return super().custom_name
+
     # Probe statistics change on every poll while the up/down state does not;
     # keeping them out of the recorder avoids a database write per cycle.
     _unrecorded_attributes = frozenset(

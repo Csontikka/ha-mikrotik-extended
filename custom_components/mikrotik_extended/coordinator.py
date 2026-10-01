@@ -1174,7 +1174,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # These also surface the comment: netwatch and WireGuard peers use it as
         # the entity name, containers and queues derive their name or key from
         # it, and IP addresses expose it as an attribute.
-        "netwatch": ("comment",),
+        "netwatch": ("comment", "name"),
         "wireguard_peers": ("comment",),
         "containers": ("comment",),
         "queue": ("comment",),
@@ -2638,6 +2638,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             key="uid-ref",
             vals=[
                 {"name": "uid-ref"},
+                {"name": "name"},
                 {"name": "host"},
                 {"name": "type"},
                 {"name": "interval"},
