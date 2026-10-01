@@ -1448,11 +1448,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "tx-queue-drop"},
                 # Counters the interface list carries anyway, so reading them
                 # costs no extra query. They only become entities when the
-                # port error counters option is on.
-                {"name": "rx-error", "default": 0},
-                {"name": "tx-error", "default": 0},
-                {"name": "rx-drop", "default": 0},
-                {"name": "tx-drop", "default": 0},
+                # port error counters option is on. No default: a counter the
+                # interface does not report stays empty, so it gets no sensor
+                # instead of one that reads a made-up zero.
+                {"name": "rx-error"},
+                {"name": "tx-error"},
+                {"name": "rx-drop"},
+                {"name": "tx-drop"},
                 {"name": "actual-mtu"},
                 {"name": "about", "source": ".about", "default": ""},
                 {"name": "rx-current", "source": "rx-byte", "default": 0.0},

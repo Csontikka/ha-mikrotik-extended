@@ -123,10 +123,13 @@ def _skip_interface_traffic_sensor(config_entry, entity_description, item) -> bo
     return not config_entry.options.get(CONF_SENSOR_PORT_TRAFFIC, DEFAULT_SENSOR_PORT_TRAFFIC)
 
 
-def _skip_interface_error_sensor(config_entry, entity_description) -> bool:
+def _skip_interface_error_sensor(config_entry, entity_description, item) -> bool:
     if entity_description.func != "MikrotikInterfaceErrorSensor":
         return False
-    return not config_entry.options.get(CONF_SENSOR_PORT_ERRORS, DEFAULT_SENSOR_PORT_ERRORS)
+    if not config_entry.options.get(CONF_SENSOR_PORT_ERRORS, DEFAULT_SENSOR_PORT_ERRORS):
+        return True
+    # Not every interface type reports every counter.
+    return item.get(entity_description.data_attribute) in (None, "")
 
 
 def _skip_client_traffic(entity_description, item) -> bool:
@@ -172,7 +175,7 @@ def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
         return True
     if _skip_interface_traffic_sensor(config_entry, entity_description, item):
         return True
-    if _skip_interface_error_sensor(config_entry, entity_description):
+    if _skip_interface_error_sensor(config_entry, entity_description, item):
         return True
     if _skip_client_traffic(entity_description, item):
         return True
