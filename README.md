@@ -434,7 +434,7 @@ automation:
 | PoE out control (per port) | ✓ | ? | With interfaces |
 | Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
-| Route sensors (static and default routes) | ? | ✓ | Yes |
+| Route sensors (static and default routes) | ✓ | ? | Yes |
 | Device tracking (ARP) | ✓ | ✓ | Yes |
 | WireGuard peers | ✓ | — | Yes |
 | Containers | ✓ | — | Yes |
