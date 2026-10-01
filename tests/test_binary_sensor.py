@@ -18,6 +18,7 @@ from custom_components.mikrotik_extended.binary_sensor import (
     MikrotikNetwatchBinarySensor,
     MikrotikPortBinarySensor,
     MikrotikPPPSecretBinarySensor,
+    MikrotikRouteBinarySensor,
     MikrotikWireguardPeerBinarySensor,
     async_setup_entry,
 )
@@ -96,6 +97,7 @@ async def test_async_setup_entry_dispatcher(hass):
     assert set(dispatcher.keys()) == {
         "MikrotikBinarySensor",
         "MikrotikNetwatchBinarySensor",
+        "MikrotikRouteBinarySensor",
         "MikrotikPPPSecretBinarySensor",
         "MikrotikPortBinarySensor",
         "MikrotikWireguardPeerBinarySensor",
@@ -117,6 +119,21 @@ async def test_binary_sensor_is_on_and_icon(hass):
     coord2 = _make_coordinator(hass, {"resource": {"enabled": True}})
     bs2 = MikrotikBinarySensor(coord2, desc2)
     assert bs2.icon is None
+
+
+async def test_route_sensor_is_unavailable_while_unverified(hass):
+    """A static route restored after a failed read is not known to be down."""
+    desc = _make_description(func="MikrotikRouteBinarySensor", name="", data_path="route", data_attribute="active", data_reference="uid-key", data_name="name")
+    row = {"uid-key": "k", "name": "10.0.0.0/8 via 10.0.0.1", "active": False, "unverified": True}
+    coord = _make_coordinator(hass, {"route": {"k": row}})
+    coord.last_update_success = True
+    sensor = MikrotikRouteBinarySensor(coord, desc, uid="k")
+    assert sensor.available is False
+    row["unverified"] = False
+    assert sensor.available is True
+    assert sensor.is_on is False
+    del row["unverified"]
+    assert sensor.available is True, "rows read from the router never carry the mark"
 
 
 def _netwatch_sensor(hass, **row):

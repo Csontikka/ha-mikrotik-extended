@@ -2217,6 +2217,24 @@ class TestRouteKeys:
         assert "10_9_0_0_24_via_10_0_0_7_main" in coord.ds["route"]
         assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main"]["present"] is False
 
+    def test_a_reused_list_id_does_not_hand_over_another_routes_key(self, hass):
+        """After a reboot the id of a twin can belong to a route in a table named like its counter."""
+        base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "static": True, "active": True}
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [{".id": "*1", **base, "routing-table": "main", "distance": 1}, {".id": "*7", **base, "routing-table": "main", "distance": 2}]
+        coord.get_route()
+        assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main_2"]["distance"] == 2
+
+        coord.api.query_where.return_value = [
+            {".id": "*1", **base, "routing-table": "main", "distance": 1},
+            {".id": "*3", **base, "routing-table": "main", "distance": 2},
+            {".id": "*7", **base, "routing-table": "main 2", "distance": 9},
+        ]
+        coord.get_route()
+        tables = {key: (row["routing-table"], row["distance"]) for key, row in coord.ds["route"].items() if row["present"]}
+        assert len(tables) == 3, "three routes, three keys"
+        assert ("main 2", 9) in tables.values() and ("main", 2) in tables.values()
+
     def test_list_ids_are_ordered_as_numbers(self, hass):
         """ "*10" comes after "*9" and "*A", which a text sort gets wrong."""
         base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "routing-table": "main", "static": True, "active": True}
@@ -2276,6 +2294,24 @@ class TestRestoreDynamicRoutes:
         assert set(coord.ds["route"]) == {"10_20_0_0_16_via_10_0_0_2_main", "dynamic_0_0_0_0_0_via_pppoe_out1_main"}
         assert coord.ds["route"]["10_20_0_0_16_via_10_0_0_2_main"]["dynamic"] is False
         assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["dynamic"] is True
+        assert coord.ds["route"]["10_20_0_0_16_via_10_0_0_2_main"]["unverified"] is True, "not known to be down"
+        assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["unverified"] is False, "a missing dynamic route is down"
+
+    def test_a_successful_read_settles_the_unverified_routes(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "10_20_0_0_16_via_10_0_0_2_main", "site primary")
+        self._register(hass, coord, "10_99_0_0_16_via_10_0_0_9_main", "removed while down")
+        coord.api.query_where.return_value = None
+        coord.get_route()
+        coord._restore_dynamic_routes(everything=True)
+        coord.get_route()
+        assert all(row["unverified"] for row in coord.ds["route"].values()), "still nothing read"
+
+        coord.api.query_where.return_value = [dict(TestGetRoute.MAIN)]
+        coord.get_route()
+        assert not any(row["unverified"] for row in coord.ds["route"].values())
+        assert coord.ds["route"]["10_20_0_0_16_via_10_0_0_2_main"]["active"] is True
+        assert coord.ds["route"]["10_99_0_0_16_via_10_0_0_9_main"]["active"] is False
 
     def test_restored_static_route_that_is_really_gone_leaves_after_the_grace(self, hass):
         coord = _make_coordinator(hass, options={"sensor_routes": True})
@@ -3969,9 +4005,9 @@ class TestTrackerInterval:
         assert self._interval(hass, {"track_network_hosts_interval": 300}) == timedelta(seconds=90), "default timeout is 180"
         assert self._interval(hass, {"track_network_hosts_interval": 300, "track_network_hosts_timeout": 600}) == timedelta(seconds=300)
         assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 60}) == timedelta(seconds=30)
-        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 4}) == timedelta(seconds=2), "half the timeout wins over the floor"
-        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 1}) == timedelta(seconds=1), "never zero"
-        assert self._interval(hass, {"track_network_hosts_interval": 5, "track_network_hosts_timeout": 9}) == timedelta(seconds=4)
+        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 4}) == timedelta(seconds=5), "never below the minimum"
+        for silly in (1, 0, -30):
+            assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": silly}) == timedelta(seconds=5), silly
         assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": "junk"}) == timedelta(seconds=60)
 
     def test_starts_at_the_default_pace(self, hass):
