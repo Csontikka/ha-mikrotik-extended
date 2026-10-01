@@ -487,7 +487,7 @@ This integration is available in the [HACS](https://hacs.xyz/) default store.
 
 ### Requirements
 
-- Home Assistant 2024.3.0 or later
+- Home Assistant 2024.11.0 or later
 - RouterOS 7+ (v6 is not officially supported — see [Feature Availability](#feature-availability))
 - API user with permissions: `read, write, api, reboot, policy, test, sensitive`
   > All permissions are recommended. Without `write`, switches and Kid Control auto-setup won't work. Without `reboot`, the reboot button is unavailable.
