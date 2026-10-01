@@ -35,7 +35,7 @@ _IPV6_FULL_RE = re.compile(r"\b(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}\b")
 _IPV6_RE = re.compile(r"\b(?:[0-9A-Fa-f]{1,4}:)*[0-9A-Fa-f]{1,4}::(?:[0-9A-Fa-f]{1,4}:)*[0-9A-Fa-f]{0,4}|::[0-9A-Fa-f]{1,4}")
 
 # Free-text sensitive values that appear as 'key': 'value' in raw API reprs.
-_KEYED = ("serial-number", "sfp-vendor-serial", "ssid", "caller-id")
+_KEYED = ("serial-number", "sfp-vendor-serial", "ssid", "caller-id", "imei", "imsi", "iccid", "uicc")
 _KEYED_RE = re.compile(r"('(?:" + "|".join(re.escape(k) for k in _KEYED) + r")'\s*:\s*')([^']*)(')")
 
 

@@ -49,6 +49,7 @@ from .const import (
     CONF_SENSOR_FILTER,
     CONF_SENSOR_INTERFACES,
     CONF_SENSOR_KIDCONTROL,
+    CONF_SENSOR_LTE,
     CONF_SENSOR_MANGLE,
     CONF_SENSOR_NAT,
     CONF_SENSOR_NETWATCH_TRACKER,
@@ -72,6 +73,7 @@ from .const import (
     DEFAULT_SENSOR_FILTER,
     DEFAULT_SENSOR_INTERFACES,
     DEFAULT_SENSOR_KIDCONTROL,
+    DEFAULT_SENSOR_LTE,
     DEFAULT_SENSOR_MANGLE,
     DEFAULT_SENSOR_NAT,
     DEFAULT_SENSOR_NETWATCH_TRACKER,
@@ -405,6 +407,69 @@ def _list_id_order(entry: dict):
         return (1, 0, raw)
 
 
+# What is read from an LTE modem. Deliberately a list of what to take rather
+# than of what to leave out: the monitor reply also carries the IMEI, the IMSI
+# and the ICCID, and those must never reach the data store, the entities, the
+# diagnostics or the log, whatever a later RouterOS release adds next to them.
+_LTE_TEXT_FIELDS = ("status", "model", "revision", "current-operator", "data-class", "primary-band", "ca-band", "dl-modulation", "session-uptime")
+_LTE_ID_FIELDS = ("current-cellid", "enb-id", "sector-id", "phy-cellid")
+_LTE_NUMBER_FIELDS = ("rssi", "rsrp", "rsrq", "sinr", "cqi", "ri", "mcs", "nr-rsrp", "nr-rsrq", "nr-sinr", "nr-cqi")
+_LTE_NEVER = ("imei", "imsi", "iccid", "uicc")
+_LTE_NUMBER_RE = re.compile(r"^\s*(-?\d+(?:\.\d+)?)")
+
+
+def _lte_number(value):
+    """A signal value as a number, None when the modem gave none.
+
+    The API hands out plain numbers on some releases and the terminal form
+    with its unit ("-67dBm", "18dB") on others; both are read.
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    match = _LTE_NUMBER_RE.match(str(value))
+    if match is None:
+        return None
+    number = float(match.group(1))
+    return int(number) if number.is_integer() else number
+
+
+def _lte_text(value):
+    """A text value on one line, None when empty.
+
+    The carrier aggregation bands come as several lines, or as a list.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (list, tuple)):
+        value = "; ".join(str(part) for part in value)
+    text = "; ".join(" ".join(line.split()) for line in str(value).splitlines() if line.strip())
+    return text or None
+
+
+def lte_row(name: str, modem: dict, info: dict) -> dict:
+    """One modem as the entities see it, built from the interface and its monitor reply."""
+    row = {"name": name, "uid-ref": f"lte-{name}"}
+    for field in _LTE_TEXT_FIELDS:
+        row[field] = _lte_text(info.get(field))
+    for field in _LTE_ID_FIELDS:
+        row[field] = _lte_text(info.get(field))
+    for field in _LTE_NUMBER_FIELDS:
+        row[field] = _lte_number(info.get(field))
+    # 5G values the modem reports under a name this code does not know yet
+    # are kept together as one attribute, so they can be seen and reported.
+    known = set(_LTE_TEXT_FIELDS) | set(_LTE_ID_FIELDS) | set(_LTE_NUMBER_FIELDS) | set(_LTE_NEVER)
+    other = {key: _lte_text(value) for key, value in info.items() if str(key).startswith("nr-") and key not in known}
+    row["nr-other"] = ", ".join(f"{key}={value}" for key, value in sorted(other.items()) if value) or None
+    row["connected"] = row["status"] in ("running", "connected")
+    # Whether the 5G sensors exist depends on what the modem is set up for,
+    # not on what it reports this minute, so they do not come and go as the
+    # modem moves between LTE and 5G.
+    row["nr-capable"] = "5g" in str(modem.get("network-mode", "")).lower()
+    return row
+
+
 def _route_interface(row: dict) -> str:
     """The interface a route leaves through, "" when it is not known.
 
@@ -506,6 +571,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "routing_rules": {},
             "filter": {},
             "raw": {},
+            "lte": {},
             "route": {},
             "ppp_secret": {},
             "ppp_active": {},
@@ -766,6 +832,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def option_sensor_routes(self):
         """Config entry option to create route sensors."""
         return self.config_entry.options.get(CONF_SENSOR_ROUTES, DEFAULT_SENSOR_ROUTES)
+
+    # ---------------------------
+    #   option_sensor_lte
+    # ---------------------------
+    @property
+    def option_sensor_lte(self):
+        """Config entry option to create LTE modem sensors."""
+        return self.config_entry.options.get(CONF_SENSOR_LTE, DEFAULT_SENSOR_LTE)
 
     # ---------------------------
     #   option_sensor_kidcontrol
@@ -1087,6 +1161,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         if self.api.connected() and self.option_sensor_filter:
             await self.hass.async_add_executor_job(self.get_filter)
+
+        if self.api.connected() and self.option_sensor_lte:
+            await self.hass.async_add_executor_job(self.get_lte)
 
         if self.api.connected() and self.option_sensor_raw:
             await self.hass.async_add_executor_job(self.get_raw)
@@ -2568,6 +2645,37 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 del strikes[key]
                 if replaced:
                     self._routes_replaced.add(key)
+
+    # ---------------------------
+    #   get_lte
+    # ---------------------------
+    def get_lte(self) -> None:
+        """Get LTE / 5G modem data from Mikrotik"""
+        # The interface list is read anyway and tells whether there is a modem
+        # at all, so a router without one is never asked.
+        if not any(vals.get("type") == "lte" for vals in self.ds["interface"].values()):
+            self.ds["lte"] = {}
+            return
+
+        modems = self.api.query("/interface/lte")
+        if not modems:
+            # There is a modem, so an empty answer is a failed read: keep
+            # what is known rather than dropping the sensors.
+            return
+
+        seen = set()
+        for modem in modems:
+            name = str(modem.get("name") or modem.get("default-name") or "")
+            modem_id = modem.get(".id")
+            if not name or not modem_id:
+                continue
+            seen.add(name)
+            reply = self.api.query("/interface/lte", command="monitor", args={".id": modem_id, "once": True})
+            info = reply[0] if reply and isinstance(reply[0], dict) else {}
+            self.ds["lte"][name] = lte_row(name, modem, info)
+        for name in list(self.ds["lte"]):
+            if name not in seen:
+                del self.ds["lte"][name]
 
     # ---------------------------
     #   get_kidcontrol

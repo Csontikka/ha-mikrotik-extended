@@ -137,6 +137,13 @@ def _skip_interface_error_sensor(config_entry, entity_description, item) -> bool
     return item.get(entity_description.data_attribute) in (None, "")
 
 
+def _skip_lte_sensor(entity_description, item) -> bool:
+    """The 5G sensors exist only for a modem that is set up for 5G."""
+    if entity_description.data_path != "lte":
+        return False
+    return str(entity_description.data_attribute).startswith("nr-") and not item.get("nr-capable")
+
+
 def _skip_client_traffic(entity_description, item) -> bool:
     if entity_description.data_path != "client_traffic":
         return False
@@ -181,6 +188,8 @@ def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
     if _skip_interface_traffic_sensor(config_entry, entity_description, item):
         return True
     if _skip_interface_error_sensor(config_entry, entity_description, item):
+        return True
+    if _skip_lte_sensor(entity_description, item):
         return True
     if _skip_client_traffic(entity_description, item):
         return True
