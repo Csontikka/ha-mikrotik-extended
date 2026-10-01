@@ -106,6 +106,7 @@ Monitor and control individual rules — each gets a switch entity:
 - NAT rules
 - Mangle rules
 - Filter rules
+- Raw rules
 - Routing rules
 
 More information: [MikroTik Firewall documentation](https://help.mikrotik.com/docs/display/ROS/Firewall)
@@ -421,7 +422,7 @@ automation:
 | System monitoring (CPU, memory, temps, fans, PSU, uptime) | ✓ | ✓ | No |
 | Network interfaces (status, traffic, IP address) | ✓ | ✓ | Traffic: Yes |
 | PoE out control (per port) | ✓ | ? | With interfaces |
-| Firewall rules (NAT, mangle, filter) | ✓ | ✓ | Yes |
+| Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
 | Device tracking (ARP) | ✓ | ✓ | Yes |
 | WireGuard peers | ✓ | — | Yes |
@@ -519,7 +520,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
 | Sensor preset | recommended | Quick preset selector — see below. |
 | Interface entities | enabled | Per-interface entities: port switches, port trackers, traffic sensors and IP address sensors. Disable to monitor only the core device, useful on large switches. Disabling also skips the per-port link queries, which is where most of the polling load on a large switch comes from. Note that disabling removes those entities and their per-port devices from Home Assistant, so a renamed port or an assigned area is not restored when you switch back. |
-| Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, scripts, WireGuard, containers, etc. |
+| Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, raw, scripts, WireGuard, containers, etc. |
 
 > **Note:** The **Configure** button opens the options flow (scan interval, presets, sensor toggles). The **Reconfigure** option (three-dot menu) is for changing connection settings only (host, port, credentials, SSL).
 
@@ -532,7 +533,7 @@ Available during initial setup and via the **Configure** button at any time:
 | **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. The per-port link queries stop as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
-| **Full** | Everything — port traffic, client traffic, queues, routing rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Full** | Everything — port traffic, client traffic, queues, routing rules, raw rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
 | **Custom** | Manually select each sensor category |
 
 Switching presets takes effect after saving:
