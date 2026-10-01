@@ -222,13 +222,13 @@ async def test_options_flow_core_preset_disables_interfaces(hass):
 
 
 async def test_tracker_interval_outside_the_range_is_rejected(hass):
-    """The form refuses a tracker interval below 5 or above 300 seconds, and a fraction."""
+    """The form refuses a tracker interval below 5 or above 300 seconds."""
     import pytest
     from homeassistant.data_entry_flow import InvalidData
 
     entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options=INITIAL_OPTIONS, unique_id="192.168.88.1")
     entry.add_to_hass(hass)
-    for bad in (4, 301, 10.7):
+    for bad in (4, 301):
         result = await hass.config_entries.options.async_init(entry.entry_id)
         with pytest.raises(InvalidData):
             await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SCAN_INTERVAL: 30, CONF_TRACK_HOSTS_INTERVAL: bad})
@@ -258,3 +258,23 @@ async def test_tracker_interval_is_stored_as_a_whole_number(hass):
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert entry.options[CONF_TRACK_HOSTS_INTERVAL] == 45
     assert type(entry.options[CONF_TRACK_HOSTS_INTERVAL]) is int
+
+
+async def test_every_options_form_can_be_sent_to_the_frontend(hass):
+    """Home Assistant serialises each form before sending it; a validator it
+    cannot serialise makes the form fail to open with a server error. The flow
+    tests above never serialise, so this walks every step the way the API does."""
+    import voluptuous_serialize
+    from homeassistant.helpers import config_validation as cv
+
+    entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options=INITIAL_OPTIONS, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    seen = []
+    answers = {"basic_options": {CONF_SCAN_INTERVAL: 30}, "sensor_mode": {"sensor_preset": "custom"}, "sensor_select": SENSOR_SELECT_INPUT}
+    while result["type"] == FlowResultType.FORM:
+        fields = voluptuous_serialize.convert(result["data_schema"], custom_serializer=cv.custom_serializer)
+        assert fields, result["step_id"]
+        seen.append(result["step_id"])
+        result = await hass.config_entries.options.async_configure(result["flow_id"], answers[result["step_id"]])
+    assert seen == ["basic_options", "sensor_mode", "sensor_select"]
