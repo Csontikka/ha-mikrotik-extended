@@ -393,8 +393,9 @@ async def _reload_counts(hass, *, flow, user_input, with_listener):
     """Run a reauth or reconfigure flow; return (flow reloads, listener calls).
 
     The listener stands in for the one a loaded entry registers, which
-    schedules a reload of its own, so the two numbers together are the
-    reloads the entry would go through.
+    schedules one reload per call. The first number is what the flow itself
+    scheduled; that the real listener reloads is covered by the test of
+    async_reload_entry, not here.
     """
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -430,6 +431,12 @@ async def test_reconfigure_changed_with_listener_leaves_reload_to_listener(hass)
     """A loaded entry is reloaded by its own listener, and only by it."""
     changed = {**RECONFIGURE_UNCHANGED, CONF_PASSWORD: "updatedpass"}
     assert await _reload_counts(hass, flow="reconfigure", user_input=changed, with_listener=True) == (0, 1)
+
+
+async def test_reconfigure_title_only_change_leaves_reload_to_listener(hass):
+    """A new name alone counts as a change and reaches the listener."""
+    renamed = {**RECONFIGURE_UNCHANGED, CONF_NAME: "Renamed"}
+    assert await _reload_counts(hass, flow="reconfigure", user_input=renamed, with_listener=True) == (0, 1)
 
 
 async def test_reconfigure_changed_without_listener_schedules_reload(hass):
