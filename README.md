@@ -111,6 +111,16 @@ Monitor and control individual rules — each gets a switch entity:
 
 More information: [MikroTik Firewall documentation](https://help.mikrotik.com/docs/display/ROS/Firewall)
 
+### Routes
+
+A binary sensor for every static route and for every default route, on while the route is active:
+
+- A failover pair with `check-gateway` shows which of the two routes is carrying traffic.
+- A default route handed out by PPPoE or DHCP leaves the routing table when the link drops. Its sensor stays and turns off, also when Home Assistant restarts during the outage, so an automation can react to the WAN going down.
+- Attributes: destination, gateway, distance, routing table, comment, and whether the route is enabled and still present in the table.
+
+Other dynamic routes (connected, OSPF, BGP) are not read, so a large routing table costs nothing. Enable **Route sensors** in the options.
+
 ![Firewall Filter Switch](docs/assets/images/screenshots/firewall_filter.png)
 
 Detailed rule information available per entity (chain, action, protocol, addresses, ports, connection state):
@@ -424,6 +434,7 @@ automation:
 | PoE out control (per port) | ✓ | ? | With interfaces |
 | Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
+| Route sensors (static and default routes) | ? | ✓ | Yes |
 | Device tracking (ARP) | ✓ | ✓ | Yes |
 | WireGuard peers | ✓ | — | Yes |
 | Containers | ✓ | — | Yes |
@@ -534,7 +545,7 @@ Available during initial setup and via the **Configure** button at any time:
 | **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. The per-port link queries stop as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
-| **Full** | Everything: port traffic, client traffic, queues, routing rules, raw rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Full** | Everything: port traffic, client traffic, queues, routing rules, raw rules, route sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
 | **Custom** | Manually select each sensor category |
 
 Switching presets takes effect after saving:
