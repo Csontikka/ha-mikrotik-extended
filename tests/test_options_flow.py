@@ -33,6 +33,7 @@ from custom_components.mikrotik_extended.const import (
     CONF_SENSOR_SIMPLE_QUEUES,
     CONF_SENSOR_WIREGUARD,
     CONF_TRACK_HOSTS,
+    CONF_TRACK_HOSTS_INTERVAL,
     CONF_TRACK_HOSTS_TIMEOUT,
     DOMAIN,
 )
@@ -111,6 +112,7 @@ async def test_options_flow_updates_scan_interval(hass):
         {
             CONF_SCAN_INTERVAL: 60,
             CONF_TRACK_HOSTS_TIMEOUT: 300,
+            CONF_TRACK_HOSTS_INTERVAL: 45,
             CONF_ZONE: "away",
         },
     )
@@ -128,6 +130,7 @@ async def test_options_flow_updates_scan_interval(hass):
 
     assert entry.options[CONF_SCAN_INTERVAL] == 60
     assert entry.options[CONF_TRACK_HOSTS_TIMEOUT] == 300
+    assert entry.options[CONF_TRACK_HOSTS_INTERVAL] == 45
     assert entry.options[CONF_ZONE] == "away"
     # Full round-trip: every flag submitted on sensor_select must land verbatim
     # in entry.options (not just CONF_SENSOR_MANGLE).
@@ -198,3 +201,29 @@ async def test_options_flow_core_preset_disables_interfaces(hass):
     assert entry.options[CONF_SENSOR_PORT_TRACKER] is False
     assert entry.options[CONF_SENSOR_NAT] is False
     assert entry.options[CONF_TRACK_HOSTS] is False
+
+
+async def test_tracker_interval_outside_the_range_is_rejected(hass):
+    """The form refuses a tracker interval below 5 or above 300 seconds."""
+    import pytest
+    from homeassistant.data_entry_flow import InvalidData
+
+    entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options=INITIAL_OPTIONS, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    for bad in (4, 301):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        with pytest.raises(InvalidData):
+            await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SCAN_INTERVAL: 30, CONF_TRACK_HOSTS_INTERVAL: bad})
+
+
+async def test_tracker_interval_form_shows_the_stored_value(hass):
+    """Reopening the options shows what was saved, 10 when nothing was."""
+    for stored, shown in ((None, 10), (120, 120)):
+        options = dict(INITIAL_OPTIONS)
+        if stored is not None:
+            options[CONF_TRACK_HOSTS_INTERVAL] = stored
+        entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options=options, unique_id=f"192.168.88.{shown}")
+        entry.add_to_hass(hass)
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        defaults = {str(key): key.default() for key in result["data_schema"].schema}
+        assert defaults[CONF_TRACK_HOSTS_INTERVAL] == shown

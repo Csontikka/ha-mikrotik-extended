@@ -3500,6 +3500,31 @@ def _make_tracker(hass, main_coord):
     return tracker
 
 
+class TestTrackerInterval:
+    """The tracker runs on its own interval, taken from the options."""
+
+    def _interval(self, hass, options=None):
+        return _make_tracker(hass, _make_coordinator(hass, options=options)).update_interval
+
+    def test_default_is_ten_seconds(self, hass):
+        assert self._interval(hass) == timedelta(seconds=10)
+
+    def test_option_sets_the_interval(self, hass):
+        assert self._interval(hass, {"track_network_hosts_interval": 60}) == timedelta(seconds=60)
+
+    def test_main_scan_interval_does_not_leak_in(self, hass):
+        assert self._interval(hass, {"scan_interval": 120}) == timedelta(seconds=10)
+
+    def test_out_of_range_values_are_clamped(self, hass):
+        assert self._interval(hass, {"track_network_hosts_interval": 1}) == timedelta(seconds=5)
+        assert self._interval(hass, {"track_network_hosts_interval": 0}) == timedelta(seconds=5)
+        assert self._interval(hass, {"track_network_hosts_interval": 86400}) == timedelta(seconds=300)
+
+    def test_unusable_value_falls_back_to_the_default(self, hass):
+        assert self._interval(hass, {"track_network_hosts_interval": None}) == timedelta(seconds=10)
+        assert self._interval(hass, {"track_network_hosts_interval": "soon"}) == timedelta(seconds=10)
+
+
 class TestTrackerCoordinator:
     def test_option_zone(self, hass):
         main = _make_coordinator(hass)
