@@ -119,7 +119,7 @@ For a router with an LTE or 5G modem, per modem:
 - For a modem set up for 5G, the matching 5G signal sensors as well. They read unknown while the modem is on LTE.
 - Cell id, eNB id, sector id, physical cell id, session uptime, modulation, modem model and firmware revision as attributes of the operator sensor.
 
-IMEI, IMSI and ICCID are not read into Home Assistant. Enable **LTE / 5G modem sensors** in the options; it costs one extra query per modem on every poll, and a router without a modem is never asked.
+IMEI, IMSI and ICCID are not kept: they are dropped from the modem's reply before anything is stored, so they appear in no entity, attribute or diagnostics dump. Enable **LTE / 5G modem sensors** in the options; it costs one query for the modem list and one per modem on every poll, and a router without a modem is never asked.
 
 ### Routes
 
