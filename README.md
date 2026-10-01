@@ -534,6 +534,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
 | Sensor preset | recommended | Quick preset selector — see below. |
 | Interface entities | enabled | Per-interface entities: port switches, port trackers, traffic sensors and IP address sensors. Disable to monitor only the core device, useful on large switches. Disabling also skips the per-port link queries, which is where most of the polling load on a large switch comes from. Note that disabling removes those entities and their per-port devices from Home Assistant, so a renamed port or an assigned area is not restored when you switch back. |
+| Port switches | enabled | The switch on every port that disables the interface on the router. Turn it off to keep a port, the uplink for example, from being disabled by accident; the port tracker, traffic sensors and PoE selector of the port stay. |
 | Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, raw, scripts, WireGuard, containers, etc. |
 
 > **Note:** The **Configure** button opens the options flow (scan interval, presets, sensor toggles). The **Reconfigure** option (three-dot menu) is for changing connection settings only (host, port, credentials, SSL).
