@@ -379,6 +379,93 @@ async def test_reconfigure_flow_connection_error(hass):
         assert result["errors"][CONF_HOST] == "cannot_connect"
 
 
+RECONFIGURE_UNCHANGED = {
+    CONF_NAME: "Mock Title",
+    CONF_HOST: ENTRY_DATA[CONF_HOST],
+    CONF_USERNAME: ENTRY_DATA[CONF_USERNAME],
+    CONF_PASSWORD: ENTRY_DATA[CONF_PASSWORD],
+    CONF_PORT: ENTRY_DATA[CONF_PORT],
+    "ssl_mode": "none",
+}
+
+
+async def _reload_counts(hass, *, flow, user_input, with_listener):
+    """Run a reauth or reconfigure flow; return (flow reloads, listener calls).
+
+    The listener stands in for the one a loaded entry registers, which
+    schedules a reload of its own, so the two numbers together are the
+    reloads the entry would go through.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**ENTRY_DATA, CONF_NAME: "Mock Title"},
+        options={},
+        unique_id="192.168.88.1",
+    )
+    entry.add_to_hass(hass)
+    listener_calls = []
+
+    async def _listener(hass, config_entry):
+        listener_calls.append(config_entry.entry_id)
+
+    if with_listener:
+        entry.add_update_listener(_listener)
+
+    with (
+        patch("custom_components.mikrotik_extended.config_flow.MikrotikAPI") as mock_api_cls,
+        patch.object(hass.config_entries, "async_schedule_reload") as schedule_reload,
+    ):
+        mock_api_cls.return_value = MagicMock(error=None, **{"connect.return_value": True})
+        start = entry.start_reauth_flow if flow == "reauth" else entry.start_reconfigure_flow
+        result = await start(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], dict(user_input))
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == f"{flow}_successful"
+    return schedule_reload.call_count, len(listener_calls)
+
+
+async def test_reconfigure_changed_with_listener_leaves_reload_to_listener(hass):
+    """A loaded entry is reloaded by its own listener, and only by it."""
+    changed = {**RECONFIGURE_UNCHANGED, CONF_PASSWORD: "updatedpass"}
+    assert await _reload_counts(hass, flow="reconfigure", user_input=changed, with_listener=True) == (0, 1)
+
+
+async def test_reconfigure_changed_without_listener_schedules_reload(hass):
+    """An entry whose setup failed has no listener, so the flow reloads it."""
+    changed = {**RECONFIGURE_UNCHANGED, CONF_PASSWORD: "updatedpass"}
+    assert await _reload_counts(hass, flow="reconfigure", user_input=changed, with_listener=False) == (1, 0)
+
+
+async def test_reconfigure_unchanged_with_listener_schedules_reload(hass):
+    """Nothing changed, so the listener is not notified and the flow reloads."""
+    assert await _reload_counts(hass, flow="reconfigure", user_input=RECONFIGURE_UNCHANGED, with_listener=True) == (1, 0)
+
+
+async def test_reconfigure_unchanged_without_listener_schedules_reload(hass):
+    """An unchanged entry waiting to retry is brought up at once."""
+    assert await _reload_counts(hass, flow="reconfigure", user_input=RECONFIGURE_UNCHANGED, with_listener=False) == (1, 0)
+
+
+async def test_reauth_with_listener_reloads_once(hass):
+    """New credentials on a loaded entry: the listener reloads, the flow does not."""
+    creds = {CONF_USERNAME: "admin", CONF_PASSWORD: "newpass"}
+    assert await _reload_counts(hass, flow="reauth", user_input=creds, with_listener=True) == (0, 1)
+
+
+async def test_reauth_without_listener_schedules_reload(hass):
+    """New credentials on an entry that failed setup: the flow reloads it."""
+    creds = {CONF_USERNAME: "admin", CONF_PASSWORD: "newpass"}
+    assert await _reload_counts(hass, flow="reauth", user_input=creds, with_listener=False) == (1, 0)
+
+
+async def test_reauth_same_credentials_still_reloads(hass):
+    """Unchanged credentials, e.g. the router account was fixed instead."""
+    creds = {CONF_USERNAME: ENTRY_DATA[CONF_USERNAME], CONF_PASSWORD: ENTRY_DATA[CONF_PASSWORD]}
+    assert await _reload_counts(hass, flow="reauth", user_input=creds, with_listener=True) == (1, 0)
+
+
 async def test_discovery_scan_finds_devices_routes_to_pick_device(hass):
     """When MNDP scan returns devices, flow routes to pick_device step."""
     from custom_components.mikrotik_extended.mndp import MndpDevice
