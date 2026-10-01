@@ -415,7 +415,7 @@ _LTE_TEXT_FIELDS = ("status", "model", "revision", "current-operator", "data-cla
 _LTE_ID_FIELDS = ("current-cellid", "enb-id", "sector-id", "phy-cellid")
 _LTE_NUMBER_FIELDS = ("rssi", "rsrp", "rsrq", "sinr", "cqi", "ri", "mcs", "nr-rsrp", "nr-rsrq", "nr-sinr", "nr-cqi")
 _LTE_NEVER = ("imei", "imsi", "iccid", "uicc")
-_LTE_NUMBER_RE = re.compile(r"^\s*(-?\d+(?:\.\d+)?)")
+_LTE_NUMBER_RE = re.compile(r"^\s*([+-]?\d+(?:\.\d+)?)")
 
 
 def _lte_number(value):
@@ -445,12 +445,16 @@ def _lte_text(value):
     if isinstance(value, (list, tuple)):
         value = "; ".join(str(part) for part in value)
     text = "; ".join(" ".join(line.split()) for line in str(value).splitlines() if line.strip())
+    # Home Assistant refuses a state longer than 255 characters, and a long
+    # list of aggregated carriers can get there.
+    if len(text) > 255:
+        text = text[:252] + "..."
     return text or None
 
 
-def lte_row(name: str, modem: dict, info: dict) -> dict:
+def lte_row(key: str, modem: dict, info: dict) -> dict:
     """One modem as the entities see it, built from the interface and its monitor reply."""
-    row = {"name": name, "uid-ref": f"lte-{name}"}
+    row = {"name": str(modem.get("name") or key), "uid-ref": f"lte-{key}"}
     for field in _LTE_TEXT_FIELDS:
         row[field] = _lte_text(info.get(field))
     for field in _LTE_ID_FIELDS:
@@ -466,7 +470,7 @@ def lte_row(name: str, modem: dict, info: dict) -> dict:
     # Whether the 5G sensors exist depends on what the modem is set up for,
     # not on what it reports this minute, so they do not come and go as the
     # modem moves between LTE and 5G.
-    row["nr-capable"] = "5g" in str(modem.get("network-mode", "")).lower()
+    row["nr-capable"] = "5g" in str(modem.get("network-mode", "")).lower() or any(str(key).startswith("nr-") for key in info)
     return row
 
 
@@ -2664,18 +2668,33 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             return
 
         seen = set()
+        misses = self._get_stale_counters("lte")
         for modem in modems:
-            name = str(modem.get("name") or modem.get("default-name") or "")
+            # Keyed by the name the router gave the modem, the way interfaces
+            # are: renaming it on the router must not turn every sensor into
+            # a new entity. The name the user chose is what is shown.
+            key = str(modem.get("default-name") or modem.get("name") or "")
             modem_id = modem.get(".id")
-            if not name or not modem_id:
+            if not key or not modem_id:
                 continue
-            seen.add(name)
+            seen.add(key)
             reply = self.api.query("/interface/lte", command="monitor", args={".id": modem_id, "once": True})
-            info = reply[0] if reply and isinstance(reply[0], dict) else {}
-            self.ds["lte"][name] = lte_row(name, modem, info)
-        for name in list(self.ds["lte"]):
-            if name not in seen:
-                del self.ds["lte"][name]
+            if not reply or not isinstance(reply[0], dict):
+                # No answer, a refusal during a cell change for one, is not
+                # a link that went down. The last reading stays for a few
+                # cycles, so one failed query cannot trip a failover
+                # automation; only then does the modem read as unknown.
+                misses[key] = misses.get(key, 0) + 1
+                if key in self.ds["lte"] and misses[key] < 3:
+                    continue
+                reply = [{}]
+            else:
+                misses.pop(key, None)
+            self.ds["lte"][key] = lte_row(key, modem, reply[0])
+        for key in list(self.ds["lte"]):
+            if key not in seen:
+                del self.ds["lte"][key]
+                misses.pop(key, None)
 
     # ---------------------------
     #   get_kidcontrol
