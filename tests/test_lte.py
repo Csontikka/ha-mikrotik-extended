@@ -108,6 +108,8 @@ class TestLteRow:
         row = lte_row("lte1", MODEM, reply)
         assert row["connected"] is True
         assert row["name"] == "lte1" and row["uid-ref"] == "lte-lte1"
+        renamed = lte_row("lte1", {**MODEM, "name": "wan-lte"}, reply)
+        assert renamed["name"] == "wan-lte" and renamed["uid-ref"] == "lte-lte1"
 
 
 class TestLteRowEdges:
@@ -135,13 +137,21 @@ class TestLteRowEdges:
         assert row["nr-other"] == "nr-band=n78@100Mhz, nr-phy-cellid=77"
         assert lte_row("lte1", MODEM, TERMINAL_REPLY)["nr-other"] is None
 
+    def test_5g_values_make_a_modem_5g_capable_even_without_a_network_mode(self):
+        assert lte_row("lte1", {}, {"nr-rsrp": -101})["nr-capable"] is True
+
+    def test_a_very_long_band_list_is_cut_to_what_a_state_can_hold(self):
+        carriers = "\n".join(f"B{n}@20Mhz earfcn: {1000 + n} phy-cellid: {n}" for n in range(12))
+        band = lte_row("lte1", MODEM, {"ca-band": carriers})["ca-band"]
+        assert len(band) == 255 and band.endswith("...")
+
     def test_carrier_aggregation_as_a_list(self):
         assert lte_row("lte1", MODEM, {"ca-band": ["B20@10Mhz", "B28@10Mhz"]})["ca-band"] == "B20@10Mhz; B28@10Mhz"
 
 
 @pytest.mark.parametrize(
     ("raw", "number"),
-    [("-67dBm", -67), ("18dB", 18), ("10", 10), (10, 10), (-7.5, -7.5), ("-7.5dB", -7.5), (" -95 dBm", -95), ("", None), (None, None), ("n/a", None), (True, None), ("dBm", None)],
+    [("-67dBm", -67), ("18dB", 18), ("+5dB", 5), ("10", 10), (10, 10), (-7.5, -7.5), ("-7.5dB", -7.5), (" -95 dBm", -95), ("", None), (None, None), ("n/a", None), (True, None), ("dBm", None)],
 )
 def test_lte_number(raw, number):
     assert _lte_number(raw) == number
@@ -180,13 +190,57 @@ class TestGetLte:
         assert coord.ds["lte"]["lte1"]["rsrp"] == -95
         assert coord.ds["lte"]["lte2"]["rsrp"] == -110 and coord.ds["lte"]["lte2"]["current-operator"] == "Other Net"
 
-    def test_refused_monitor_leaves_the_modem_with_empty_values(self, hass):
+    def test_one_failed_monitor_reply_keeps_the_last_reading(self, hass):
+        """A refusal during a cell change must not read as a dropped link."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"lte1": {"type": "lte"}}
+        _answers(coord, [MODEM], [API_REPLY])
+        coord.get_lte()
+        _answers(coord, [MODEM], None)
+        coord.get_lte()
+        coord.get_lte()
+        row = coord.ds["lte"]["lte1"]
+        assert row["rsrp"] == -95 and row["connected"] is True
+
+    def test_a_monitor_that_keeps_failing_ends_as_unknown(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"lte1": {"type": "lte"}}
+        _answers(coord, [MODEM], [API_REPLY])
+        coord.get_lte()
+        _answers(coord, [MODEM], None)
+        for _ in range(3):
+            coord.get_lte()
+        row = coord.ds["lte"]["lte1"]
+        assert row["rsrp"] is None and row["connected"] is False
+
+    def test_the_miss_count_starts_over_after_a_good_reply(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"lte1": {"type": "lte"}}
+        for monitor in ([API_REPLY], None, None, [API_REPLY], None, None):
+            _answers(coord, [MODEM], monitor)
+            coord.get_lte()
+        assert coord.ds["lte"]["lte1"]["rsrp"] == -95
+
+    def test_a_modem_never_read_shows_up_as_unknown_at_once(self, hass):
+        """The sensors must exist from the first cycle, even without a reply."""
         coord = _make_coordinator(hass)
         coord.ds["interface"] = {"lte1": {"type": "lte"}}
         _answers(coord, [MODEM], None)
         coord.get_lte()
         row = coord.ds["lte"]["lte1"]
         assert row["rsrp"] is None and row["connected"] is False
+
+    def test_renaming_the_modem_keeps_its_key(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"lte1": {"type": "lte"}}
+        _answers(coord, [MODEM], [API_REPLY])
+        coord.get_lte()
+        _answers(coord, [{**MODEM, "name": "wan-lte"}], [API_REPLY])
+        coord.get_lte()
+        assert list(coord.ds["lte"]) == ["lte1"]
+        row = coord.ds["lte"]["lte1"]
+        assert row["name"] == "wan-lte", "the chosen name is what is shown"
+        assert row["uid-ref"] == "lte-lte1", "the unique id does not follow the rename"
 
     def test_failed_list_read_keeps_what_is_known(self, hass):
         coord = _make_coordinator(hass)
@@ -256,11 +310,16 @@ def test_log_redaction_covers_the_modem_identifiers():
     """A debug dump of a raw reply must not carry them either."""
     from custom_components.mikrotik_extended.log_redaction import LogRedactor
 
-    line = f"raw response: [{{'imei': '{IMEI}', 'imsi': '{IMSI}', 'iccid': '{ICCID}', 'rsrp': -95}}]"
-    masked = LogRedactor(b"salt").redact(line)
-    for secret in (IMEI, IMSI, ICCID):
-        assert secret not in masked
-    assert "-95" in masked
+    redactor = LogRedactor(b"salt")
+    quoted = redactor.redact(f"raw response: [{{'imei': '{IMEI}', 'imsi': '{IMSI}', 'iccid': '{ICCID}', 'rsrp': -95}}]")
+    # The API library turns all-digit values into numbers, so this is the
+    # form a real reply has in a repr.
+    numeric = redactor.redact(repr([{"imei": int(IMEI), "imsi": int(IMSI), "iccid": int(ICCID), "rsrp": -95, "enb-id": 842783}]))
+    for masked in (quoted, numeric):
+        for secret in (IMEI, IMSI, ICCID):
+            assert secret not in masked
+        assert "-95" in masked
+    assert "842783" in numeric, "other numbers are left readable"
 
 
 class TestLteEntities:
