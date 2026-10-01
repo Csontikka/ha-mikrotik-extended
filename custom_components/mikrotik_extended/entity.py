@@ -59,9 +59,9 @@ _LOGGER = getLogger(__name__)
 # confirm the match. WireGuard peers are deliberately absent: the public key
 # is not unique across interfaces, so a match there could bind a switch to a
 # different peer.
-REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "queue"})
+REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "raw", "queue"})
 
-_FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Routing Rules"}
+_FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Raw", "Routing Rules"}
 _IFACE_TYPE_CATEGORY = {
     "ether": "port",
     "vlan": "vlan",

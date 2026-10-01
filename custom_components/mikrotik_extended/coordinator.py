@@ -54,6 +54,7 @@ from .const import (
     CONF_SENSOR_NETWATCH_TRACKER,
     CONF_SENSOR_PORT_TRAFFIC,
     CONF_SENSOR_PPP,
+    CONF_SENSOR_RAW,
     CONF_SENSOR_ROUTING_RULES,
     CONF_SENSOR_SCRIPTS,
     CONF_SENSOR_SIMPLE_QUEUES,
@@ -74,6 +75,7 @@ from .const import (
     DEFAULT_SENSOR_NETWATCH_TRACKER,
     DEFAULT_SENSOR_PORT_TRAFFIC,
     DEFAULT_SENSOR_PPP,
+    DEFAULT_SENSOR_RAW,
     DEFAULT_SENSOR_ROUTING_RULES,
     DEFAULT_SENSOR_SCRIPTS,
     DEFAULT_SENSOR_SIMPLE_QUEUES,
@@ -438,6 +440,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "mangle": {},
             "routing_rules": {},
             "filter": {},
+            "raw": {},
             "ppp_secret": {},
             "ppp_active": {},
             "fw-update": {},
@@ -489,6 +492,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.mangle_removed = {}
         self.routing_rules_removed = {}
         self.filter_removed = {}
+        self.raw_removed = {}
         self.queue_removed = {}
         self.host_hass_recovered = False
         self.host_tracking_initialized = False
@@ -677,6 +681,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def option_sensor_filter(self):
         """Config entry option to not track ARP."""
         return self.config_entry.options.get(CONF_SENSOR_FILTER, DEFAULT_SENSOR_FILTER)
+
+    # ---------------------------
+    #   option_sensor_raw
+    # ---------------------------
+    @property
+    def option_sensor_raw(self):
+        """Config entry option to create firewall Raw rule switches."""
+        return self.config_entry.options.get(CONF_SENSOR_RAW, DEFAULT_SENSOR_RAW)
 
     # ---------------------------
     #   option_sensor_kidcontrol
@@ -999,6 +1011,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected() and self.option_sensor_filter:
             await self.hass.async_add_executor_job(self.get_filter)
 
+        if self.api.connected() and self.option_sensor_raw:
+            await self.hass.async_add_executor_job(self.get_raw)
+
         if self.api.connected() and self.option_sensor_netwatch:
             await self.hass.async_add_executor_job(self.get_netwatch)
 
@@ -1071,6 +1086,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         "nat": ("comment",),
         "mangle": ("comment",),
         "filter": ("comment",),
+        "raw": ("comment",),
         "routing_rules": ("comment",),
         "host": ("host-name",),
         "client_traffic": ("host-name",),
@@ -2147,6 +2163,107 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 self.filter_removed[tmp_name] = 1
                 _LOGGER.info(
                     "Mikrotik %s duplicate Filter rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
+                    self.host,
+                    tmp_name,
+                )
+
+    # ---------------------------
+    #   get_raw
+    # ---------------------------
+    def get_raw(self) -> None:
+        """Get firewall Raw data from Mikrotik"""
+        self.ds["raw"] = parse_api(
+            data=self.ds["raw"],
+            source=self.api.query("/ip/firewall/raw"),
+            key=".id",
+            vals=[
+                {"name": ".id"},
+                {"name": "chain"},
+                {"name": "action"},
+                {"name": "comment"},
+                {"name": "address-list"},
+                {"name": "protocol", "default": "any"},
+                {"name": "in-interface", "default": "any"},
+                {"name": "in-interface-list", "default": "any"},
+                {"name": "out-interface", "default": "any"},
+                {"name": "out-interface-list", "default": "any"},
+                {"name": "src-address", "default": "any"},
+                {"name": "src-address-list", "default": "any"},
+                {"name": "src-port", "default": "any"},
+                {"name": "dst-address", "default": "any"},
+                {"name": "dst-address-list", "default": "any"},
+                {"name": "dst-port", "default": "any"},
+                {"name": "tcp-flags", "default": "any"},
+                {
+                    "name": "enabled",
+                    "source": "disabled",
+                    "type": "bool",
+                    "reverse": True,
+                    "default": True,
+                },
+            ],
+            val_proc=[
+                [
+                    {"name": "uniq-id"},
+                    {"action": "combine"},
+                    {"key": "chain"},
+                    {"text": ","},
+                    {"key": "action"},
+                    {"text": ","},
+                    {"key": "protocol"},
+                    {"text": ","},
+                    {"key": "in-interface"},
+                    {"text": ","},
+                    {"key": "in-interface-list"},
+                    {"text": ":"},
+                    {"key": "src-address"},
+                    {"text": ","},
+                    {"key": "src-address-list"},
+                    {"text": ":"},
+                    {"key": "src-port"},
+                    {"text": "-"},
+                    {"key": "out-interface"},
+                    {"text": ","},
+                    {"key": "out-interface-list"},
+                    {"text": ":"},
+                    {"key": "dst-address"},
+                    {"text": ","},
+                    {"key": "dst-address-list"},
+                    {"text": ":"},
+                    {"key": "dst-port"},
+                ],
+                [
+                    {"name": "name"},
+                    {"action": "combine"},
+                    {"key": "chain"},
+                    {"text": ","},
+                    {"key": "action"},
+                    {"text": ","},
+                    {"key": "protocol"},
+                    {"text": ":"},
+                    {"key": "dst-port"},
+                ],
+            ],
+            skip=[
+                {"name": "dynamic", "value": True},
+                {"name": "action", "value": "jump"},
+            ],
+            prune_stale=True,
+            stale_counters=self._get_stale_counters("raw"),
+        )
+
+        # A rule without a comment is identified by its contents, and two
+        # rules can share those. Both stay, told apart by a suffix.
+        for uid in self.ds["raw"]:
+            self.ds["raw"][uid]["comment"] = str(self.ds["raw"][uid]["comment"])
+        self._decode_store("raw")
+        _prefer_comment_uniq_id(self.ds["raw"], self._get_stale_counters("raw"))
+
+        for tmp_name in _disambiguate_uniq_ids(self.ds["raw"], self._get_stale_counters("raw")):
+            if tmp_name not in self.raw_removed:
+                self.raw_removed[tmp_name] = 1
+                _LOGGER.info(
+                    "Mikrotik %s duplicate Raw rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
                     self.host,
                     tmp_name,
                 )

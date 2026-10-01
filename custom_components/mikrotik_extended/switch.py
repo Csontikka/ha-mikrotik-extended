@@ -66,6 +66,7 @@ async def async_setup_entry(
         "MikrotikMangleSwitch": MikrotikMangleSwitch,
         "MikrotikRoutingRulesSwitch": MikrotikRoutingRulesSwitch,
         "MikrotikFilterSwitch": MikrotikFilterSwitch,
+        "MikrotikRawSwitch": MikrotikRawSwitch,
         "MikrotikQueueSwitch": MikrotikQueueSwitch,
         "MikrotikKidcontrolPauseSwitch": MikrotikKidcontrolPauseSwitch,
         "MikrotikWireguardPeerSwitch": MikrotikWireguardPeerSwitch,
@@ -351,6 +352,17 @@ class MikrotikFilterSwitch(MikrotikSwitch):
         mod_param = self.entity_description.data_switch_parameter
         await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, mod_param, True)
         await self.coordinator.async_refresh()
+
+
+# ---------------------------
+#   MikrotikRawSwitch
+# ---------------------------
+class MikrotikRawSwitch(MikrotikFilterSwitch):
+    """Representation of a firewall Raw switch.
+
+    A Raw rule is toggled the same way as a Filter rule, by its RouterOS id
+    on its own menu, so nothing is overridden.
+    """
 
 
 # ---------------------------
