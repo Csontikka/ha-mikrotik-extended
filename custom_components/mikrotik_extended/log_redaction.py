@@ -37,6 +37,9 @@ _IPV6_RE = re.compile(r"\b(?:[0-9A-Fa-f]{1,4}:)*[0-9A-Fa-f]{1,4}::(?:[0-9A-Fa-f]
 # Free-text sensitive values that appear as 'key': 'value' in raw API reprs.
 _KEYED = ("serial-number", "sfp-vendor-serial", "ssid", "caller-id", "imei", "imsi", "iccid", "uicc")
 _KEYED_RE = re.compile(r"('(?:" + "|".join(re.escape(k) for k in _KEYED) + r")'\s*:\s*')([^']*)(')")
+# The API library turns an all-digit value into a number, so an IMEI or an
+# ICCID shows up without quotes in a repr.
+_KEYED_BARE_RE = re.compile(r"('(?:" + "|".join(re.escape(k) for k in _KEYED) + r")'\s*:\s*)(\d+)()")
 
 
 class LogRedactor:
@@ -87,6 +90,7 @@ class LogRedactor:
         line = _IPV6_RE.sub(self._ipv6, line)
         line = _IPV4_RE.sub(self._ipv4, line)
         line = _KEYED_RE.sub(self._keyed, line)
+        line = _KEYED_BARE_RE.sub(self._keyed, line)
         return line
 
     def redact_data(self, data):
