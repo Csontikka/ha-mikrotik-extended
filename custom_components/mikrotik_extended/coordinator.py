@@ -23,7 +23,7 @@ from homeassistant.const import (
     CONF_ZONE,
     STATE_HOME,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry
@@ -55,6 +55,7 @@ from .const import (
     CONF_SENSOR_PORT_TRAFFIC,
     CONF_SENSOR_PPP,
     CONF_SENSOR_RAW,
+    CONF_SENSOR_ROUTES,
     CONF_SENSOR_ROUTING_RULES,
     CONF_SENSOR_SCRIPTS,
     CONF_SENSOR_SIMPLE_QUEUES,
@@ -77,6 +78,7 @@ from .const import (
     DEFAULT_SENSOR_PORT_TRAFFIC,
     DEFAULT_SENSOR_PPP,
     DEFAULT_SENSOR_RAW,
+    DEFAULT_SENSOR_ROUTES,
     DEFAULT_SENSOR_ROUTING_RULES,
     DEFAULT_SENSOR_SCRIPTS,
     DEFAULT_SENSOR_SIMPLE_QUEUES,
@@ -480,6 +482,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "routing_rules": {},
             "filter": {},
             "raw": {},
+            "route": {},
             "ppp_secret": {},
             "ppp_active": {},
             "fw-update": {},
@@ -532,6 +535,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.routing_rules_removed = {}
         self.filter_removed = {}
         self.raw_removed = {}
+        self._routes_restored = False
         self.queue_removed = {}
         self.host_hass_recovered = False
         self.host_tracking_initialized = False
@@ -728,6 +732,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def option_sensor_raw(self):
         """Config entry option to create firewall Raw rule switches."""
         return self.config_entry.options.get(CONF_SENSOR_RAW, DEFAULT_SENSOR_RAW)
+
+    # ---------------------------
+    #   option_sensor_routes
+    # ---------------------------
+    @property
+    def option_sensor_routes(self):
+        """Config entry option to create route sensors."""
+        return self.config_entry.options.get(CONF_SENSOR_ROUTES, DEFAULT_SENSOR_ROUTES)
 
     # ---------------------------
     #   option_sensor_kidcontrol
@@ -1053,6 +1065,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected() and self.option_sensor_raw:
             await self.hass.async_add_executor_job(self.get_raw)
 
+        if self.api.connected() and self.option_sensor_routes:
+            if not self._routes_restored:
+                self._restore_dynamic_routes()
+            await self.hass.async_add_executor_job(self.get_route)
+
         if self.api.connected() and self.option_sensor_netwatch:
             await self.hass.async_add_executor_job(self.get_netwatch)
 
@@ -1126,6 +1143,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         "mangle": ("comment",),
         "filter": ("comment",),
         "raw": ("comment",),
+        "route": ("comment",),
         "routing_rules": ("comment",),
         "host": ("host-name",),
         "client_traffic": ("host-name",),
@@ -2316,6 +2334,117 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     self.host,
                     tmp_name,
                 )
+
+    # ---------------------------
+    #   get_route
+    # ---------------------------
+    @callback
+    def _restore_dynamic_routes(self) -> None:
+        """Bring back the dynamic routes Home Assistant knew before the restart.
+
+        A default route handed out by PPPoE or DHCP leaves the routing table
+        while the link is down. If Home Assistant starts during such an
+        outage the route is not there to be read, its entity would count as
+        an orphan and be removed, and the automation watching it would lose
+        its sensor at the very moment it matters. So every dynamic route in
+        the entity registry gets a placeholder that reads as not active until
+        the router reports the route again.
+        """
+        self._routes_restored = True
+        prefix = f"{self.config_entry.entry_id}-route-dynamic_"
+        registry = er.async_get(self.hass)
+        for entity in er.async_entries_for_config_entry(registry, self.config_entry.entry_id):
+            if entity.domain != "binary_sensor" or not entity.unique_id.startswith(prefix):
+                continue
+            key = entity.unique_id[len(prefix) - len("dynamic_") :]
+            if key in self.ds["route"]:
+                continue
+            self.ds["route"][key] = {
+                "uid-key": key,
+                "name": entity.original_name or key,
+                "dst-address": "unknown",
+                "gateway": "unknown",
+                "immediate-gw": "unknown",
+                "distance": "unknown",
+                "routing-table": "unknown",
+                "comment": "",
+                "active": False,
+                "enabled": True,
+                "dynamic": True,
+                "present": False,
+            }
+
+    def get_route(self) -> None:
+        """Get the static routes and the default routes from Mikrotik"""
+        source = self.api.query_where("/ip/route", {"static": True, "dst-address": "0.0.0.0/0"})
+        if source is None:
+            return
+
+        # A route has no name of its own and its list id changes when it is
+        # re-added, so it is identified by where it leads and how. Two routes
+        # that agree in all of that get a counter, in list order.
+        seen_ref: dict = {}
+        for entry in sorted(source, key=lambda e: str(e.get(".id", ""))):
+            table = str(entry.get("routing-table") or entry.get("routing-mark") or "main")
+            dst = str(entry.get("dst-address", ""))
+            gateway = str(entry.get("gateway", "")) or "none"
+            ref = f"{dst} via {gateway} ({table})"
+            if entry.get("dynamic") is True:
+                ref = f"dynamic {ref}"
+            count = seen_ref.get(ref, 0) + 1
+            seen_ref[ref] = count
+            if count > 1:
+                ref = f"{ref} #{count}"
+            entry["routing-table"] = table
+            entry["name"] = f"{dst} via {gateway}"
+            entry["uid-key"] = slugify(ref.lower())
+
+        self.ds["route"] = parse_api(
+            data=self.ds["route"],
+            source=source,
+            key="uid-key",
+            vals=[
+                {"name": "uid-key"},
+                {"name": "name"},
+                {"name": "dst-address"},
+                {"name": "gateway"},
+                {"name": "immediate-gw"},
+                {"name": "distance"},
+                {"name": "routing-table"},
+                {"name": "comment"},
+                {"name": "active", "type": "bool", "default": False},
+                {"name": "dynamic", "type": "bool", "default": False},
+                {
+                    "name": "enabled",
+                    "source": "disabled",
+                    "type": "bool",
+                    "reverse": True,
+                    "default": False,
+                },
+            ],
+        )
+        self._decode_store("route")
+
+        # A route that left the table is not active. A static one was removed
+        # by somebody and goes after the usual three cycles. A dynamic one is
+        # a link that went down: it stays, as not active, because that state
+        # is the reason to have the sensor.
+        seen = {entry["uid-key"] for entry in source}
+        strikes = self._get_stale_counters("route")
+        for key in list(self.ds["route"]):
+            row = self.ds["route"][key]
+            if key in seen:
+                row["present"] = True
+                strikes.pop(key, None)
+                continue
+            row["present"] = False
+            row["active"] = False
+            if row.get("dynamic"):
+                continue
+            strikes[key] = strikes.get(key, 0) + 1
+            if strikes[key] >= 3:
+                del self.ds["route"][key]
+                del strikes[key]
 
     # ---------------------------
     #   get_kidcontrol

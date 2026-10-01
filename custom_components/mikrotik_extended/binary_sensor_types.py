@@ -128,6 +128,18 @@ DEVICE_ATTRIBUTES_NETWATCH = [
     "rtt-stdev",
 ]
 
+DEVICE_ATTRIBUTES_ROUTE = [
+    "dst-address",
+    "gateway",
+    "immediate-gw",
+    "distance",
+    "routing-table",
+    "comment",
+    "enabled",
+    "dynamic",
+    "present",
+]
+
 
 @dataclass
 class MikrotikBinarySensorEntityDescription(BinarySensorEntityDescription):
@@ -232,6 +244,23 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
         data_reference="uid-ref",
         data_attributes_list=DEVICE_ATTRIBUTES_NETWATCH,
         func="MikrotikNetwatchBinarySensor",
+    ),
+    MikrotikBinarySensorEntityDescription(
+        key="route",
+        name="",
+        icon_enabled="mdi:routes",
+        icon_disabled="mdi:routes-clock",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        ha_group="Routes",
+        ha_connection=DOMAIN,
+        ha_connection_value="Routes",
+        data_path="route",
+        data_attribute="active",
+        data_name="name",
+        data_name_comment=True,
+        data_uid="uid-key",
+        data_reference="uid-key",
+        data_attributes_list=DEVICE_ATTRIBUTES_ROUTE,
     ),
     MikrotikBinarySensorEntityDescription(
         key="wireguard_peer",
