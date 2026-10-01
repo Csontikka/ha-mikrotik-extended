@@ -61,6 +61,7 @@ from .const import (
     CONF_SENSOR_WIREGUARD,
     CONF_TEXT_ENCODING,
     CONF_TRACK_HOSTS,
+    CONF_TRACK_HOSTS_INTERVAL,
     CONF_TRACK_HOSTS_TIMEOUT,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SENSOR_CLIENT_CAPTIVE,
@@ -83,7 +84,10 @@ from .const import (
     DEFAULT_TEXT_ENCODING,
     DEFAULT_TRACK_HOST_TIMEOUT,
     DEFAULT_TRACK_HOSTS,
+    DEFAULT_TRACK_HOSTS_INTERVAL,
     DOMAIN,
+    MAX_TRACK_HOSTS_INTERVAL,
+    MIN_TRACK_HOSTS_INTERVAL,
 )
 from .encoding_repair import RAW_SUFFIX, collect_renames
 from .mikrotikapi import MikrotikAPI
@@ -284,7 +288,7 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
             self.hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=10),
+            update_interval=tracker_interval(config_entry),
         )
         self.name = config_entry.data[CONF_NAME]
         self.host = config_entry.data[CONF_HOST]
@@ -380,6 +384,21 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
             "host": self.coordinator.ds["host"],
             "routerboard": self.coordinator.ds["routerboard"],
         }
+
+
+def tracker_interval(config_entry: ConfigEntry) -> timedelta:
+    """How often hosts are pinged and their trackers refreshed.
+
+    The stored value is kept inside the supported range here as well as in
+    the form, so an entry edited by other means cannot make the tracker spin
+    or stall.
+    """
+    seconds = config_entry.options.get(CONF_TRACK_HOSTS_INTERVAL, DEFAULT_TRACK_HOSTS_INTERVAL)
+    try:
+        seconds = int(seconds)
+    except (TypeError, ValueError):
+        seconds = DEFAULT_TRACK_HOSTS_INTERVAL
+    return timedelta(seconds=min(max(seconds, MIN_TRACK_HOSTS_INTERVAL), MAX_TRACK_HOSTS_INTERVAL))
 
 
 # ---------------------------
