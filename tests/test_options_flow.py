@@ -171,6 +171,24 @@ async def test_options_flow_sensor_toggle(hass):
         assert entry.options[flag] is expected, f"{flag} did not round-trip: got {entry.options.get(flag)!r}, expected {expected!r}"
 
 
+async def test_options_flow_preset_leaves_the_port_switch_option_alone(hass):
+    """The option is a safeguard: no preset may switch it back on, or off."""
+    from custom_components.mikrotik_extended.config_flow import _SENSOR_PRESETS
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_SWITCH
+
+    assert all(CONF_SENSOR_PORT_SWITCH not in preset for preset in _SENSOR_PRESETS.values())
+
+    for stored in (False, True):
+        for preset in ("recommended", "full", "minimal", "core"):
+            entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options={**INITIAL_OPTIONS, CONF_SENSOR_PORT_SWITCH: stored}, unique_id=f"192.168.88.1-{stored}-{preset}")
+            entry.add_to_hass(hass)
+            result = await hass.config_entries.options.async_init(entry.entry_id)
+            result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SCAN_INTERVAL: 30, CONF_TRACK_HOSTS_TIMEOUT: 180, CONF_ZONE: STATE_HOME})
+            result = await hass.config_entries.options.async_configure(result["flow_id"], {"sensor_preset": preset})
+            assert result["type"] == FlowResultType.CREATE_ENTRY
+            assert entry.options[CONF_SENSOR_PORT_SWITCH] is stored, (stored, preset)
+
+
 async def test_options_flow_core_preset_disables_interfaces(hass):
     """Choosing the Core only preset turns every category off, interfaces included."""
     from custom_components.mikrotik_extended.const import CONF_SENSOR_INTERFACES

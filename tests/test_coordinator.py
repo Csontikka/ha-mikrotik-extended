@@ -2275,10 +2275,11 @@ class TestInterfaceErrorCounters:
         port = self._fetch(hass, {".id": "*1", "default-name": "ether1", "name": "ether1", "type": "ether", "rx-error": 3, "tx-error": 0, "rx-drop": 120, "tx-drop": 7})
         assert (port["rx-error"], port["tx-error"], port["rx-drop"], port["tx-drop"]) == (3, 0, 120, 7)
 
-    def test_missing_counters_read_as_zero(self, hass):
-        """Some interface types do not report every counter."""
-        port = self._fetch(hass, {".id": "*1", "default-name": "ether1", "name": "ether1", "type": "ether"})
-        assert (port["rx-error"], port["tx-error"], port["rx-drop"], port["tx-drop"]) == (0, 0, 0, 0)
+    def test_missing_counters_stay_empty(self, hass):
+        """A counter the interface does not report is not a zero."""
+        port = self._fetch(hass, {".id": "*1", "default-name": "ether1", "name": "ether1", "type": "ether", "rx-error": 0})
+        assert port["rx-error"] == 0, "a reported zero is a zero"
+        assert (port["tx-error"], port["rx-drop"], port["tx-drop"]) == ("", "", "")
 
 
 def test_error_counter_descriptions():

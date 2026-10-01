@@ -223,11 +223,21 @@ class TestSkipSensor:
         from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS, CONF_SENSOR_PORT_TRAFFIC
         from custom_components.mikrotik_extended.entity import _skip_sensor
 
-        port = {"e": {"type": "ether"}}
-        counter = self._desc(func="MikrotikInterfaceErrorSensor", data_path="interface")
+        port = {"e": {"type": "ether", "rx-error": 0}}
+        counter = self._desc(func="MikrotikInterfaceErrorSensor", data_path="interface", data_attribute="rx-error")
         assert _skip_sensor(self._entry(), counter, port, "e") is True, "off by default"
         assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_ERRORS: True}), counter, port, "e") is False
         assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_TRAFFIC: True}), counter, port, "e") is True, "the traffic option does not bring them"
+
+    def test_error_counter_the_interface_does_not_report_gets_no_sensor(self):
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        entry = self._entry(**{CONF_SENSOR_PORT_ERRORS: True})
+        port = {"e": {"type": "vlan", "rx-error": 0, "tx-error": 12, "rx-drop": ""}}
+        for attribute, skipped in (("rx-error", False), ("tx-error", False), ("rx-drop", True), ("tx-drop", True)):
+            counter = self._desc(func="MikrotikInterfaceErrorSensor", data_path="interface", data_attribute=attribute)
+            assert _skip_sensor(entry, counter, port, "e") is skipped, attribute
 
     def test_error_counter_option_does_not_bring_traffic_sensors(self):
         from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS
