@@ -521,7 +521,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._rule_uids_migrated = False
 
     # Entity keys whose reference moved from the rule contents to the comment.
-    _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "queue")
+    _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "raw", "queue")
 
     def _migrate_rule_unique_ids(self) -> None:
         """Point entities created under the content based scheme at the new id.
@@ -2234,6 +2234,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     {"key": "dst-address-list"},
                     {"text": ":"},
                     {"key": "dst-port"},
+                    # Typical raw rules differ only in these two: a set of
+                    # rules feeding different address lists, or drops on
+                    # different TCP flag combinations.
+                    {"text": ","},
+                    {"key": "address-list"},
+                    {"text": ","},
+                    {"key": "tcp-flags"},
                 ],
                 [
                     {"name": "name"},
