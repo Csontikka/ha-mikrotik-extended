@@ -440,7 +440,9 @@ def tracker_interval(config_entry: ConfigEntry) -> timedelta:
     options = config_entry.options
     seconds = _as_int(options.get(CONF_TRACK_HOSTS_INTERVAL), DEFAULT_TRACK_HOSTS_INTERVAL)
     timeout = _as_int(options.get(CONF_TRACK_HOSTS_TIMEOUT), DEFAULT_TRACK_HOST_TIMEOUT)
-    ceiling = min(MAX_TRACK_HOSTS_INTERVAL, max(MIN_TRACK_HOSTS_INTERVAL, timeout // 2))
+    # With a timeout under ten seconds, half of it is below the usual floor.
+    # The half wins: the floor protects the router, the half keeps hosts home.
+    ceiling = min(MAX_TRACK_HOSTS_INTERVAL, max(1, timeout // 2))
     return timedelta(seconds=min(max(seconds, MIN_TRACK_HOSTS_INTERVAL), ceiling))
 
 
@@ -557,6 +559,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.filter_removed = {}
         self.raw_removed = {}
         self._routes_restored = False
+        self._routes_read = False
         self._routes_replaced: set[str] = set()
         self.queue_removed = {}
         self.host_hass_recovered = False
@@ -1090,7 +1093,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected() and self.option_sensor_routes:
             await self.hass.async_add_executor_job(self.get_route)
             if not self._routes_restored:
-                self._restore_dynamic_routes()
+                self._restore_dynamic_routes(everything=not self._routes_read)
             if self._routes_replaced:
                 self._remove_replaced_routes()
 
@@ -2372,7 +2375,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     #   get_route
     # ---------------------------
     @callback
-    def _restore_dynamic_routes(self) -> None:
+    def _restore_dynamic_routes(self, everything: bool = False) -> None:
         """Bring back the dynamic routes Home Assistant knew before the restart.
 
         A default route handed out by PPPoE or DHCP leaves the routing table
@@ -2382,14 +2385,22 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         its sensor at the very moment it matters. So every dynamic route in
         the entity registry gets a placeholder that reads as not active until
         the router reports the route again.
+
+        With ``everything`` the static routes are brought back too. That is
+        for a start where the routing table could not be read at all, a
+        refused query for one: nothing is known then, and removing every
+        route sensor over one failed read would throw away their names and
+        areas. Once the table is read again, a static route that is really
+        gone leaves after the usual three cycles.
         """
         self._routes_restored = True
-        prefix = f"{self.config_entry.entry_id}-route-dynamic_"
+        prefix = f"{self.config_entry.entry_id}-route-{'' if everything else 'dynamic_'}"
+        cut = len(f"{self.config_entry.entry_id}-route-")
         registry = er.async_get(self.hass)
         for entity in er.async_entries_for_config_entry(registry, self.config_entry.entry_id):
             if entity.domain != "binary_sensor" or not entity.unique_id.startswith(prefix):
                 continue
-            key = entity.unique_id[len(prefix) - len("dynamic_") :]
+            key = entity.unique_id[cut:]
             if key in self.ds["route"]:
                 continue
             self.ds["route"][key] = {
@@ -2403,7 +2414,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 "comment": "",
                 "active": False,
                 "enabled": True,
-                "dynamic": True,
+                "dynamic": key.startswith("dynamic_"),
                 "present": False,
             }
 
@@ -2448,13 +2459,22 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         source = self.api.query_where("/ip/route", {"static": True, "dst-address": "0.0.0.0/0"})
         if source is None:
             return
+        self._routes_read = True
 
         # A route has no name of its own and its list id changes when it is
         # re-added, so it is identified by where it leads and how. Two routes
         # that agree in all of that get a counter, in list order.
+        # A route that was here last time keeps the key it had. Otherwise the
+        # second of two identical routes would slide into the first one's key
+        # when the first is removed, and its sensor would start describing a
+        # different route.
+        previous = {str(row.get(".id")): key for key, row in self.ds["route"].items() if row.get("present") and row.get(".id")}
         seen_key: dict = {}
         taken: set = set()
-        for entry in sorted(source, key=_list_id_order):
+        ordered = sorted(source, key=_list_id_order)
+        for entry in ordered:
+            entry["uid-key"] = None
+        for entry in ordered:
             table = str(entry.get("routing-table") or entry.get("routing-mark") or "main")
             dst = str(entry.get("dst-address", ""))
             gateway = str(entry.get("gateway", "")) or "none"
@@ -2465,13 +2485,22 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             # gateways and one slug, and the second route would silently
             # overwrite the first.
             base = slugify(ref.lower())
+            entry["routing-table"] = table
+            entry["name"] = f"{dst} via {gateway}"
+            entry["_base"] = base
+            kept = previous.get(str(entry.get(".id")))
+            if kept is not None and kept not in taken and (kept == base or re.fullmatch(rf"{re.escape(base)}_\d+", kept)):
+                entry["uid-key"] = kept
+                taken.add(kept)
+        for entry in ordered:
+            base = entry.pop("_base")
+            if entry["uid-key"] is not None:
+                continue
             key = base
             while key in taken:
                 seen_key[base] = seen_key.get(base, 1) + 1
                 key = f"{base}_{seen_key[base]}"
             taken.add(key)
-            entry["routing-table"] = table
-            entry["name"] = f"{dst} via {gateway}"
             entry["uid-key"] = key
 
         self.ds["route"] = parse_api(
@@ -2480,6 +2509,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             key="uid-key",
             vals=[
                 {"name": "uid-key"},
+                {"name": ".id"},
                 {"name": "name"},
                 {"name": "dst-address"},
                 {"name": "gateway"},
