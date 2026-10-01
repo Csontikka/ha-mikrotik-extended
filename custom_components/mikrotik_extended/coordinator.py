@@ -396,6 +396,27 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
         }
 
 
+def _list_id_order(entry: dict):
+    """Sort key that puts RouterOS list ids ("*A", "*10") in numeric order."""
+    raw = str(entry.get(".id", ""))
+    try:
+        return (0, int(raw.lstrip("*"), 16), raw)
+    except ValueError:
+        return (1, 0, raw)
+
+
+def _route_interface(row: dict) -> str:
+    """The interface a route leaves through, "" when it is not known.
+
+    RouterOS reports it in immediate-gw, either as the interface itself
+    ("pppoe-out1") or after the gateway address ("192.0.2.1%ether1").
+    """
+    hop = str(row.get("immediate-gw") or "")
+    if hop in ("", "unknown"):
+        return ""
+    return hop.rsplit("%", 1)[-1]
+
+
 def _as_int(value, default: int) -> int:
     """A stored option as a whole number, the default when it is not one."""
     try:
@@ -536,6 +557,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.filter_removed = {}
         self.raw_removed = {}
         self._routes_restored = False
+        self._routes_replaced: set[str] = set()
         self.queue_removed = {}
         self.host_hass_recovered = False
         self.host_tracking_initialized = False
@@ -1066,9 +1088,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             await self.hass.async_add_executor_job(self.get_raw)
 
         if self.api.connected() and self.option_sensor_routes:
+            await self.hass.async_add_executor_job(self.get_route)
             if not self._routes_restored:
                 self._restore_dynamic_routes()
-            await self.hass.async_add_executor_job(self.get_route)
+            if self._routes_replaced:
+                self._remove_replaced_routes()
 
         if self.api.connected() and self.option_sensor_netwatch:
             await self.hass.async_add_executor_job(self.get_netwatch)
@@ -2374,6 +2398,42 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 "present": False,
             }
 
+    def _dynamic_route_replaced(self, key: str) -> bool:
+        """True when another dynamic route took this one's place.
+
+        A DHCP lease with a new gateway replaces the default route rather
+        than taking it down: same destination, same table, same interface,
+        another gateway. The old route is then not a link that is down but a
+        route that no longer exists. The interface is what keeps a second
+        WAN apart: its default route shares destination and table with the
+        first, and losing it is an outage, not a replacement. A restored
+        placeholder knows no interface and is therefore never judged.
+        """
+        gone = self.ds["route"][key]
+        interface = _route_interface(gone)
+        if not interface:
+            return False
+        for other_key, row in self.ds["route"].items():
+            if other_key == key or not row.get("dynamic") or not row.get("present"):
+                continue
+            if row.get("dst-address") == gone.get("dst-address") and row.get("routing-table") == gone.get("routing-table") and _route_interface(row) == interface:
+                return True
+        return False
+
+    @callback
+    def _remove_replaced_routes(self) -> None:
+        """Take the sensors of replaced dynamic routes out of the registry.
+
+        Dropping the row alone would leave the sensor frozen until the next
+        start, and that start would bring it back as a placeholder.
+        """
+        registry = er.async_get(self.hass)
+        while self._routes_replaced:
+            key = self._routes_replaced.pop()
+            entity_id = registry.async_get_entity_id("binary_sensor", DOMAIN, f"{self.config_entry.entry_id}-route-{key}")
+            if entity_id is not None:
+                registry.async_remove(entity_id)
+
     def get_route(self) -> None:
         """Get the static routes and the default routes from Mikrotik"""
         source = self.api.query_where("/ip/route", {"static": True, "dst-address": "0.0.0.0/0"})
@@ -2383,21 +2443,27 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # A route has no name of its own and its list id changes when it is
         # re-added, so it is identified by where it leads and how. Two routes
         # that agree in all of that get a counter, in list order.
-        seen_ref: dict = {}
-        for entry in sorted(source, key=lambda e: str(e.get(".id", ""))):
+        seen_key: dict = {}
+        taken: set = set()
+        for entry in sorted(source, key=_list_id_order):
             table = str(entry.get("routing-table") or entry.get("routing-mark") or "main")
             dst = str(entry.get("dst-address", ""))
             gateway = str(entry.get("gateway", "")) or "none"
             ref = f"{dst} via {gateway} ({table})"
             if entry.get("dynamic") is True:
                 ref = f"dynamic {ref}"
-            count = seen_ref.get(ref, 0) + 1
-            seen_ref[ref] = count
-            if count > 1:
-                ref = f"{ref} #{count}"
+            # Counted on the key, not on the text: "wg-a" and "wg_a" are two
+            # gateways and one slug, and the second route would silently
+            # overwrite the first.
+            base = slugify(ref.lower())
+            key = base
+            while key in taken:
+                seen_key[base] = seen_key.get(base, 1) + 1
+                key = f"{base}_{seen_key[base]}"
+            taken.add(key)
             entry["routing-table"] = table
             entry["name"] = f"{dst} via {gateway}"
-            entry["uid-key"] = slugify(ref.lower())
+            entry["uid-key"] = key
 
         self.ds["route"] = parse_api(
             data=self.ds["route"],
@@ -2428,23 +2494,29 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # A route that left the table is not active. A static one was removed
         # by somebody and goes after the usual three cycles. A dynamic one is
         # a link that went down: it stays, as not active, because that state
-        # is the reason to have the sensor.
+        # is the reason to have the sensor. Unless another dynamic route to
+        # the same place took over, in which case it is simply gone.
         seen = {entry["uid-key"] for entry in source}
         strikes = self._get_stale_counters("route")
+        for key in seen:
+            self.ds["route"][key]["present"] = True
+            strikes.pop(key, None)
         for key in list(self.ds["route"]):
-            row = self.ds["route"][key]
             if key in seen:
-                row["present"] = True
-                strikes.pop(key, None)
                 continue
+            row = self.ds["route"][key]
             row["present"] = False
             row["active"] = False
-            if row.get("dynamic"):
+            replaced = bool(row.get("dynamic")) and self._dynamic_route_replaced(key)
+            if row.get("dynamic") and not replaced:
+                strikes.pop(key, None)
                 continue
             strikes[key] = strikes.get(key, 0) + 1
             if strikes[key] >= 3:
                 del self.ds["route"][key]
                 del strikes[key]
+                if replaced:
+                    self._routes_replaced.add(key)
 
     # ---------------------------
     #   get_kidcontrol

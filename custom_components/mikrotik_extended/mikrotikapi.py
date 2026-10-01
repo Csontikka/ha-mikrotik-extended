@@ -339,6 +339,8 @@ class MikrotikAPI:
         query could not be made, which the caller must tell apart: no rows is
         an answer, a failed query is not.
         """
+        if not any_of:
+            raise ValueError("query_where needs at least one field to match")
         if not self.connection_check():
             return None
 
