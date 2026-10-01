@@ -80,6 +80,11 @@ _IFACE_TYPE_CATEGORY = {
 }
 
 
+def _same_text(left, right) -> bool:
+    """Two names compared the way a MAC needs it: as text, ignoring case."""
+    return left is not None and right is not None and str(left).lower() == str(right).lower()
+
+
 def _skip_non_poe_port(entity_description, item) -> bool:
     """Only a port that can actually supply power gets a PoE selector.
 
@@ -451,7 +456,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             )
         )
 
-    def _fields_for_new_device(self, connection: tuple[str, str], entry_id: str, **fields) -> dict:
+    def _fields_for_new_device(self, connection: tuple[str, str], entry_id: str, placeholder: str | None = None, **fields) -> dict:
         """Descriptive fields for a device, set on creation only.
 
         This is what default_name and its siblings used to do, and the plain
@@ -479,7 +484,13 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         # string, from default_name=f"{None}") is not one to preserve; it gets
         # a name now. Another integration's device is left alone whatever it
         # is called.
-        if existing is not None and (not ours or existing.name not in _NOT_A_NAME):
+        #
+        # The same goes for a device of ours that still carries the
+        # placeholder it was created with: a host seen before it had a name
+        # is called by its MAC, and without this it would keep the MAC for
+        # good once the name turns up.
+        has_real_name = existing is not None and existing.name not in _NOT_A_NAME and not _same_text(existing.name, placeholder)
+        if existing is not None and (not ours or has_real_name):
             return {}
         return {key: value for key, value in fields.items() if value not in _NOT_A_NAME}
 
@@ -532,7 +543,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         connection = (dev_connection, f"{dev_connection_value}")
         return DeviceInfo(
             connections={connection},
-            **self._fields_for_new_device(connection, entry_id, name=f"{dev_group}", manufacturer=dev_manufacturer),
+            **self._fields_for_new_device(connection, entry_id, placeholder=f"{dev_connection_value}", name=f"{dev_group}", manufacturer=dev_manufacturer),
             **self._via_core(entry_id),
         )
 
