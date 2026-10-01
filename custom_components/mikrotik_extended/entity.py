@@ -27,12 +27,14 @@ from .const import (
     ATTRIBUTION,
     CONF_SENSOR_INTERFACES,
     CONF_SENSOR_NETWATCH_TRACKER,
+    CONF_SENSOR_PORT_ERRORS,
     CONF_SENSOR_PORT_SWITCH,
     CONF_SENSOR_PORT_TRACKER,
     CONF_SENSOR_PORT_TRAFFIC,
     CONF_TRACK_HOSTS,
     DEFAULT_SENSOR_INTERFACES,
     DEFAULT_SENSOR_NETWATCH_TRACKER,
+    DEFAULT_SENSOR_PORT_ERRORS,
     DEFAULT_SENSOR_PORT_SWITCH,
     DEFAULT_SENSOR_PORT_TRACKER,
     DEFAULT_SENSOR_PORT_TRAFFIC,
@@ -121,6 +123,12 @@ def _skip_interface_traffic_sensor(config_entry, entity_description, item) -> bo
     return not config_entry.options.get(CONF_SENSOR_PORT_TRAFFIC, DEFAULT_SENSOR_PORT_TRAFFIC)
 
 
+def _skip_interface_error_sensor(config_entry, entity_description) -> bool:
+    if entity_description.func != "MikrotikInterfaceErrorSensor":
+        return False
+    return not config_entry.options.get(CONF_SENSOR_PORT_ERRORS, DEFAULT_SENSOR_PORT_ERRORS)
+
+
 def _skip_client_traffic(entity_description, item) -> bool:
     if entity_description.data_path != "client_traffic":
         return False
@@ -163,6 +171,8 @@ def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
     if _skip_port_switch(config_entry, entity_description):
         return True
     if _skip_interface_traffic_sensor(config_entry, entity_description, item):
+        return True
+    if _skip_interface_error_sensor(config_entry, entity_description):
         return True
     if _skip_client_traffic(entity_description, item):
         return True

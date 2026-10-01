@@ -1446,6 +1446,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "last-link-up-time"},
                 {"name": "link-downs"},
                 {"name": "tx-queue-drop"},
+                # Counters the interface list carries anyway, so reading them
+                # costs no extra query. They only become entities when the
+                # port error counters option is on.
+                {"name": "rx-error", "default": 0},
+                {"name": "tx-error", "default": 0},
+                {"name": "rx-drop", "default": 0},
+                {"name": "tx-drop", "default": 0},
                 {"name": "actual-mtu"},
                 {"name": "about", "source": ".about", "default": ""},
                 {"name": "rx-current", "source": "rx-byte", "default": 0.0},

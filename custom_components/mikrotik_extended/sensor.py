@@ -62,6 +62,7 @@ async def async_setup_entry(
     dispatcher = {
         "MikrotikSensor": MikrotikSensor,
         "MikrotikInterfaceTrafficSensor": MikrotikInterfaceTrafficSensor,
+        "MikrotikInterfaceErrorSensor": MikrotikInterfaceErrorSensor,
         "MikrotikClientTrafficSensor": MikrotikClientTrafficSensor,
         "MikrotikIPAddressSensor": MikrotikIPAddressSensor,
     }
@@ -124,6 +125,18 @@ class MikrotikInterfaceTrafficSensor(MikrotikSensor):
         attributes = super().extra_state_attributes
         attributes.update(_collect_iface_attributes(self._data))
         return attributes
+
+
+# ---------------------------
+#   MikrotikInterfaceErrorSensor
+# ---------------------------
+class MikrotikInterfaceErrorSensor(MikrotikInterfaceTrafficSensor):
+    """An error or drop counter of one interface.
+
+    Its own class so that it has its own option: the counters are for finding
+    a bad cable or a failing port, which not everybody who wants traffic
+    graphs is after, and the other way round.
+    """
 
 
 # ---------------------------
