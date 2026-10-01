@@ -533,7 +533,7 @@ Available during initial setup and via the **Configure** button at any time:
 | **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. The per-port link queries stop as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
-| **Full** | Everything — port traffic, client traffic, queues, routing rules, raw rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Full** | Everything: port traffic, client traffic, queues, routing rules, raw rules, WireGuard, PPP, Kid Control, containers, environment, host tracking |
 | **Custom** | Manually select each sensor category |
 
 Switching presets takes effect after saving:
