@@ -18,9 +18,13 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
     CONF_ZONE,
     STATE_HOME,
+    UnitOfTime,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -98,6 +102,12 @@ def _ssl_mode_from_bools(ssl: bool, verify_ssl: bool) -> str:
         return "ssl"
     return "none"
 
+
+# A box rather than the slider a plain min/max range is drawn as: picking an
+# exact number of seconds on a 5 to 300 slider is guesswork.
+_TRACKER_INTERVAL_FIELD = vol.All(
+    NumberSelector(NumberSelectorConfig(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement=UnitOfTime.SECONDS)), vol.Coerce(int)
+)
 
 _SENSOR_PRESETS = {
     "core": {
@@ -407,7 +417,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 {
                     vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(int, vol.Range(min=10)),
                     vol.Optional(CONF_TRACK_HOSTS_TIMEOUT, default=DEFAULT_TRACK_HOST_TIMEOUT): vol.All(int, vol.Range(min=1)),
-                    vol.Optional(CONF_TRACK_HOSTS_INTERVAL, default=DEFAULT_TRACK_HOSTS_INTERVAL): vol.All(int, vol.Range(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL)),
+                    vol.Optional(CONF_TRACK_HOSTS_INTERVAL, default=DEFAULT_TRACK_HOSTS_INTERVAL): _TRACKER_INTERVAL_FIELD,
                     vol.Optional(CONF_ZONE, default=STATE_HOME): str,
                 }
             ),
@@ -605,7 +615,7 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                     vol.Optional(
                         CONF_TRACK_HOSTS_INTERVAL,
                         default=self._config_entry.options.get(CONF_TRACK_HOSTS_INTERVAL, DEFAULT_TRACK_HOSTS_INTERVAL),
-                    ): vol.All(int, vol.Range(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL)),
+                    ): _TRACKER_INTERVAL_FIELD,
                     vol.Optional(
                         CONF_ZONE,
                         default=self._config_entry.options.get(CONF_ZONE, STATE_HOME),
