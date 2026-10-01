@@ -49,6 +49,7 @@ from .const import (
     CONF_SENSOR_WIREGUARD,
     CONF_TEXT_ENCODING,
     CONF_TRACK_HOSTS,
+    CONF_TRACK_HOSTS_INTERVAL,
     CONF_TRACK_HOSTS_TIMEOUT,
     DEFAULT_DEVICE_NAME,
     DEFAULT_HOST,
@@ -76,9 +77,12 @@ from .const import (
     DEFAULT_TEXT_ENCODING,
     DEFAULT_TRACK_HOST_TIMEOUT,
     DEFAULT_TRACK_HOSTS,
+    DEFAULT_TRACK_HOSTS_INTERVAL,
     DEFAULT_USERNAME,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
+    MAX_TRACK_HOSTS_INTERVAL,
+    MIN_TRACK_HOSTS_INTERVAL,
     TEXT_ENCODING_OPTIONS,
 )
 from .mikrotikapi import MikrotikAPI
@@ -403,6 +407,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 {
                     vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(int, vol.Range(min=10)),
                     vol.Optional(CONF_TRACK_HOSTS_TIMEOUT, default=DEFAULT_TRACK_HOST_TIMEOUT): vol.All(int, vol.Range(min=1)),
+                    vol.Optional(CONF_TRACK_HOSTS_INTERVAL, default=DEFAULT_TRACK_HOSTS_INTERVAL): vol.All(int, vol.Range(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL)),
                     vol.Optional(CONF_ZONE, default=STATE_HOME): str,
                 }
             ),
@@ -597,6 +602,10 @@ class MikrotikControllerOptionsFlowHandler(OptionsFlow):
                         CONF_TRACK_HOSTS_TIMEOUT,
                         default=self._config_entry.options.get(CONF_TRACK_HOSTS_TIMEOUT, DEFAULT_TRACK_HOST_TIMEOUT),
                     ): int,
+                    vol.Optional(
+                        CONF_TRACK_HOSTS_INTERVAL,
+                        default=self._config_entry.options.get(CONF_TRACK_HOSTS_INTERVAL, DEFAULT_TRACK_HOSTS_INTERVAL),
+                    ): vol.All(int, vol.Range(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL)),
                     vol.Optional(
                         CONF_ZONE,
                         default=self._config_entry.options.get(CONF_ZONE, STATE_HOME),
