@@ -171,6 +171,7 @@ class TestAsyncUpdateDataConnection:
             "get_device_mode",
             "get_packages",
             "get_filter",
+            "get_raw",
             "get_netwatch",
             "get_ppp",
             "sync_kid_control_monitoring_profile",
@@ -1883,6 +1884,57 @@ class TestFirewallRules:
             coord.get_filter()
 
         assert coord.ds["filter"]["f1"]["uniq-id"] == "z #1"
+
+
+# ---------------------------------------------------------------------------
+# get_raw
+# ---------------------------------------------------------------------------
+class TestGetRaw:
+    ROWS = [
+        {".id": "*1", "chain": "prerouting", "action": "drop", "protocol": "udp", "dst-port": "53", "in-interface": "ether1", "comment": "drop dns from wan", "disabled": False},
+        {".id": "*2", "chain": "prerouting", "action": "notrack", "src-address": "10.0.0.0/24", "disabled": True},
+        {".id": "*3", "chain": "prerouting", "action": "jump", "jump-target": "ddos", "comment": "to ddos chain"},
+        {".id": "*4", "chain": "prerouting", "action": "drop", "dynamic": True, "comment": "added by a service"},
+    ]
+
+    def _fetch(self, hass, rows):
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = rows
+        coord.get_raw()
+        return coord
+
+    def test_reads_the_raw_menu(self, hass):
+        coord = self._fetch(hass, self.ROWS)
+        coord.api.query.assert_called_once_with("/ip/firewall/raw")
+
+    def test_jump_and_dynamic_rules_are_left_out(self, hass):
+        coord = self._fetch(hass, self.ROWS)
+        assert set(coord.ds["raw"]) == {"*1", "*2"}
+
+    def test_commented_rule_is_keyed_by_its_comment(self, hass):
+        rule = self._fetch(hass, self.ROWS).ds["raw"]["*1"]
+        assert rule["uniq-id"] == "drop dns from wan"
+        assert rule["enabled"] is True
+        assert rule["name"] == "prerouting,drop,udp:53"
+        assert rule["in-interface"] == "ether1"
+
+    def test_uncommented_rule_is_keyed_by_its_contents(self, hass):
+        rule = self._fetch(hass, self.ROWS).ds["raw"]["*2"]
+        assert rule["enabled"] is False
+        assert rule["uniq-id"] == rule["legacy-uniq-id"]
+        assert rule["uniq-id"].startswith("prerouting,notrack,any,")
+        assert "10.0.0.0/24" in rule["uniq-id"]
+
+    def test_identical_uncommented_rules_both_stay(self, hass):
+        twin = {"chain": "prerouting", "action": "drop", "protocol": "tcp", "dst-port": "23"}
+        coord = self._fetch(hass, [{".id": "*1", **twin}, {".id": "*2", **twin}])
+        ids = {vals["uniq-id"] for vals in coord.ds["raw"].values()}
+        assert len(ids) == 2
+        assert len(coord.raw_removed) == 1
+
+    def test_not_fetched_unless_the_option_is_on(self, hass):
+        assert _make_coordinator(hass).option_sensor_raw is False
+        assert _make_coordinator(hass, options={"sensor_raw": True}).option_sensor_raw is True
 
 
 # ---------------------------------------------------------------------------
@@ -3619,6 +3671,7 @@ class TestAsyncUpdateDataSupportPaths:
             "get_device_mode",
             "get_packages",
             "get_filter",
+            "get_raw",
             "get_netwatch",
             "get_ppp",
             "sync_kid_control_monitoring_profile",
@@ -3645,6 +3698,7 @@ class TestAsyncUpdateDataSupportPaths:
                 "sensor_wireguard": True,
                 "sensor_containers": True,
                 "sensor_filter": True,
+                "sensor_raw": True,
                 "sensor_netwatch": True,
                 "sensor_ppp": True,
                 "sensor_client_traffic": True,
@@ -3690,6 +3744,7 @@ class TestAsyncUpdateDataSupportPaths:
         coordinator.get_wireguard_peers.assert_called()
         coordinator.get_containers.assert_called()
         coordinator.get_filter.assert_called()
+        coordinator.get_raw.assert_called()
         coordinator.get_netwatch.assert_called()
         coordinator.get_ppp.assert_called()
         coordinator.sync_kid_control_monitoring_profile.assert_called()

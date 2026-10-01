@@ -22,6 +22,7 @@ from custom_components.mikrotik_extended.switch import (
     MikrotikNATSwitch,
     MikrotikPortSwitch,
     MikrotikQueueSwitch,
+    MikrotikRawSwitch,
     MikrotikRoutingRulesSwitch,
     MikrotikSwitch,
     MikrotikWireguardPeerSwitch,
@@ -110,6 +111,7 @@ async def test_async_setup_entry_dispatcher(hass):
         "MikrotikMangleSwitch",
         "MikrotikRoutingRulesSwitch",
         "MikrotikFilterSwitch",
+        "MikrotikRawSwitch",
         "MikrotikQueueSwitch",
         "MikrotikKidcontrolPauseSwitch",
         "MikrotikWireguardPeerSwitch",
@@ -493,6 +495,7 @@ async def test_rule_switches_toggle_by_own_router_id(hass):
         (MikrotikMangleSwitch, "mangle", "/ip/firewall/mangle"),
         (MikrotikRoutingRulesSwitch, "routing_rules", "/routing/rule"),
         (MikrotikFilterSwitch, "filter", "/ip/firewall/filter"),
+        (MikrotikRawSwitch, "raw", "/ip/firewall/raw"),
         (MikrotikQueueSwitch, "queue", "/queue/simple"),
     ]
     # Full rule fields so the pre-fix code runs its content-based lookup to
