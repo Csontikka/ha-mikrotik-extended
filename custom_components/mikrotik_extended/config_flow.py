@@ -109,10 +109,17 @@ def _ssl_mode_from_bools(ssl: bool, verify_ssl: bool) -> str:
     return "none"
 
 
+def _whole_number(value) -> int:
+    """Refuse a fraction instead of quietly cutting it off."""
+    if value != int(value):
+        raise vol.Invalid("expected a whole number of seconds")
+    return int(value)
+
+
 # A box rather than the slider a plain min/max range is drawn as: picking an
 # exact number of seconds on a 5 to 300 slider is guesswork.
 _TRACKER_INTERVAL_FIELD = vol.All(
-    NumberSelector(NumberSelectorConfig(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement=UnitOfTime.SECONDS)), vol.Coerce(int)
+    NumberSelector(NumberSelectorConfig(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement=UnitOfTime.SECONDS)), _whole_number
 )
 
 # The port switch option is deliberately not part of any preset. Turning it
