@@ -197,6 +197,10 @@ Without the required backend, sensors show "unavailable" instead of 0.
 
 ![Packages Details](docs/assets/images/screenshots/packages_attributes.png)
 
+### Netwatch sensor names
+
+A sensor is named after the probe's own `name` when it has one (RouterOS 7), otherwise after its comment, otherwise after the watched host. Naming a probe on the router later only changes what the sensor is called; the entity and its `entity_id` stay.
+
 ### Netwatch probe statistics
 
 For `icmp` type netwatch entries the binary sensor exposes the probe measurements as attributes: `rtt_avg`, `rtt_min`, `rtt_max`, `rtt_jitter`, `rtt_stdev` (all in milliseconds), `loss_percent`, `sent_count`, `response_count` and `since`. Other probe types report only the fields the router provides for them. The values can be used directly in automations:
