@@ -288,8 +288,13 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
             self.hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=tracker_interval(config_entry),
+            # The first cycle after a start does not ping, so a host that is
+            # quiet in ARP reads as away until the second one. That second
+            # cycle therefore comes at the default pace whatever is
+            # configured, and the configured interval takes over after it.
+            update_interval=min(tracker_interval(config_entry), timedelta(seconds=DEFAULT_TRACK_HOSTS_INTERVAL)),
         )
+        self.configured_interval = tracker_interval(config_entry)
         self.name = config_entry.data[CONF_NAME]
         self.host = config_entry.data[CONF_HOST]
 
@@ -363,6 +368,7 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
         if "test" not in self.coordinator.ds["access"]:
             return
 
+        pinging = self.coordinator.host_tracking_initialized
         for uid in list(self.coordinator.ds["host"]):
             if not self.coordinator.host_tracking_initialized:
                 self._fill_host_defaults(self.coordinator.ds["host"][uid])
@@ -378,6 +384,8 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
                 self.coordinator.ds["host"][uid]["last-seen"] = utcnow()
 
         self.coordinator.host_tracking_initialized = True
+        if pinging:
+            self.update_interval = self.configured_interval
 
         await self.coordinator.async_process_host()
         return {
@@ -386,19 +394,31 @@ class MikrotikTrackerCoordinator(DataUpdateCoordinator[None]):
         }
 
 
+def _as_int(value, default: int) -> int:
+    """A stored option as a whole number, the default when it is not one."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def tracker_interval(config_entry: ConfigEntry) -> timedelta:
     """How often hosts are pinged and their trackers refreshed.
 
     The stored value is kept inside the supported range here as well as in
     the form, so an entry edited by other means cannot make the tracker spin
     or stall.
+
+    It is also held to half the tracking timeout. A wired host that has gone
+    quiet in ARP is only kept home by the ping, so pinging less often than the
+    timeout would mark it away between two cycles and bring it back on the
+    next one.
     """
-    seconds = config_entry.options.get(CONF_TRACK_HOSTS_INTERVAL, DEFAULT_TRACK_HOSTS_INTERVAL)
-    try:
-        seconds = int(seconds)
-    except (TypeError, ValueError):
-        seconds = DEFAULT_TRACK_HOSTS_INTERVAL
-    return timedelta(seconds=min(max(seconds, MIN_TRACK_HOSTS_INTERVAL), MAX_TRACK_HOSTS_INTERVAL))
+    options = config_entry.options
+    seconds = _as_int(options.get(CONF_TRACK_HOSTS_INTERVAL), DEFAULT_TRACK_HOSTS_INTERVAL)
+    timeout = _as_int(options.get(CONF_TRACK_HOSTS_TIMEOUT), DEFAULT_TRACK_HOST_TIMEOUT)
+    ceiling = min(MAX_TRACK_HOSTS_INTERVAL, max(MIN_TRACK_HOSTS_INTERVAL, timeout // 2))
+    return timedelta(seconds=min(max(seconds, MIN_TRACK_HOSTS_INTERVAL), ceiling))
 
 
 # ---------------------------
