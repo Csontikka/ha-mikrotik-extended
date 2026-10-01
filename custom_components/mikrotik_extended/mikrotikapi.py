@@ -10,6 +10,7 @@ from time import sleep, time
 import librouteros
 import librouteros.login as _rlogin
 from librouteros.exceptions import MultiTrapError, TrapError
+from librouteros.query import Key, Or
 from voluptuous import Optional
 
 from .const import (
@@ -325,6 +326,34 @@ class MikrotikAPI:
                     return None
 
         return response or None
+
+    # ---------------------------
+    #   query_where
+    # ---------------------------
+    def query_where(self, path, any_of: dict) -> list | None:
+        """Rows of a menu that match any of the given field values.
+
+        The router does the filtering, so a menu that can hold a very large
+        table, the routing table of a BGP router for one, is never read in
+        full. Returns an empty list when nothing matches and None when the
+        query could not be made, which the caller must tell apart: no rows is
+        an answer, a failed query is not.
+        """
+        if not self.connection_check():
+            return None
+
+        conditions = [Key(field) == value for field, value in any_of.items()]
+        condition = conditions[0] if len(conditions) == 1 else Or(*conditions)
+        with self.lock:
+            try:
+                _LOGGER.debug("API query: %s where any of %s", path, any_of)
+                response = self._connection.path(path).select().where(condition)
+            except Exception as e:
+                self.disconnect("path", e)
+                return None
+
+            response, _missing = self._materialize_list(response, path)
+        return response
 
     # ---------------------------
     #   set_value
