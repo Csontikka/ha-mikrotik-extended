@@ -35,11 +35,13 @@
         "description": "Configurar la integración",
         "data": {
           "scan_interval": "Intervalo de escaneo (segundos)",
+          "track_network_hosts_interval": "Intervalo de rastreo de dispositivos (segundos)",
           "track_network_hosts_timeout": "Tiempo de espera de dispositivos de red (segundos)",
           "zone": "Zona para seguimiento de dispositivo"
         },
         "data_description": {
           "scan_interval": "Mínimo: 10s. Predeterminado: 30s. Valores más bajos aumentan la carga en la API de RouterOS.",
+          "track_network_hosts_interval": "Cada cuánto se hace ping a los dispositivos rastreados y se actualiza su estado. Mínimo: 5s. Máximo: 300s. Predeterminado: 10s. Auméntelo en redes grandes para reducir la carga.",
           "track_network_hosts_timeout": "Solo dispositivos cableados. Segundos antes de que un dispositivo se considere desconectado si no aparece en ARP. Predeterminado: 180s.",
           "zone": "Nombre de la zona de Home Assistant a usar cuando un dispositivo rastreado está conectado. Predeterminado: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Intervalo de escaneo",
           "track_iface_clients": "Mostrar MAC e IP del cliente en las interfaces",
           "unit_of_measurement": "Unidad de medida",
+          "track_network_hosts_interval": "Intervalo de rastreo de dispositivos (segundos)",
           "track_network_hosts_timeout": "Tiempo de espera de dispositivos de red (segundos)",
           "zone": "Zona para seguimiento de dispositivo"
         },
         "data_description": {
           "scan_interval": "Mínimo: 10s. Predeterminado: 30s. Valores más bajos aumentan la carga en la API de RouterOS.",
+          "track_network_hosts_interval": "Cada cuánto se hace ping a los dispositivos rastreados y se actualiza su estado. Mínimo: 5s. Máximo: 300s. Predeterminado: 10s. Auméntelo en redes grandes para reducir la carga.",
           "track_network_hosts_timeout": "Solo dispositivos cableados. Segundos antes de que un dispositivo se considere desconectado si no aparece en ARP. Predeterminado: 180s.",
           "zone": "Nombre de la zona de Home Assistant a usar cuando un dispositivo rastreado está conectado. Predeterminado: home."
         },

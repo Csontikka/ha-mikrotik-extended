@@ -35,11 +35,13 @@
         "description": "Konfigurēt integrāciju",
         "data": {
           "scan_interval": "Skenēšanas periods (sekundēs)",
+          "track_network_hosts_interval": "Ierīču izsekošanas intervāls (sekundēs)",
           "track_network_hosts_timeout": "Tīkla ierīces uzraudzības noilgums (sekundēs)",
           "zone": "Ierīces izsekotāja zona"
         },
         "data_description": {
           "scan_interval": "Minimums: 10s. Noklusējums: 30s. Zemākas vērtības palielina RouterOS API slodzi.",
+          "track_network_hosts_interval": "Cik bieži izsekotās ierīces tiek pingotas un to stāvoklis atjaunots. Minimums: 5s. Maksimums: 300s. Noklusējums: 10s. Lielos tīklos palieliniet to, lai samazinātu slodzi.",
           "track_network_hosts_timeout": "Tikai vadu ierīces. Sekundes, pēc kurām ierīce tiek uzskatīta par bezsaistē, ja tā nav redzama ARP. Noklusējums: 180s.",
           "zone": "Home Assistant zonas nosaukums, ko izmantot, kad izsekotā ierīce ir pievienota. Noklusējums: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Skenēšanas periods",
           "track_iface_clients": "Rādīt klienta MAC un IP interfeisā",
           "unit_of_measurement": "Mērvienības",
+          "track_network_hosts_interval": "Ierīču izsekošanas intervāls (sekundēs)",
           "track_network_hosts_timeout": "Tīkla ierīces uzraudzības noilgums (sekundēs)",
           "zone": "Ierīces izsekotāja zona"
         },
         "data_description": {
           "scan_interval": "Minimums: 10s. Noklusējums: 30s. Zemākas vērtības palielina RouterOS API slodzi.",
+          "track_network_hosts_interval": "Cik bieži izsekotās ierīces tiek pingotas un to stāvoklis atjaunots. Minimums: 5s. Maksimums: 300s. Noklusējums: 10s. Lielos tīklos palieliniet to, lai samazinātu slodzi.",
           "track_network_hosts_timeout": "Tikai vadu ierīces. Sekundes, pēc kurām ierīce tiek uzskatīta par bezsaistē, ja tā nav redzama ARP. Noklusējums: 180s.",
           "zone": "Home Assistant zonas nosaukums, ko izmantot, kad izsekotā ierīce ir pievienota. Noklusējums: home."
         },

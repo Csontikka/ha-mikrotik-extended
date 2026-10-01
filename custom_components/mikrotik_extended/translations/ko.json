@@ -35,11 +35,13 @@
         "description": "통합 환경설정",
         "data": {
           "scan_interval": "스캔 간격(초)",
+          "track_network_hosts_interval": "기기 추적 간격(초)",
           "track_network_hosts_timeout": "네트워크 기기 추적 시간 초과(초)",
           "zone": "기기 추적기용 지역"
         },
         "data_description": {
           "scan_interval": "최솟값: 10s. 기본값: 30s. 값이 낮을수록 RouterOS API 부하가 증가합니다.",
+          "track_network_hosts_interval": "추적 중인 기기에 핑을 보내고 상태를 갱신하는 주기입니다. 최소: 5s. 최대: 300s. 기본값: 10s. 대규모 네트워크에서는 값을 높여 부하를 줄이세요.",
           "track_network_hosts_timeout": "유선 기기만 해당합니다. ARP에서 감지되지 않을 경우 기기가 오프라인으로 판단되기까지의 초 수입니다. 기본값: 180s.",
           "zone": "추적된 기기가 연결될 때 사용할 Home Assistant 지역 이름입니다. 기본값: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "스캔 간격",
           "track_iface_clients": "인터페이스에 클라이언트 MAC 및 IP 표시",
           "unit_of_measurement": "측정 단위",
+          "track_network_hosts_interval": "기기 추적 간격(초)",
           "track_network_hosts_timeout": "네트워크 기기 추적 시간 초과(초)",
           "zone": "기기 추적기용 지역"
         },
         "data_description": {
           "scan_interval": "최솟값: 10s. 기본값: 30s. 값이 낮을수록 RouterOS API 부하가 증가합니다.",
+          "track_network_hosts_interval": "추적 중인 기기에 핑을 보내고 상태를 갱신하는 주기입니다. 최소: 5s. 최대: 300s. 기본값: 10s. 대규모 네트워크에서는 값을 높여 부하를 줄이세요.",
           "track_network_hosts_timeout": "유선 기기만 해당합니다. ARP에서 감지되지 않을 경우 기기가 오프라인으로 판단되기까지의 초 수입니다. 기본값: 180s.",
           "zone": "추적된 기기가 연결될 때 사용할 Home Assistant 지역 이름입니다. 기본값: home."
         },

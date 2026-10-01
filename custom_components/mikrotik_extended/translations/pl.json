@@ -35,11 +35,13 @@
         "description": "Skonfiguruj integrację",
         "data": {
           "scan_interval": "Częstotliwość skanowania (sekundy)",
+          "track_network_hosts_interval": "Interwał śledzenia urządzeń (sekundy)",
           "track_network_hosts_timeout": "Limit czasu śledzenia urządzeń sieciowych (sekundy)",
           "zone": "Strefa programu do śledzenia urządzeń"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Domyślnie: 30s. Niższe wartości zwiększają obciążenie API RouterOS.",
+          "track_network_hosts_interval": "Jak często śledzone urządzenia są pingowane, a ich stan odświeżany. Minimum: 5s. Maksimum: 300s. Domyślnie: 10s. W dużych sieciach zwiększ wartość, aby zmniejszyć obciążenie.",
           "track_network_hosts_timeout": "Tylko urządzenia przewodowe. Liczba sekund, po której urządzenie jest uznawane za offline, jeśli nie pojawia się w ARP. Domyślnie: 180s.",
           "zone": "Nazwa strefy Home Assistant używana gdy śledzone urządzenie jest połączone. Domyślnie: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Częstotliwość skanowania",
           "track_iface_clients": "Pokaż w interfejsach adres MAC i IP klienta",
           "unit_of_measurement": "Jednostka miary",
+          "track_network_hosts_interval": "Interwał śledzenia urządzeń (sekundy)",
           "track_network_hosts_timeout": "Limit czasu śledzenia urządzeń sieciowych (sekundy)",
           "zone": "Strefa programu do śledzenia urządzeń"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Domyślnie: 30s. Niższe wartości zwiększają obciążenie API RouterOS.",
+          "track_network_hosts_interval": "Jak często śledzone urządzenia są pingowane, a ich stan odświeżany. Minimum: 5s. Maksimum: 300s. Domyślnie: 10s. W dużych sieciach zwiększ wartość, aby zmniejszyć obciążenie.",
           "track_network_hosts_timeout": "Tylko urządzenia przewodowe. Liczba sekund, po której urządzenie jest uznawane za offline, jeśli nie pojawia się w ARP. Domyślnie: 180s.",
           "zone": "Nazwa strefy Home Assistant używana gdy śledzone urządzenie jest połączone. Domyślnie: home."
         },

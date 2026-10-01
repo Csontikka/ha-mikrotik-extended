@@ -35,11 +35,13 @@
         "description": "Entegrasyonu yapılandır",
         "data": {
           "scan_interval": "Tarama aralığı (saniye)",
+          "track_network_hosts_interval": "Cihaz izleme aralığı (saniye)",
           "track_network_hosts_timeout": "Ağ cihazı izleme zaman aşımı (saniye)",
           "zone": "Cihaz izleyici için alan"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Varsayılan: 30s. Düşük değerler RouterOS API yükünü artırır.",
+          "track_network_hosts_interval": "İzlenen cihazlara ne sıklıkla ping atıldığı ve durumlarının yenilendiği. En az: 5s. En çok: 300s. Varsayılan: 10s. Büyük ağlarda yükü azaltmak için artırın.",
           "track_network_hosts_timeout": "Yalnızca kablolu cihazlar. ARP'de görülmeyen bir cihazın çevrimdışı sayılması için geçen saniye sayısı. Varsayılan: 180s.",
           "zone": "İzlenen bir cihaz bağlandığında kullanılacak Home Assistant bölge adı. Varsayılan: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Tarama aralığı",
           "track_iface_clients": "İstemci MAC ve IP adresini arayüzlerde göster",
           "unit_of_measurement": "Ölçü birimi",
+          "track_network_hosts_interval": "Cihaz izleme aralığı (saniye)",
           "track_network_hosts_timeout": "Ağ cihazı izleme zaman aşımı (saniyeler)",
           "zone": "Cihaz izleyici için alan"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Varsayılan: 30s. Düşük değerler RouterOS API yükünü artırır.",
+          "track_network_hosts_interval": "İzlenen cihazlara ne sıklıkla ping atıldığı ve durumlarının yenilendiği. En az: 5s. En çok: 300s. Varsayılan: 10s. Büyük ağlarda yükü azaltmak için artırın.",
           "track_network_hosts_timeout": "Yalnızca kablolu cihazlar. ARP'de görülmeyen bir cihazın çevrimdışı sayılması için geçen saniye sayısı. Varsayılan: 180s.",
           "zone": "İzlenen bir cihaz bağlandığında kullanılacak Home Assistant bölge adı. Varsayılan: home."
         },

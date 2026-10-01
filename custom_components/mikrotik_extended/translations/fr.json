@@ -35,11 +35,13 @@
         "description": "Configurer l'intégration",
         "data": {
           "scan_interval": "Intervalle d'analyse (secondes)",
+          "track_network_hosts_interval": "Intervalle de suivi des appareils (secondes)",
           "track_network_hosts_timeout": "Délai d'expiration du suivi des appareils réseau (secondes)",
           "zone": "Zone pour le traceur d'appareil"
         },
         "data_description": {
           "scan_interval": "Minimum : 10s. Défaut : 30s. Des valeurs plus basses augmentent la charge sur l'API RouterOS.",
+          "track_network_hosts_interval": "Fréquence à laquelle les appareils suivis sont pingués et leur état actualisé. Minimum : 5s. Maximum : 300s. Par défaut : 10s. Augmentez-la sur les grands réseaux pour réduire la charge.",
           "track_network_hosts_timeout": "Appareils filaires uniquement. Secondes avant qu'un appareil soit considéré hors ligne s'il n'est plus visible dans ARP. Défaut : 180s.",
           "zone": "Nom de la zone Home Assistant à utiliser lorsqu'un appareil suivi est connecté. Défaut : home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Intervalle d'analyse",
           "track_iface_clients": "Afficher l'IP et le MAC du client sur les interfaces",
           "unit_of_measurement": "Unité de mesure",
+          "track_network_hosts_interval": "Intervalle de suivi des appareils (secondes)",
           "track_network_hosts_timeout": "Délai d'expiration du suivi des appareils réseau (secondes)",
           "zone": "Zone pour le traceur d'appareil"
         },
         "data_description": {
           "scan_interval": "Minimum : 10s. Défaut : 30s. Des valeurs plus basses augmentent la charge sur l'API RouterOS.",
+          "track_network_hosts_interval": "Fréquence à laquelle les appareils suivis sont pingués et leur état actualisé. Minimum : 5s. Maximum : 300s. Par défaut : 10s. Augmentez-la sur les grands réseaux pour réduire la charge.",
           "track_network_hosts_timeout": "Appareils filaires uniquement. Secondes avant qu'un appareil soit considéré hors ligne s'il n'est plus visible dans ARP. Défaut : 180s.",
           "zone": "Nom de la zone Home Assistant à utiliser lorsqu'un appareil suivi est connecté. Défaut : home."
         },

@@ -35,11 +35,13 @@
         "description": "Configure integration",
         "data": {
           "scan_interval": "Scan interval (seconds)",
+          "track_network_hosts_interval": "Device tracker interval (seconds)",
           "track_network_hosts_timeout": "Track network devices timeout (seconds)",
           "zone": "Zone for device tracker"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
+          "track_network_hosts_interval": "How often tracked devices are pinged and their trackers refreshed. Minimum: 5s. Maximum: 300s. Default: 10s. Raise it on large networks to lower the load.",
           "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
           "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Scan interval",
           "track_iface_clients": "Show client MAC and IP on interfaces",
           "unit_of_measurement": "Unit of measurement",
+          "track_network_hosts_interval": "Device tracker interval (seconds)",
           "track_network_hosts_timeout": "Track network devices timeout (seconds)",
           "zone": "Zone for device tracker"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Default: 30s. Lower values increase RouterOS API load.",
+          "track_network_hosts_interval": "How often tracked devices are pinged and their trackers refreshed. Minimum: 5s. Maximum: 300s. Default: 10s. Raise it on large networks to lower the load.",
           "track_network_hosts_timeout": "Wired devices only. Seconds before a device is considered offline if not seen in ARP. Default: 180s.",
           "zone": "Home Assistant zone name to use when a tracked device is connected. Default: home."
         },

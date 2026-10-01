@@ -35,11 +35,13 @@
         "description": "Konfigurer integrasjon",
         "data": {
           "scan_interval": "Søkeintervall (sekunder)",
+          "track_network_hosts_interval": "Intervall for enhetssporing (sekunder)",
           "track_network_hosts_timeout": "Tidsavbrudd for nettverksenhetssporing (sekunder)",
           "zone": "Sone for enhetssporer"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standard: 30s. Lavere verdier øker belastningen på RouterOS API.",
+          "track_network_hosts_interval": "Hvor ofte sporede enheter pinges og statusen oppdateres. Minimum: 5s. Maksimum: 300s. Standard: 10s. Øk verdien i store nettverk for å redusere belastningen.",
           "track_network_hosts_timeout": "Kun kablede enheter. Sekunder før en enhet regnes som frakoblet hvis den ikke sees i ARP. Standard: 180s.",
           "zone": "Home Assistant-sonenavn som brukes når en sporet enhet er tilkoblet. Standard: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Søkeintervall",
           "track_iface_clients": "Vis klient MAC og IP på grensesnitt",
           "unit_of_measurement": "Måleenhet",
+          "track_network_hosts_interval": "Intervall for enhetssporing (sekunder)",
           "track_network_hosts_timeout": "Nettverksenhetssporingstidsavbrudd (sekunder)",
           "zone": "Sone for enhetssporer"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standard: 30s. Lavere verdier øker belastningen på RouterOS API.",
+          "track_network_hosts_interval": "Hvor ofte sporede enheter pinges og statusen oppdateres. Minimum: 5s. Maksimum: 300s. Standard: 10s. Øk verdien i store nettverk for å redusere belastningen.",
           "track_network_hosts_timeout": "Kun kablede enheter. Sekunder før en enhet regnes som frakoblet hvis den ikke sees i ARP. Standard: 180s.",
           "zone": "Home Assistant-sonenavn som brukes når en sporet enhet er tilkoblet. Standard: home."
         },

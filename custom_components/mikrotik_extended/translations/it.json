@@ -35,11 +35,13 @@
         "description": "Configura l'integrazione",
         "data": {
           "scan_interval": "Intervallo scansione (secondi)",
+          "track_network_hosts_interval": "Intervallo di tracciamento dispositivi (secondi)",
           "track_network_hosts_timeout": "Timeout tracciamento dispositivi di rete (secondi)",
           "zone": "Zona per localizzatore dispositivo"
         },
         "data_description": {
           "scan_interval": "Minimo: 10s. Predefinito: 30s. Valori più bassi aumentano il carico sull'API RouterOS.",
+          "track_network_hosts_interval": "Ogni quanto i dispositivi tracciati vengono pingati e il loro stato aggiornato. Minimo: 5s. Massimo: 300s. Predefinito: 10s. Aumentalo sulle reti grandi per ridurre il carico.",
           "track_network_hosts_timeout": "Solo dispositivi cablati. Secondi prima che un dispositivo venga considerato offline se non rilevato nell'ARP. Predefinito: 180s.",
           "zone": "Nome della zona di Home Assistant da usare quando un dispositivo tracciato è connesso. Predefinito: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Intervallo scansione",
           "track_iface_clients": "Mostra MAC e IP del client sulle interfacce",
           "unit_of_measurement": "Unità di misura",
+          "track_network_hosts_interval": "Intervallo di tracciamento dispositivi (secondi)",
           "track_network_hosts_timeout": "Timeout tracciamento dispositivi di rete (secondi)",
           "zone": "Zona per localizzatore dispositivo"
         },
         "data_description": {
           "scan_interval": "Minimo: 10s. Predefinito: 30s. Valori più bassi aumentano il carico sull'API RouterOS.",
+          "track_network_hosts_interval": "Ogni quanto i dispositivi tracciati vengono pingati e il loro stato aggiornato. Minimo: 5s. Massimo: 300s. Predefinito: 10s. Aumentalo sulle reti grandi per ridurre il carico.",
           "track_network_hosts_timeout": "Solo dispositivi cablati. Secondi prima che un dispositivo venga considerato offline se non rilevato nell'ARP. Predefinito: 180s.",
           "zone": "Nome della zona di Home Assistant da usare quando un dispositivo tracciato è connesso. Predefinito: home."
         },

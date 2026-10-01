@@ -35,11 +35,13 @@
         "description": "Đặt cấu hình tích hợp",
         "data": {
           "scan_interval": "Khoảng thời gian quét (giây)",
+          "track_network_hosts_interval": "Chu kỳ theo dõi thiết bị (giây)",
           "track_network_hosts_timeout": "Thời gian chờ theo dõi thiết bị mạng (giây)",
           "zone": "Khu vực cho trình theo dõi thiết bị"
         },
         "data_description": {
           "scan_interval": "Tối thiểu: 10s. Mặc định: 30s. Giá trị thấp hơn làm tăng tải RouterOS API.",
+          "track_network_hosts_interval": "Tần suất ping các thiết bị được theo dõi và làm mới trạng thái của chúng. Tối thiểu: 5s. Tối đa: 300s. Mặc định: 10s. Tăng giá trị trên mạng lớn để giảm tải.",
           "track_network_hosts_timeout": "Chỉ thiết bị có dây. Số giây trước khi thiết bị bị coi là ngoại tuyến nếu không thấy trong ARP. Mặc định: 180s.",
           "zone": "Tên vùng Home Assistant để sử dụng khi thiết bị được theo dõi kết nối. Mặc định: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Khoảng thời gian quét",
           "track_iface_clients": "Hiển thị MAC và IP của máy khách trên giao diện",
           "unit_of_measurement": "Đơn vị đo",
+          "track_network_hosts_interval": "Chu kỳ theo dõi thiết bị (giây)",
           "track_network_hosts_timeout": "Thời gian chờ theo dõi thiết bị mạng (giây)",
           "zone": "Khu vực cho trình theo dõi thiết bị"
         },
         "data_description": {
           "scan_interval": "Tối thiểu: 10s. Mặc định: 30s. Giá trị thấp hơn làm tăng tải RouterOS API.",
+          "track_network_hosts_interval": "Tần suất ping các thiết bị được theo dõi và làm mới trạng thái của chúng. Tối thiểu: 5s. Tối đa: 300s. Mặc định: 10s. Tăng giá trị trên mạng lớn để giảm tải.",
           "track_network_hosts_timeout": "Chỉ thiết bị có dây. Số giây trước khi thiết bị bị coi là ngoại tuyến nếu không thấy trong ARP. Mặc định: 180s.",
           "zone": "Tên vùng Home Assistant để sử dụng khi thiết bị được theo dõi kết nối. Mặc định: home."
         },

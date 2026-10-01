@@ -35,11 +35,13 @@
         "description": "Integratie configureren",
         "data": {
           "scan_interval": "Scaninterval (seconden)",
+          "track_network_hosts_interval": "Interval voor apparaattracking (seconden)",
           "track_network_hosts_timeout": "Time-out van netwerkapparaten (seconden)",
           "zone": "Zone voor apparaattracker"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standaard: 30s. Lagere waarden verhogen de RouterOS API-belasting.",
+          "track_network_hosts_interval": "Hoe vaak gevolgde apparaten worden gepingd en hun status wordt ververst. Minimum: 5s. Maximum: 300s. Standaard: 10s. Verhoog dit op grote netwerken om de belasting te verlagen.",
           "track_network_hosts_timeout": "Alleen bekabelde apparaten. Seconden voordat een apparaat als offline wordt beschouwd als het niet in ARP wordt gezien. Standaard: 180s.",
           "zone": "Naam van de Home Assistant-zone die wordt gebruikt wanneer een gevolgd apparaat is verbonden. Standaard: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Scaninterval",
           "track_iface_clients": "MAC en IP van client weergeven op interfaces",
           "unit_of_measurement": "Meeteenheid",
+          "track_network_hosts_interval": "Interval voor apparaattracking (seconden)",
           "track_network_hosts_timeout": "Volg de time-out van netwerkapparaten (seconden)",
           "zone": "Zone voor apparaattracker"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standaard: 30s. Lagere waarden verhogen de RouterOS API-belasting.",
+          "track_network_hosts_interval": "Hoe vaak gevolgde apparaten worden gepingd en hun status wordt ververst. Minimum: 5s. Maximum: 300s. Standaard: 10s. Verhoog dit op grote netwerken om de belasting te verlagen.",
           "track_network_hosts_timeout": "Alleen bekabelde apparaten. Seconden voordat een apparaat als offline wordt beschouwd als het niet in ARP wordt gezien. Standaard: 180s.",
           "zone": "Naam van de Home Assistant-zone die wordt gebruikt wanneer een gevolgd apparaat is verbonden. Standaard: home."
         },

@@ -35,11 +35,13 @@
         "description": "Az integráció konfigurálása",
         "data": {
           "scan_interval": "Felderítési időköz (másodperc)",
+          "track_network_hosts_interval": "Eszközkövetés időköze (másodperc)",
           "track_network_hosts_timeout": "Hálózati eszközök követésének időtúllépése (másodperc)",
           "zone": "Zóna az eszközkövető számára"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Alapértelmezett: 30s. Az alacsonyabb értékek növelik a RouterOS API terhelését.",
+          "track_network_hosts_interval": "Milyen gyakran pingeli a követett eszközöket és frissíti az állapotukat. Minimum: 5s. Maximum: 300s. Alapértelmezett: 10s. Nagy hálózaton érdemes növelni, csökken a terhelés.",
           "track_network_hosts_timeout": "Csak vezetékes eszközök. Másodpercek száma, amely után egy eszközt offline-nak tekintünk, ha nem látjuk az ARP táblában. Alapértelmezett: 180s.",
           "zone": "A Home Assistant zóna neve, amelyet a követett eszközök csatlakozásakor használ. Alapértelmezett: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Felderítési időköz",
           "track_iface_clients": "Kliens MAC- és IP-cím megjelenítése az interfészeken",
           "unit_of_measurement": "Mértékegység",
+          "track_network_hosts_interval": "Eszközkövetés időköze (másodperc)",
           "track_network_hosts_timeout": "Hálózati eszközök követésének időtúllépése (másodperc)",
           "zone": "Zóna az eszközkövető számára"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Alapértelmezett: 30s. Az alacsonyabb értékek növelik a RouterOS API terhelését.",
+          "track_network_hosts_interval": "Milyen gyakran pingeli a követett eszközöket és frissíti az állapotukat. Minimum: 5s. Maximum: 300s. Alapértelmezett: 10s. Nagy hálózaton érdemes növelni, csökken a terhelés.",
           "track_network_hosts_timeout": "Csak vezetékes eszközök. Másodpercek száma, amely után egy eszközt offline-nak tekintünk, ha nem látjuk az ARP táblában. Alapértelmezett: 180s.",
           "zone": "A Home Assistant zóna neve, amelyet a követett eszközök csatlakozásakor használ. Alapértelmezett: home."
         },

@@ -35,11 +35,13 @@
         "description": "Integration konfigurieren",
         "data": {
           "scan_interval": "Scan-Intervall (Sekunden)",
+          "track_network_hosts_interval": "Intervall der Geräteverfolgung (Sekunden)",
           "track_network_hosts_timeout": "Zeitlimit für Netzwerkgeräte (Sekunden)",
           "zone": "Zone für Gerätetracker"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standard: 30s. Niedrigere Werte erhöhen die Last auf die RouterOS API.",
+          "track_network_hosts_interval": "Wie oft verfolgte Geräte angepingt und ihre Tracker aktualisiert werden. Minimum: 5s. Maximum: 300s. Standard: 10s. In großen Netzwerken erhöhen, um die Last zu senken.",
           "track_network_hosts_timeout": "Nur kabelgebundene Geräte. Sekunden, bevor ein Gerät als offline gilt, wenn es nicht mehr im ARP sichtbar ist. Standard: 180s.",
           "zone": "Name der Home Assistant Zone, die verwendet wird, wenn ein verfolgtes Gerät verbunden ist. Standard: home."
         }
@@ -146,11 +148,13 @@
           "scan_interval": "Scan-Intervall",
           "track_iface_clients": "Client MAC und IP auf dem Interface anzeigen",
           "unit_of_measurement": "Maßeinheit",
+          "track_network_hosts_interval": "Intervall der Geräteverfolgung (Sekunden)",
           "track_network_hosts_timeout": "Zeitlimit für Netzwerkgeräte-Verfolgung (Sekunden)",
           "zone": "Zone für Gerätetracker"
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standard: 30s. Niedrigere Werte erhöhen die Last auf die RouterOS API.",
+          "track_network_hosts_interval": "Wie oft verfolgte Geräte angepingt und ihre Tracker aktualisiert werden. Minimum: 5s. Maximum: 300s. Standard: 10s. In großen Netzwerken erhöhen, um die Last zu senken.",
           "track_network_hosts_timeout": "Nur kabelgebundene Geräte. Sekunden, bevor ein Gerät als offline gilt, wenn es nicht mehr im ARP sichtbar ist. Standard: 180s.",
           "zone": "Name der Home Assistant Zone, die verwendet wird, wenn ein verfolgtes Gerät verbunden ist. Standard: home."
         },
