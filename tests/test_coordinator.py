@@ -2264,6 +2264,39 @@ class TestNetwatchName:
         assert list(unnamed) == list(named) == ["1.1.1.1-icmp"]
 
 
+class TestInterfaceErrorCounters:
+    def _fetch(self, hass, row):
+        coord = _make_coordinator(hass, options={"sensor_interfaces": False})
+        coord.api.query.return_value = [row]
+        coord.get_interface()
+        return coord.ds["interface"]["ether1"]
+
+    def test_counters_are_read_from_the_interface_list(self, hass):
+        port = self._fetch(hass, {".id": "*1", "default-name": "ether1", "name": "ether1", "type": "ether", "rx-error": 3, "tx-error": 0, "rx-drop": 120, "tx-drop": 7})
+        assert (port["rx-error"], port["tx-error"], port["rx-drop"], port["tx-drop"]) == (3, 0, 120, 7)
+
+    def test_missing_counters_read_as_zero(self, hass):
+        """Some interface types do not report every counter."""
+        port = self._fetch(hass, {".id": "*1", "default-name": "ether1", "name": "ether1", "type": "ether"})
+        assert (port["rx-error"], port["tx-error"], port["rx-drop"], port["tx-drop"]) == (0, 0, 0, 0)
+
+
+def test_error_counter_descriptions():
+    """Four counters per interface, each behind the error counter option."""
+    from homeassistant.components.sensor import SensorStateClass
+
+    from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS
+    from custom_components.mikrotik_extended.sensor_types import SENSOR_TYPES
+
+    counters = {d.key: d for d in SENSOR_TYPES if d.func == "MikrotikInterfaceErrorSensor"}
+    assert set(counters) == {"rx-error", "tx-error", "rx-drop", "tx-drop"}
+    for key, desc in counters.items():
+        assert desc.data_attribute == key
+        assert desc.data_path == "interface"
+        assert desc.state_class is SensorStateClass.TOTAL_INCREASING, "a reboot resets the counter"
+        assert desc.enable_on_option == CONF_SENSOR_PORT_ERRORS
+
+
 # ---------------------------------------------------------------------------
 # get_wireguard_peers
 # ---------------------------------------------------------------------------

@@ -91,6 +91,7 @@ async def test_async_setup_entry_invokes_add_entities(hass):
     assert set(dispatcher.keys()) == {
         "MikrotikSensor",
         "MikrotikInterfaceTrafficSensor",
+        "MikrotikInterfaceErrorSensor",
         "MikrotikClientTrafficSensor",
         "MikrotikIPAddressSensor",
     }

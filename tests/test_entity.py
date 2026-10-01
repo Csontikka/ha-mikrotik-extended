@@ -219,6 +219,23 @@ class TestSkipSensor:
         for func in ("MikrotikPortBinarySensor", "MikrotikPoeSelect", "MikrotikSwitch", "MikrotikNATSwitch"):
             assert _skip_sensor(entry, self._desc(func=func, data_path="interface"), port, "e") is False, func
 
+    def test_error_counters_only_with_their_option(self):
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS, CONF_SENSOR_PORT_TRAFFIC
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        port = {"e": {"type": "ether"}}
+        counter = self._desc(func="MikrotikInterfaceErrorSensor", data_path="interface")
+        assert _skip_sensor(self._entry(), counter, port, "e") is True, "off by default"
+        assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_ERRORS: True}), counter, port, "e") is False
+        assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_TRAFFIC: True}), counter, port, "e") is True, "the traffic option does not bring them"
+
+    def test_error_counter_option_does_not_bring_traffic_sensors(self):
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        traffic = self._desc(func="MikrotikInterfaceTrafficSensor", data_path="interface")
+        assert _skip_sensor(self._entry(**{CONF_SENSOR_PORT_ERRORS: True}), traffic, {"e": {"type": "ether"}}, "e") is True
+
     def test_netwatch_skipped_when_disabled(self):
         from custom_components.mikrotik_extended.const import CONF_SENSOR_NETWATCH_TRACKER
         from custom_components.mikrotik_extended.entity import _skip_sensor
