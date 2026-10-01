@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standaard: 30s. Lagere waarden verhogen de RouterOS API-belasting.",
-          "track_network_hosts_interval": "Hoe vaak gevolgde apparaten worden gepingd en hun status wordt ververst. Minimum: 5s. Maximum: 300s. Standaard: 10s. Verhoog dit op grote netwerken om de belasting te verlagen.",
+          "track_network_hosts_interval": "Hoe vaak gevolgde apparaten worden gepingd en hun status wordt ververst. Minimum: 5s. Maximum: 300s. Standaard: 10s. Verhoog dit op grote netwerken om de belasting te verlagen. Nooit langer dan de helft van de time-out. Wisselingen tussen thuis en afwezig kunnen tot één interval vertraagd zijn.",
           "track_network_hosts_timeout": "Alleen bekabelde apparaten. Seconden voordat een apparaat als offline wordt beschouwd als het niet in ARP wordt gezien. Standaard: 180s.",
           "zone": "Naam van de Home Assistant-zone die wordt gebruikt wanneer een gevolgd apparaat is verbonden. Standaard: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standaard: 30s. Lagere waarden verhogen de RouterOS API-belasting.",
-          "track_network_hosts_interval": "Hoe vaak gevolgde apparaten worden gepingd en hun status wordt ververst. Minimum: 5s. Maximum: 300s. Standaard: 10s. Verhoog dit op grote netwerken om de belasting te verlagen.",
+          "track_network_hosts_interval": "Hoe vaak gevolgde apparaten worden gepingd en hun status wordt ververst. Minimum: 5s. Maximum: 300s. Standaard: 10s. Verhoog dit op grote netwerken om de belasting te verlagen. Nooit langer dan de helft van de time-out. Wisselingen tussen thuis en afwezig kunnen tot één interval vertraagd zijn.",
           "track_network_hosts_timeout": "Alleen bekabelde apparaten. Seconden voordat een apparaat als offline wordt beschouwd als het niet in ARP wordt gezien. Standaard: 180s.",
           "zone": "Naam van de Home Assistant-zone die wordt gebruikt wanneer een gevolgd apparaat is verbonden. Standaard: home."
         },

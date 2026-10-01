@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Domyślnie: 30s. Niższe wartości zwiększają obciążenie API RouterOS.",
-          "track_network_hosts_interval": "Jak często śledzone urządzenia są pingowane, a ich stan odświeżany. Minimum: 5s. Maksimum: 300s. Domyślnie: 10s. W dużych sieciach zwiększ wartość, aby zmniejszyć obciążenie.",
+          "track_network_hosts_interval": "Jak często śledzone urządzenia są pingowane, a ich stan odświeżany. Minimum: 5s. Maksimum: 300s. Domyślnie: 10s. W dużych sieciach zwiększ wartość, aby zmniejszyć obciążenie. Nigdy nie jest dłuższy niż połowa limitu czasu śledzenia. Zmiany stanu w domu/poza domem mogą się opóźnić o jeden interwał.",
           "track_network_hosts_timeout": "Tylko urządzenia przewodowe. Liczba sekund, po której urządzenie jest uznawane za offline, jeśli nie pojawia się w ARP. Domyślnie: 180s.",
           "zone": "Nazwa strefy Home Assistant używana gdy śledzone urządzenie jest połączone. Domyślnie: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Domyślnie: 30s. Niższe wartości zwiększają obciążenie API RouterOS.",
-          "track_network_hosts_interval": "Jak często śledzone urządzenia są pingowane, a ich stan odświeżany. Minimum: 5s. Maksimum: 300s. Domyślnie: 10s. W dużych sieciach zwiększ wartość, aby zmniejszyć obciążenie.",
+          "track_network_hosts_interval": "Jak często śledzone urządzenia są pingowane, a ich stan odświeżany. Minimum: 5s. Maksimum: 300s. Domyślnie: 10s. W dużych sieciach zwiększ wartość, aby zmniejszyć obciążenie. Nigdy nie jest dłuższy niż połowa limitu czasu śledzenia. Zmiany stanu w domu/poza domem mogą się opóźnić o jeden interwał.",
           "track_network_hosts_timeout": "Tylko urządzenia przewodowe. Liczba sekund, po której urządzenie jest uznawane za offline, jeśli nie pojawia się w ARP. Domyślnie: 180s.",
           "zone": "Nazwa strefy Home Assistant używana gdy śledzone urządzenie jest połączone. Domyślnie: home."
         },

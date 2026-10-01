@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standard: 30s. Niedrigere Werte erhöhen die Last auf die RouterOS API.",
-          "track_network_hosts_interval": "Wie oft verfolgte Geräte angepingt und ihre Tracker aktualisiert werden. Minimum: 5s. Maximum: 300s. Standard: 10s. In großen Netzwerken erhöhen, um die Last zu senken.",
+          "track_network_hosts_interval": "Wie oft verfolgte Geräte angepingt und ihre Tracker aktualisiert werden. Minimum: 5s. Maximum: 300s. Standard: 10s. In großen Netzwerken erhöhen, um die Last zu senken. Nie länger als die Hälfte des Zeitlimits. Wechsel zwischen zu Hause und abwesend können sich um bis zu ein Intervall verzögern.",
           "track_network_hosts_timeout": "Nur kabelgebundene Geräte. Sekunden, bevor ein Gerät als offline gilt, wenn es nicht mehr im ARP sichtbar ist. Standard: 180s.",
           "zone": "Name der Home Assistant Zone, die verwendet wird, wenn ein verfolgtes Gerät verbunden ist. Standard: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Standard: 30s. Niedrigere Werte erhöhen die Last auf die RouterOS API.",
-          "track_network_hosts_interval": "Wie oft verfolgte Geräte angepingt und ihre Tracker aktualisiert werden. Minimum: 5s. Maximum: 300s. Standard: 10s. In großen Netzwerken erhöhen, um die Last zu senken.",
+          "track_network_hosts_interval": "Wie oft verfolgte Geräte angepingt und ihre Tracker aktualisiert werden. Minimum: 5s. Maximum: 300s. Standard: 10s. In großen Netzwerken erhöhen, um die Last zu senken. Nie länger als die Hälfte des Zeitlimits. Wechsel zwischen zu Hause und abwesend können sich um bis zu ein Intervall verzögern.",
           "track_network_hosts_timeout": "Nur kabelgebundene Geräte. Sekunden, bevor ein Gerät als offline gilt, wenn es nicht mehr im ARP sichtbar ist. Standard: 180s.",
           "zone": "Name der Home Assistant Zone, die verwendet wird, wenn ein verfolgtes Gerät verbunden ist. Standard: home."
         },

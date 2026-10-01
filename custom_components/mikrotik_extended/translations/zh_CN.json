@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "最小值：10s。默认值：30s。值越低，RouterOS API 负载越高。",
-          "track_network_hosts_interval": "对被跟踪设备执行 ping 并刷新其状态的频率。最小值：5s。最大值：300s。默认值：10s。在大型网络中调大可降低负载。",
+          "track_network_hosts_interval": "对被跟踪设备执行 ping 并刷新其状态的频率。最小值：5s。最大值：300s。默认值：10s。在大型网络中调大可降低负载。不会超过跟踪超时的一半。在家/离家状态的变化最多可能延迟一个间隔。",
           "track_network_hosts_timeout": "仅限有线设备。设备在 ARP 中消失后被判定为离线的秒数。默认值：180s。",
           "zone": "跟踪到设备连接时使用的 Home Assistant 区域名称。默认值：home。"
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "最小值：10s。默认值：30s。值越低，RouterOS API 负载越高。",
-          "track_network_hosts_interval": "对被跟踪设备执行 ping 并刷新其状态的频率。最小值：5s。最大值：300s。默认值：10s。在大型网络中调大可降低负载。",
+          "track_network_hosts_interval": "对被跟踪设备执行 ping 并刷新其状态的频率。最小值：5s。最大值：300s。默认值：10s。在大型网络中调大可降低负载。不会超过跟踪超时的一半。在家/离家状态的变化最多可能延迟一个间隔。",
           "track_network_hosts_timeout": "仅限有线设备。设备在 ARP 中消失后被判定为离线的秒数。默认值：180s。",
           "zone": "跟踪到设备连接时使用的 Home Assistant 区域名称。默认值：home。"
         },

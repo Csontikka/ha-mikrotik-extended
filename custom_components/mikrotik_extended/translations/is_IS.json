@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Lágmark: 10s. Sjálfgefið: 30s. Lægri gildi auka RouterOS API-álag.",
-          "track_network_hosts_interval": "Hversu oft rakin tæki eru pinguð og staða þeirra uppfærð. Lágmark: 5s. Hámark: 300s. Sjálfgefið: 10s. Hækkaðu gildið á stórum netum til að minnka álag.",
+          "track_network_hosts_interval": "Hversu oft rakin tæki eru pinguð og staða þeirra uppfærð. Lágmark: 5s. Hámark: 300s. Sjálfgefið: 10s. Hækkaðu gildið á stórum netum til að minnka álag. Aldrei lengra en helmingur tímamarka rakningar. Breytingar á heima/að heiman geta tafist um allt að eitt bil.",
           "track_network_hosts_timeout": "Aðeins þráðtengdar tæki. Sekúndur áður en tæki telst vera offline ef það sést ekki í ARP. Sjálfgefið: 180s.",
           "zone": "Heiti Home Assistant svæðis til að nota þegar rakið tæki tengist. Sjálfgefið: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Lágmark: 10s. Sjálfgefið: 30s. Lægri gildi auka RouterOS API-álag.",
-          "track_network_hosts_interval": "Hversu oft rakin tæki eru pinguð og staða þeirra uppfærð. Lágmark: 5s. Hámark: 300s. Sjálfgefið: 10s. Hækkaðu gildið á stórum netum til að minnka álag.",
+          "track_network_hosts_interval": "Hversu oft rakin tæki eru pinguð og staða þeirra uppfærð. Lágmark: 5s. Hámark: 300s. Sjálfgefið: 10s. Hækkaðu gildið á stórum netum til að minnka álag. Aldrei lengra en helmingur tímamarka rakningar. Breytingar á heima/að heiman geta tafist um allt að eitt bil.",
           "track_network_hosts_timeout": "Aðeins þráðtengdar tæki. Sekúndur áður en tæki telst vera offline ef það sést ekki í ARP. Sjálfgefið: 180s.",
           "zone": "Heiti Home Assistant svæðis til að nota þegar rakið tæki tengist. Sjálfgefið: home."
         },

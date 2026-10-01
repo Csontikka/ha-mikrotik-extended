@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum : 10s. Défaut : 30s. Des valeurs plus basses augmentent la charge sur l'API RouterOS.",
-          "track_network_hosts_interval": "Fréquence à laquelle les appareils suivis sont pingués et leur état actualisé. Minimum : 5s. Maximum : 300s. Par défaut : 10s. Augmentez-la sur les grands réseaux pour réduire la charge.",
+          "track_network_hosts_interval": "Fréquence à laquelle les appareils suivis sont pingués et leur état actualisé. Minimum : 5s. Maximum : 300s. Par défaut : 10s. Augmentez-la sur les grands réseaux pour réduire la charge. Jamais plus de la moitié du délai d'expiration du suivi. Les changements présent/absent peuvent être retardés d'un intervalle au maximum.",
           "track_network_hosts_timeout": "Appareils filaires uniquement. Secondes avant qu'un appareil soit considéré hors ligne s'il n'est plus visible dans ARP. Défaut : 180s.",
           "zone": "Nom de la zone Home Assistant à utiliser lorsqu'un appareil suivi est connecté. Défaut : home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum : 10s. Défaut : 30s. Des valeurs plus basses augmentent la charge sur l'API RouterOS.",
-          "track_network_hosts_interval": "Fréquence à laquelle les appareils suivis sont pingués et leur état actualisé. Minimum : 5s. Maximum : 300s. Par défaut : 10s. Augmentez-la sur les grands réseaux pour réduire la charge.",
+          "track_network_hosts_interval": "Fréquence à laquelle les appareils suivis sont pingués et leur état actualisé. Minimum : 5s. Maximum : 300s. Par défaut : 10s. Augmentez-la sur les grands réseaux pour réduire la charge. Jamais plus de la moitié du délai d'expiration du suivi. Les changements présent/absent peuvent être retardés d'un intervalle au maximum.",
           "track_network_hosts_timeout": "Appareils filaires uniquement. Secondes avant qu'un appareil soit considéré hors ligne s'il n'est plus visible dans ARP. Défaut : 180s.",
           "zone": "Nom de la zone Home Assistant à utiliser lorsqu'un appareil suivi est connecté. Défaut : home."
         },

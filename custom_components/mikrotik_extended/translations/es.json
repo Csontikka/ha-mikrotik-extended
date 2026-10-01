@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Mínimo: 10s. Predeterminado: 30s. Valores más bajos aumentan la carga en la API de RouterOS.",
-          "track_network_hosts_interval": "Cada cuánto se hace ping a los dispositivos rastreados y se actualiza su estado. Mínimo: 5s. Máximo: 300s. Predeterminado: 10s. Auméntelo en redes grandes para reducir la carga.",
+          "track_network_hosts_interval": "Cada cuánto se hace ping a los dispositivos rastreados y se actualiza su estado. Mínimo: 5s. Máximo: 300s. Predeterminado: 10s. Auméntelo en redes grandes para reducir la carga. Nunca supera la mitad del tiempo de espera de rastreo. Los cambios entre en casa y fuera pueden retrasarse hasta un intervalo.",
           "track_network_hosts_timeout": "Solo dispositivos cableados. Segundos antes de que un dispositivo se considere desconectado si no aparece en ARP. Predeterminado: 180s.",
           "zone": "Nombre de la zona de Home Assistant a usar cuando un dispositivo rastreado está conectado. Predeterminado: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Mínimo: 10s. Predeterminado: 30s. Valores más bajos aumentan la carga en la API de RouterOS.",
-          "track_network_hosts_interval": "Cada cuánto se hace ping a los dispositivos rastreados y se actualiza su estado. Mínimo: 5s. Máximo: 300s. Predeterminado: 10s. Auméntelo en redes grandes para reducir la carga.",
+          "track_network_hosts_interval": "Cada cuánto se hace ping a los dispositivos rastreados y se actualiza su estado. Mínimo: 5s. Máximo: 300s. Predeterminado: 10s. Auméntelo en redes grandes para reducir la carga. Nunca supera la mitad del tiempo de espera de rastreo. Los cambios entre en casa y fuera pueden retrasarse hasta un intervalo.",
           "track_network_hosts_timeout": "Solo dispositivos cableados. Segundos antes de que un dispositivo se considere desconectado si no aparece en ARP. Predeterminado: 180s.",
           "zone": "Nombre de la zona de Home Assistant a usar cuando un dispositivo rastreado está conectado. Predeterminado: home."
         },

@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Predvolene: 30s. Nižšie hodnoty zvyšujú záťaž API RouterOS.",
-          "track_network_hosts_interval": "Ako často sa sledované zariadenia pingujú a ich stav obnovuje. Minimum: 5s. Maximum: 300s. Predvolené: 10s. Vo veľkých sieťach hodnotu zvýšte, zníži sa záťaž.",
+          "track_network_hosts_interval": "Ako často sa sledované zariadenia pingujú a ich stav obnovuje. Minimum: 5s. Maximum: 300s. Predvolené: 10s. Vo veľkých sieťach hodnotu zvýšte, zníži sa záťaž. Nikdy nie je dlhší než polovica časového limitu sledovania. Zmena stavu doma/preč sa môže oneskoriť až o jeden interval.",
           "track_network_hosts_timeout": "Iba káblové zariadenia. Počet sekúnd, po ktorých je zariadenie považované za offline, ak sa nezobrazuje v ARP. Predvolene: 180s.",
           "zone": "Názov zóny Home Assistant použitý pri pripojení sledovaného zariadenia. Predvolene: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Minimum: 10s. Predvolene: 30s. Nižšie hodnoty zvyšujú záťaž API RouterOS.",
-          "track_network_hosts_interval": "Ako často sa sledované zariadenia pingujú a ich stav obnovuje. Minimum: 5s. Maximum: 300s. Predvolené: 10s. Vo veľkých sieťach hodnotu zvýšte, zníži sa záťaž.",
+          "track_network_hosts_interval": "Ako často sa sledované zariadenia pingujú a ich stav obnovuje. Minimum: 5s. Maximum: 300s. Predvolené: 10s. Vo veľkých sieťach hodnotu zvýšte, zníži sa záťaž. Nikdy nie je dlhší než polovica časového limitu sledovania. Zmena stavu doma/preč sa môže oneskoriť až o jeden interval.",
           "track_network_hosts_timeout": "Iba káblové zariadenia. Počet sekúnd, po ktorých je zariadenie považované za offline, ak sa nezobrazuje v ARP. Predvolene: 180s.",
           "zone": "Názov zóny Home Assistant použitý pri pripojení sledovaného zariadenia. Predvolene: home."
         },

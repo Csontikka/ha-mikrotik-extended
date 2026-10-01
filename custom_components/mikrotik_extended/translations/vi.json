@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Tối thiểu: 10s. Mặc định: 30s. Giá trị thấp hơn làm tăng tải RouterOS API.",
-          "track_network_hosts_interval": "Tần suất ping các thiết bị được theo dõi và làm mới trạng thái của chúng. Tối thiểu: 5s. Tối đa: 300s. Mặc định: 10s. Tăng giá trị trên mạng lớn để giảm tải.",
+          "track_network_hosts_interval": "Tần suất ping các thiết bị được theo dõi và làm mới trạng thái của chúng. Tối thiểu: 5s. Tối đa: 300s. Mặc định: 10s. Tăng giá trị trên mạng lớn để giảm tải. Không bao giờ dài hơn một nửa thời gian chờ theo dõi. Thay đổi trạng thái ở nhà/vắng nhà có thể trễ tối đa một chu kỳ.",
           "track_network_hosts_timeout": "Chỉ thiết bị có dây. Số giây trước khi thiết bị bị coi là ngoại tuyến nếu không thấy trong ARP. Mặc định: 180s.",
           "zone": "Tên vùng Home Assistant để sử dụng khi thiết bị được theo dõi kết nối. Mặc định: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Tối thiểu: 10s. Mặc định: 30s. Giá trị thấp hơn làm tăng tải RouterOS API.",
-          "track_network_hosts_interval": "Tần suất ping các thiết bị được theo dõi và làm mới trạng thái của chúng. Tối thiểu: 5s. Tối đa: 300s. Mặc định: 10s. Tăng giá trị trên mạng lớn để giảm tải.",
+          "track_network_hosts_interval": "Tần suất ping các thiết bị được theo dõi và làm mới trạng thái của chúng. Tối thiểu: 5s. Tối đa: 300s. Mặc định: 10s. Tăng giá trị trên mạng lớn để giảm tải. Không bao giờ dài hơn một nửa thời gian chờ theo dõi. Thay đổi trạng thái ở nhà/vắng nhà có thể trễ tối đa một chu kỳ.",
           "track_network_hosts_timeout": "Chỉ thiết bị có dây. Số giây trước khi thiết bị bị coi là ngoại tuyến nếu không thấy trong ARP. Mặc định: 180s.",
           "zone": "Tên vùng Home Assistant để sử dụng khi thiết bị được theo dõi kết nối. Mặc định: home."
         },

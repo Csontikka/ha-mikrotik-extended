@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Minimo: 10s. Predefinito: 30s. Valori più bassi aumentano il carico sull'API RouterOS.",
-          "track_network_hosts_interval": "Ogni quanto i dispositivi tracciati vengono pingati e il loro stato aggiornato. Minimo: 5s. Massimo: 300s. Predefinito: 10s. Aumentalo sulle reti grandi per ridurre il carico.",
+          "track_network_hosts_interval": "Ogni quanto i dispositivi tracciati vengono pingati e il loro stato aggiornato. Minimo: 5s. Massimo: 300s. Predefinito: 10s. Aumentalo sulle reti grandi per ridurre il carico. Mai più lungo della metà del timeout di tracciamento. I cambi in casa/fuori casa possono ritardare fino a un intervallo.",
           "track_network_hosts_timeout": "Solo dispositivi cablati. Secondi prima che un dispositivo venga considerato offline se non rilevato nell'ARP. Predefinito: 180s.",
           "zone": "Nome della zona di Home Assistant da usare quando un dispositivo tracciato è connesso. Predefinito: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Minimo: 10s. Predefinito: 30s. Valori più bassi aumentano il carico sull'API RouterOS.",
-          "track_network_hosts_interval": "Ogni quanto i dispositivi tracciati vengono pingati e il loro stato aggiornato. Minimo: 5s. Massimo: 300s. Predefinito: 10s. Aumentalo sulle reti grandi per ridurre il carico.",
+          "track_network_hosts_interval": "Ogni quanto i dispositivi tracciati vengono pingati e il loro stato aggiornato. Minimo: 5s. Massimo: 300s. Predefinito: 10s. Aumentalo sulle reti grandi per ridurre il carico. Mai più lungo della metà del timeout di tracciamento. I cambi in casa/fuori casa possono ritardare fino a un intervallo.",
           "track_network_hosts_timeout": "Solo dispositivi cablati. Secondi prima che un dispositivo venga considerato offline se non rilevato nell'ARP. Predefinito: 180s.",
           "zone": "Nome della zona di Home Assistant da usare quando un dispositivo tracciato è connesso. Predefinito: home."
         },

@@ -41,7 +41,7 @@
         },
         "data_description": {
           "scan_interval": "Mínimo: 10s. Predefinido: 30s. Valores mais baixos aumentam a carga na API RouterOS.",
-          "track_network_hosts_interval": "Com que frequência os dispositivos rastreados recebem ping e o seu estado é atualizado. Mínimo: 5s. Máximo: 300s. Predefinição: 10s. Aumente em redes grandes para reduzir a carga.",
+          "track_network_hosts_interval": "Com que frequência os dispositivos rastreados recebem ping e o seu estado é atualizado. Mínimo: 5s. Máximo: 300s. Predefinição: 10s. Aumente em redes grandes para reduzir a carga. Nunca superior a metade do tempo limite de rastreamento. As mudanças entre em casa e ausente podem atrasar até um intervalo.",
           "track_network_hosts_timeout": "Apenas dispositivos com fios. Segundos antes de um dispositivo ser considerado offline se não for visto no ARP. Predefinido: 180s.",
           "zone": "Nome da zona do Home Assistant a utilizar quando um dispositivo rastreado está ligado. Predefinido: home."
         }
@@ -154,7 +154,7 @@
         },
         "data_description": {
           "scan_interval": "Mínimo: 10s. Predefinido: 30s. Valores mais baixos aumentam a carga na API RouterOS.",
-          "track_network_hosts_interval": "Com que frequência os dispositivos rastreados recebem ping e o seu estado é atualizado. Mínimo: 5s. Máximo: 300s. Predefinição: 10s. Aumente em redes grandes para reduzir a carga.",
+          "track_network_hosts_interval": "Com que frequência os dispositivos rastreados recebem ping e o seu estado é atualizado. Mínimo: 5s. Máximo: 300s. Predefinição: 10s. Aumente em redes grandes para reduzir a carga. Nunca superior a metade do tempo limite de rastreamento. As mudanças entre em casa e ausente podem atrasar até um intervalo.",
           "track_network_hosts_timeout": "Apenas dispositivos com fios. Segundos antes de um dispositivo ser considerado offline se não for visto no ARP. Predefinido: 180s.",
           "zone": "Nome da zona do Home Assistant a utilizar quando um dispositivo rastreado está ligado. Predefinido: home."
         },
