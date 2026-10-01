@@ -2194,12 +2194,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "dst-address-list", "default": "any"},
                 {"name": "dst-port", "default": "any"},
                 {"name": "tcp-flags", "default": "any"},
+                # The raw menu leaves "disabled" out of the reply for a rule
+                # that is enabled, unlike the filter menu, which always sends
+                # it. A missing value therefore means not disabled.
                 {
                     "name": "enabled",
                     "source": "disabled",
                     "type": "bool",
                     "reverse": True,
-                    "default": True,
+                    "default": False,
                 },
             ],
             val_proc=[

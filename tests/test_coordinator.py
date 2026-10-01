@@ -1891,12 +1891,14 @@ class TestFirewallRules:
 # ---------------------------------------------------------------------------
 class TestGetRaw:
     ROWS = [
-        {".id": "*1", "chain": "prerouting", "action": "drop", "protocol": "udp", "dst-port": "53", "in-interface": "ether1", "comment": "drop dns from wan", "disabled": False},
+        {".id": "*1", "chain": "prerouting", "action": "drop", "protocol": "udp", "dst-port": "53", "in-interface": "ether1", "comment": "drop dns from wan"},
         {".id": "*2", "chain": "prerouting", "action": "notrack", "src-address": "10.0.0.0/24", "disabled": True},
         {".id": "*3", "chain": "prerouting", "action": "jump", "jump-target": "ddos", "comment": "to ddos chain"},
         {".id": "*4", "chain": "prerouting", "action": "drop", "dynamic": True, "comment": "added by a service"},
     ]
 
+    # The first row has no "disabled" key on purpose: that is how RouterOS
+    # (7.24) reports an enabled raw rule.
     def _fetch(self, hass, rows):
         coord = _make_coordinator(hass)
         coord.api.query.return_value = rows
