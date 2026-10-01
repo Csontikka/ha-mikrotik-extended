@@ -113,13 +113,15 @@ More information: [MikroTik Firewall documentation](https://help.mikrotik.com/do
 
 ### Routes
 
-A binary sensor for every static route and for every default route, on while the route is active:
+A binary sensor for every static IPv4 route and for every IPv4 default route, on while the route is active:
 
 - A failover pair with `check-gateway` shows which of the two routes is carrying traffic.
 - A default route handed out by PPPoE or DHCP leaves the routing table when the link drops. Its sensor stays and turns off, also when Home Assistant restarts during the outage, so an automation can react to the WAN going down.
 - Attributes: destination, gateway, distance, routing table, comment, and whether the route is enabled and still present in the table.
 
 Other dynamic routes (connected, OSPF, BGP) are not read, so a large routing table costs nothing. Enable **Route sensors** in the options.
+
+A route is identified by its destination, gateway and routing table, so changing any of those on the router gives a new sensor. The sensor of a removed static route goes away on the next reload. A dynamic default route that was replaced by another one on the same interface, a DHCP lease with a new gateway for example, loses its sensor as well; one that was removed for good, with nothing in its place, keeps its sensor in the off state until you turn **Route sensors** off and on again.
 
 ![Firewall Filter Switch](docs/assets/images/screenshots/firewall_filter.png)
 
