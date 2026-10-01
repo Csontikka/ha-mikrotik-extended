@@ -172,6 +172,7 @@ class TestAsyncUpdateDataConnection:
             "get_packages",
             "get_filter",
             "get_raw",
+            "get_lte",
             "get_route",
             "get_netwatch",
             "get_ppp",
@@ -4230,6 +4231,7 @@ class TestAsyncUpdateDataSupportPaths:
             "get_packages",
             "get_filter",
             "get_raw",
+            "get_lte",
             "get_route",
             "get_netwatch",
             "get_ppp",
@@ -4259,6 +4261,7 @@ class TestAsyncUpdateDataSupportPaths:
                 "sensor_filter": True,
                 "sensor_raw": True,
                 "sensor_routes": True,
+                "sensor_lte": True,
                 "sensor_netwatch": True,
                 "sensor_ppp": True,
                 "sensor_client_traffic": True,
@@ -4306,6 +4309,7 @@ class TestAsyncUpdateDataSupportPaths:
         coordinator.get_filter.assert_called()
         coordinator.get_raw.assert_called()
         coordinator.get_route.assert_called()
+        coordinator.get_lte.assert_called()
         coordinator.get_netwatch.assert_called()
         coordinator.get_ppp.assert_called()
         coordinator.sync_kid_control_monitoring_profile.assert_called()
@@ -4336,6 +4340,7 @@ class TestAsyncUpdateDataSupportPaths:
         coordinator.get_filter.assert_called()
         coordinator.get_raw.assert_not_called()
         coordinator.get_route.assert_not_called()
+        coordinator.get_lte.assert_not_called()
 
     async def test_insufficient_permissions_issue_created(self, hass):
         """Cover line 681: async_create_issue with insufficient_permissions when access_missing non-empty."""
