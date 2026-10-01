@@ -440,9 +440,10 @@ def tracker_interval(config_entry: ConfigEntry) -> timedelta:
     options = config_entry.options
     seconds = _as_int(options.get(CONF_TRACK_HOSTS_INTERVAL), DEFAULT_TRACK_HOSTS_INTERVAL)
     timeout = _as_int(options.get(CONF_TRACK_HOSTS_TIMEOUT), DEFAULT_TRACK_HOST_TIMEOUT)
-    # With a timeout under ten seconds, half of it is below the usual floor.
-    # The half wins: the floor protects the router, the half keeps hosts home.
-    ceiling = min(MAX_TRACK_HOSTS_INTERVAL, max(1, timeout // 2))
+    # The floor wins over the half when the timeout is under ten seconds:
+    # pinging every host each second or two would load the router for the
+    # sake of a timeout nobody should be running.
+    ceiling = min(MAX_TRACK_HOSTS_INTERVAL, max(MIN_TRACK_HOSTS_INTERVAL, timeout // 2))
     return timedelta(seconds=min(max(seconds, MIN_TRACK_HOSTS_INTERVAL), ceiling))
 
 
@@ -2416,6 +2417,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 "enabled": True,
                 "dynamic": key.startswith("dynamic_"),
                 "present": False,
+                # A dynamic route that is not in the table is down, and says
+                # so. A static one restored after a failed read is simply not
+                # known yet, and reporting it as down would raise a false
+                # alarm; its sensor is unavailable until the table is read.
+                "unverified": not key.startswith("dynamic_"),
             }
 
     def _dynamic_route_replaced(self, key: str) -> bool:
@@ -2468,7 +2474,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # second of two identical routes would slide into the first one's key
         # when the first is removed, and its sensor would start describing a
         # different route.
-        previous = {str(row.get(".id")): key for key, row in self.ds["route"].items() if row.get("present") and row.get(".id")}
+        previous = {str(row.get(".id")): (key, row.get("uid-base")) for key, row in self.ds["route"].items() if row.get("present") and row.get(".id")}
         seen_key: dict = {}
         taken: set = set()
         ordered = sorted(source, key=_list_id_order)
@@ -2487,13 +2493,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             base = slugify(ref.lower())
             entry["routing-table"] = table
             entry["name"] = f"{dst} via {gateway}"
-            entry["_base"] = base
-            kept = previous.get(str(entry.get(".id")))
-            if kept is not None and kept not in taken and (kept == base or re.fullmatch(rf"{re.escape(base)}_\d+", kept)):
+            entry["uid-base"] = base
+            # RouterOS can hand a list id to another route, after a reboot
+            # for one. The key is only kept when the route behind the id
+            # still leads to the same place.
+            kept, kept_base = previous.get(str(entry.get(".id")), (None, None))
+            if kept is not None and kept_base == base and kept not in taken:
                 entry["uid-key"] = kept
                 taken.add(kept)
         for entry in ordered:
-            base = entry.pop("_base")
+            base = entry["uid-base"]
             if entry["uid-key"] is not None:
                 continue
             key = base
@@ -2509,6 +2518,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             key="uid-key",
             vals=[
                 {"name": "uid-key"},
+                {"name": "uid-base"},
                 {"name": ".id"},
                 {"name": "name"},
                 {"name": "dst-address"},
@@ -2537,6 +2547,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # the same place took over, in which case it is simply gone.
         seen = {entry["uid-key"] for entry in source}
         strikes = self._get_stale_counters("route")
+        for row in self.ds["route"].values():
+            row["unverified"] = False
         for key in seen:
             self.ds["route"][key]["present"] = True
             strikes.pop(key, None)

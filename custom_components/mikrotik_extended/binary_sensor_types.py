@@ -261,6 +261,7 @@ SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
         data_uid="uid-key",
         data_reference="uid-key",
         data_attributes_list=DEVICE_ATTRIBUTES_ROUTE,
+        func="MikrotikRouteBinarySensor",
     ),
     MikrotikBinarySensorEntityDescription(
         key="wireguard_peer",

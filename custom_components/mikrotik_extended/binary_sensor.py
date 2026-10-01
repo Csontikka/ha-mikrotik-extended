@@ -64,6 +64,7 @@ async def async_setup_entry(
     dispatcher = {
         "MikrotikBinarySensor": MikrotikBinarySensor,
         "MikrotikNetwatchBinarySensor": MikrotikNetwatchBinarySensor,
+        "MikrotikRouteBinarySensor": MikrotikRouteBinarySensor,
         "MikrotikPPPSecretBinarySensor": MikrotikPPPSecretBinarySensor,
         "MikrotikPortBinarySensor": MikrotikPortBinarySensor,
         "MikrotikWireguardPeerBinarySensor": MikrotikWireguardPeerBinarySensor,
@@ -90,6 +91,23 @@ class MikrotikBinarySensor(MikrotikEntity, BinarySensorEntity):
                 return self.entity_description.icon_enabled
             else:
                 return self.entity_description.icon_disabled
+
+
+# ---------------------------
+#   MikrotikRouteBinarySensor
+# ---------------------------
+class MikrotikRouteBinarySensor(MikrotikBinarySensor):
+    """Representation of a route."""
+
+    @property
+    def available(self) -> bool:
+        """Unavailable while the route is only known from the registry.
+
+        That is the state of a static route after a start where the routing
+        table could not be read. Off would say the route is down, which
+        nobody knows yet.
+        """
+        return super().available and not self._data.get("unverified", False)
 
 
 # ---------------------------
