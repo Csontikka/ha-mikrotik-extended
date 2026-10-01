@@ -119,6 +119,35 @@ async def test_binary_sensor_is_on_and_icon(hass):
     assert bs2.icon is None
 
 
+def _netwatch_sensor(hass, **row):
+    desc = _make_description(func="MikrotikNetwatchBinarySensor", name="Netwatch", data_path="netwatch", data_attribute="status", data_reference="uid-ref", data_name="host")
+    desc.data_name_comment = True
+    data = {"uid-ref": "1.1.1.1-icmp", "host": "1.1.1.1", "type": "icmp", "status": True, "comment": "", "name": "", **row}
+    return MikrotikNetwatchBinarySensor(_make_coordinator(hass, {"netwatch": {"1.1.1.1-icmp": data}}), desc, uid="1.1.1.1-icmp")
+
+
+async def test_netwatch_named_after_the_probe_name(hass):
+    """The probe's own name wins over its comment."""
+    sensor = _netwatch_sensor(hass, name="DNS", comment="Checks the upstream resolver every ten seconds")
+    assert sensor.custom_name == "DNS Netwatch"
+
+
+async def test_netwatch_without_a_name_is_called_what_it_was(hass):
+    """No name on the probe: comment first, then the host, exactly as before."""
+    assert _netwatch_sensor(hass, comment="dns probe").custom_name == "dns probe Netwatch"
+    assert _netwatch_sensor(hass).custom_name == "1.1.1.1 Netwatch"
+    for blank in ("", "   ", None):
+        assert _netwatch_sensor(hass, name=blank, comment="dns probe").custom_name == "dns probe Netwatch", repr(blank)
+
+
+async def test_netwatch_name_does_not_change_the_unique_id(hass):
+    """Naming a probe on the router must not turn it into a new entity."""
+    plain = _netwatch_sensor(hass, comment="dns probe")
+    named = _netwatch_sensor(hass, comment="dns probe", name="DNS")
+    # Each helper call makes its own config entry, so compare what follows the entry id.
+    assert plain.unique_id.split("-", 1)[1] == named.unique_id.split("-", 1)[1] == "N-1_1_1_1_icmp".replace("N", plain.entity_description.key)
+
+
 async def test_netwatch_sensor_attributes_and_unrecorded(hass):
     """Netwatch sensor exposes probe statistics; the statistics stay out of the recorder."""
     desc = _make_description(

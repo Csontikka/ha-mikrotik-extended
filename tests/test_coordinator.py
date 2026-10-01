@@ -2246,6 +2246,24 @@ class TestRestoreDynamicRoutes:
         assert key.startswith("dynamic_")
 
 
+class TestNetwatchName:
+    def _fetch(self, hass, rows):
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = rows
+        coord.get_netwatch()
+        return coord.ds["netwatch"]
+
+    def test_name_is_read_and_missing_name_is_empty(self, hass):
+        probes = self._fetch(hass, [{".id": "*1", "host": "1.1.1.1", "type": "icmp", "name": "DNS", "status": "up"}, {".id": "*2", "host": "9.9.9.9", "type": "icmp", "status": "up"}])
+        assert probes["1.1.1.1-icmp"]["name"] == "DNS"
+        assert probes["9.9.9.9-icmp"]["name"] == ""
+
+    def test_name_is_not_part_of_the_key(self, hass):
+        unnamed = self._fetch(hass, [{".id": "*1", "host": "1.1.1.1", "type": "icmp", "status": "up"}])
+        named = self._fetch(hass, [{".id": "*1", "host": "1.1.1.1", "type": "icmp", "name": "DNS", "status": "up"}])
+        assert list(unnamed) == list(named) == ["1.1.1.1-icmp"]
+
+
 # ---------------------------------------------------------------------------
 # get_wireguard_peers
 # ---------------------------------------------------------------------------
