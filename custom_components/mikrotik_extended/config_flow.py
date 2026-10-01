@@ -115,11 +115,13 @@ _TRACKER_INTERVAL_FIELD = vol.All(
     NumberSelector(NumberSelectorConfig(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement=UnitOfTime.SECONDS)), vol.Coerce(int)
 )
 
+# The port switch option is deliberately not part of any preset. Turning it
+# off is a safeguard, and picking a preset later, to enable something
+# unrelated, must not quietly put the switch back on the uplink port.
 _SENSOR_PRESETS = {
     "core": {
         CONF_SENSOR_INTERFACES: False,
         CONF_SENSOR_PORT_ERRORS: False,
-        CONF_SENSOR_PORT_SWITCH: False,
         CONF_SENSOR_PORT_TRACKER: False,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -143,7 +145,6 @@ _SENSOR_PRESETS = {
     "minimal": {
         CONF_SENSOR_INTERFACES: True,
         CONF_SENSOR_PORT_ERRORS: False,
-        CONF_SENSOR_PORT_SWITCH: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -167,7 +168,6 @@ _SENSOR_PRESETS = {
     "recommended": {
         CONF_SENSOR_INTERFACES: True,
         CONF_SENSOR_PORT_ERRORS: False,
-        CONF_SENSOR_PORT_SWITCH: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: False,
         CONF_SENSOR_CLIENT_TRAFFIC: False,
@@ -191,7 +191,6 @@ _SENSOR_PRESETS = {
     "full": {
         CONF_SENSOR_INTERFACES: True,
         CONF_SENSOR_PORT_ERRORS: True,
-        CONF_SENSOR_PORT_SWITCH: True,
         CONF_SENSOR_PORT_TRACKER: True,
         CONF_SENSOR_PORT_TRAFFIC: True,
         CONF_SENSOR_CLIENT_TRAFFIC: True,
