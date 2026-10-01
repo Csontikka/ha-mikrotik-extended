@@ -198,6 +198,19 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return MikrotikControllerOptionsFlowHandler(config_entry)
 
+    def _update_entry_and_reload(self, entry, **changes) -> None:
+        """Update the entry and make sure it is reloaded exactly once.
+
+        A loaded entry has an update listener that schedules the reload, but
+        it is only notified when something changed, and an entry whose setup
+        failed has no listener at all. Those are the cases where the reload
+        is scheduled here: an unchanged entry may be waiting to retry, and a
+        failed one is the very thing the user is trying to bring back.
+        """
+        changed = self.hass.config_entries.async_update_entry(entry, **changes)
+        if not (changed and entry.update_listeners):
+            self.hass.config_entries.async_schedule_reload(entry.entry_id)
+
     async def async_step_import(self, user_input=None):
         """Occurs when a previously entry setup fails and is re-initiated."""
         return await self.async_step_user(user_input)
@@ -223,7 +236,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             if not await self.hass.async_add_executor_job(api.connect):
                 errors[CONF_PASSWORD] = api.error
             else:
-                self.hass.config_entries.async_update_entry(
+                self._update_entry_and_reload(
                     reauth_entry,
                     data={
                         **reauth_entry.data,
@@ -231,7 +244,6 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
                 )
-                self.hass.config_entries.async_schedule_reload(reauth_entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(
@@ -488,12 +500,12 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_HOST] = api.error
 
             if not errors:
-                return self.async_update_reload_and_abort(
+                self._update_entry_and_reload(
                     reconfigure_entry,
                     title=user_input[CONF_NAME],
                     data={**reconfigure_entry.data, **user_input},
-                    reason="reconfigure_successful",
                 )
+                return self.async_abort(reason="reconfigure_successful")
 
             return self._show_config_form(user_input=user_input, errors=errors, step_id="reconfigure")
 
