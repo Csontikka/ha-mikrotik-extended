@@ -215,17 +215,18 @@ class MikrotikAPI:
     # ---------------------------
     #   query
     # ---------------------------
-    def _note_refusal(self, path, error) -> None:
+    def _note_refusal(self, path, error, what=None, consequence="Data from this path will be missing, the rest keeps working.") -> None:
         """Report a refused path once, not on every poll."""
         if path in self._refused_paths:
             _LOGGER.debug("Mikrotik %s path %s refused again: %s", self._host, path, error)
             return
         self._refused_paths.add(path)
         _LOGGER.warning(
-            "Mikrotik %s refused query %s: %s. Data from this path will be missing, the rest keeps working.",
+            "Mikrotik %s refused %s: %s. %s",
             self._host,
-            path,
+            what or f"query {path}",
             error,
+            consequence,
         )
 
     def _write_failed(self, location, what, error) -> None:
@@ -683,7 +684,12 @@ class MikrotikAPI:
                 # session stays. This runs for every host on every tracker
                 # cycle, so the refusal is reported once per interface,
                 # the way a refused read is, not once per ping.
-                self._note_refusal(f"/ping interface={interface}", e)
+                self._note_refusal(
+                    f"/ping interface={interface}",
+                    e,
+                    what=f"the tracker ping on interface {interface}",
+                    consequence="Hosts pinged through it count as unreachable until the interface name matches again.",
+                )
                 return False
             except Exception as e:
                 self.disconnect("arp_ping", e)
