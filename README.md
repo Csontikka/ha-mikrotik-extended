@@ -117,7 +117,7 @@ A binary sensor for every static IPv4 route and for every IPv4 default route, on
 
 - A failover pair with `check-gateway` shows which of the two routes is carrying traffic.
 - A default route handed out by PPPoE or DHCP leaves the routing table when the link drops. Its sensor stays and turns off, also when Home Assistant restarts during the outage, so an automation can react to the WAN going down.
-- Attributes: destination, gateway, distance, routing table, comment, and whether the route is enabled and still present in the table.
+- Attributes: destination, gateway, immediate gateway, distance, routing table, comment, and whether the route is enabled, dynamic and still present in the table.
 
 Other dynamic routes (connected, OSPF, BGP) are not read, so a large routing table costs nothing. Enable **Route sensors** in the options.
 
@@ -533,7 +533,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | Scan interval | `30` s | How often the router is polled (minimum 10 s). Lower values increase load on the router. |
-| Device tracker interval | `10` s | How often tracked devices are pinged and their trackers refreshed (5 to 300 s, and never more than half the host tracking timeout). Raise it on large networks to lower the load on the router. Home/away changes can lag by up to one interval. |
+| Device tracker interval | `10` s | How often tracked devices are pinged and their trackers refreshed (5 to 300 s, and never more than half the host tracking timeout, but not below 5 s). Raise it on large networks to lower the load on the router. Home/away changes can lag by up to one interval. |
 | Host tracking timeout | `180` s | Seconds after the last ARP/DHCP/wireless activity before a network device is marked as away. |
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
 | Sensor preset | recommended | Quick preset selector — see below. |
