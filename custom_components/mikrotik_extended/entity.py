@@ -27,11 +27,13 @@ from .const import (
     ATTRIBUTION,
     CONF_SENSOR_INTERFACES,
     CONF_SENSOR_NETWATCH_TRACKER,
+    CONF_SENSOR_PORT_SWITCH,
     CONF_SENSOR_PORT_TRACKER,
     CONF_SENSOR_PORT_TRAFFIC,
     CONF_TRACK_HOSTS,
     DEFAULT_SENSOR_INTERFACES,
     DEFAULT_SENSOR_NETWATCH_TRACKER,
+    DEFAULT_SENSOR_PORT_SWITCH,
     DEFAULT_SENSOR_PORT_TRACKER,
     DEFAULT_SENSOR_PORT_TRAFFIC,
     DEFAULT_TRACK_HOSTS,
@@ -100,6 +102,19 @@ def _skip_interface_entity(config_entry, entity_description) -> bool:
     return not config_entry.options.get(CONF_SENSOR_INTERFACES, DEFAULT_SENSOR_INTERFACES)
 
 
+def _skip_port_switch(config_entry, entity_description) -> bool:
+    """Leave out the switch that takes a port down when the user does not want it.
+
+    The switch disables the interface on the router. On a port that carries
+    the uplink, or the connection to Home Assistant itself, one wrong tap
+    cuts the network off, so it can be turned off without giving up the
+    other entities of the port.
+    """
+    if entity_description.func != "MikrotikPortSwitch":
+        return False
+    return not config_entry.options.get(CONF_SENSOR_PORT_SWITCH, DEFAULT_SENSOR_PORT_SWITCH)
+
+
 def _skip_interface_traffic_sensor(config_entry, entity_description, item) -> bool:
     if entity_description.func != "MikrotikInterfaceTrafficSensor":
         return False
@@ -144,6 +159,8 @@ def _skip_sensor(config_entry, entity_description, data, uid) -> bool:
     if _skip_interface_entity(config_entry, entity_description):
         return True
     if _skip_non_poe_port(entity_description, item):
+        return True
+    if _skip_port_switch(config_entry, entity_description):
         return True
     if _skip_interface_traffic_sensor(config_entry, entity_description, item):
         return True
