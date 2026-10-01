@@ -227,3 +227,16 @@ async def test_tracker_interval_form_shows_the_stored_value(hass):
         result = await hass.config_entries.options.async_init(entry.entry_id)
         defaults = {str(key): key.default() for key in result["data_schema"].schema}
         assert defaults[CONF_TRACK_HOSTS_INTERVAL] == shown
+
+
+async def test_tracker_interval_is_stored_as_a_whole_number(hass):
+    """The number box hands over a float; the option is kept as an int."""
+    entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options=INITIAL_OPTIONS, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SCAN_INTERVAL: 30, CONF_TRACK_HOSTS_INTERVAL: 45.0})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"sensor_preset": "custom"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], SENSOR_SELECT_INPUT)
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_TRACK_HOSTS_INTERVAL] == 45
+    assert type(entry.options[CONF_TRACK_HOSTS_INTERVAL]) is int

@@ -3503,8 +3503,13 @@ def _make_tracker(hass, main_coord):
 class TestTrackerInterval:
     """The tracker runs on its own interval, taken from the options."""
 
+    HOST = {"source": "arp", "address": "1.2.3.4", "mac-address": "AA:BB", "interface": "ether1", "available": False, "last-seen": None}
+
+    def _tracker(self, hass, options=None):
+        return _make_tracker(hass, _make_coordinator(hass, options=options))
+
     def _interval(self, hass, options=None):
-        return _make_tracker(hass, _make_coordinator(hass, options=options)).update_interval
+        return self._tracker(hass, options).configured_interval
 
     def test_default_is_ten_seconds(self, hass):
         assert self._interval(hass) == timedelta(seconds=10)
@@ -3516,13 +3521,57 @@ class TestTrackerInterval:
         assert self._interval(hass, {"scan_interval": 120}) == timedelta(seconds=10)
 
     def test_out_of_range_values_are_clamped(self, hass):
+        long_timeout = {"track_network_hosts_timeout": 3600}
         assert self._interval(hass, {"track_network_hosts_interval": 1}) == timedelta(seconds=5)
         assert self._interval(hass, {"track_network_hosts_interval": 0}) == timedelta(seconds=5)
-        assert self._interval(hass, {"track_network_hosts_interval": 86400}) == timedelta(seconds=300)
+        assert self._interval(hass, {"track_network_hosts_interval": 86400, **long_timeout}) == timedelta(seconds=300)
 
     def test_unusable_value_falls_back_to_the_default(self, hass):
         assert self._interval(hass, {"track_network_hosts_interval": None}) == timedelta(seconds=10)
         assert self._interval(hass, {"track_network_hosts_interval": "soon"}) == timedelta(seconds=10)
+        assert self._interval(hass, {"track_network_hosts_interval": "30"}) == timedelta(seconds=30)
+        assert self._interval(hass, {"track_network_hosts_interval": 29.7}) == timedelta(seconds=29)
+
+    def test_never_longer_than_half_the_tracking_timeout(self, hass):
+        """A quiet wired host is only kept home by the ping."""
+        assert self._interval(hass, {"track_network_hosts_interval": 300}) == timedelta(seconds=90), "default timeout is 180"
+        assert self._interval(hass, {"track_network_hosts_interval": 300, "track_network_hosts_timeout": 600}) == timedelta(seconds=300)
+        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 60}) == timedelta(seconds=30)
+        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 4}) == timedelta(seconds=5), "never below the minimum"
+        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": "junk"}) == timedelta(seconds=60)
+
+    def test_starts_at_the_default_pace(self, hass):
+        """The first cycle does not ping, so the second must not be a long wait away."""
+        assert self._tracker(hass, {"track_network_hosts_interval": 60}).update_interval == timedelta(seconds=10)
+        assert self._tracker(hass, {"track_network_hosts_interval": 5}).update_interval == timedelta(seconds=5)
+
+    async def test_configured_interval_takes_over_after_the_first_pinging_cycle(self, hass):
+        main = _make_coordinator(hass, options={"track_network_hosts": True, "track_network_hosts_interval": 60})
+        main.ds["access"] = ["test"]
+        main.ds["host"] = {"AA:BB": dict(self.HOST)}
+        main.ds["arp"] = {}
+        main.ds["routerboard"] = {}
+        main.async_process_host = AsyncMock()
+        main.host_tracking_initialized = False
+        tracker = _make_tracker(hass, main)
+        tracker.api.arp_ping = MagicMock(return_value=True)
+
+        await tracker._async_update_data()
+        tracker.api.arp_ping.assert_not_called()
+        assert tracker.update_interval == timedelta(seconds=10), "nothing was pinged yet"
+
+        await tracker._async_update_data()
+        tracker.api.arp_ping.assert_called_once()
+        assert tracker.update_interval == timedelta(seconds=60)
+
+    async def test_a_skipped_cycle_does_not_switch_the_pace(self, hass):
+        """With tracking off nothing is pinged, so nothing has been confirmed."""
+        main = _make_coordinator(hass, options={"track_network_hosts": False, "track_network_hosts_interval": 60})
+        main.ds["access"] = ["test"]
+        main.host_tracking_initialized = True
+        tracker = _make_tracker(hass, main)
+        assert await tracker._async_update_data() is None
+        assert tracker.update_interval == timedelta(seconds=10)
 
 
 class TestTrackerCoordinator:
