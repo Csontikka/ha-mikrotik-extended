@@ -222,13 +222,13 @@ async def test_options_flow_core_preset_disables_interfaces(hass):
 
 
 async def test_tracker_interval_outside_the_range_is_rejected(hass):
-    """The form refuses a tracker interval below 5 or above 300 seconds."""
+    """The form refuses a tracker interval below 5 or above 300 seconds, and a fraction."""
     import pytest
     from homeassistant.data_entry_flow import InvalidData
 
     entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options=INITIAL_OPTIONS, unique_id="192.168.88.1")
     entry.add_to_hass(hass)
-    for bad in (4, 301):
+    for bad in (4, 301, 10.7):
         result = await hass.config_entries.options.async_init(entry.entry_id)
         with pytest.raises(InvalidData):
             await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SCAN_INTERVAL: 30, CONF_TRACK_HOSTS_INTERVAL: bad})

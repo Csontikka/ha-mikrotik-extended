@@ -2179,6 +2179,44 @@ class TestRouteKeys:
         rows = [{".id": "*1", **base, "routing-table": "main"}, {".id": "*2", **base, "routing-table": "main"}, {".id": "*3", **base, "routing-table": "main 2"}]
         assert len(self._keys(hass, rows)) == 3
 
+    def test_twin_keeps_its_key_when_the_other_one_is_removed(self, hass):
+        """The second twin must not slide into the first one's key."""
+        base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "routing-table": "main", "static": True, "active": True}
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [{".id": "*1", **base, "distance": 1}, {".id": "*2", **base, "distance": 2}]
+        coord.get_route()
+        assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main_2"]["distance"] == 2
+
+        for _ in range(4):
+            coord.api.query_where.return_value = [{".id": "*2", **base, "distance": 2}]
+            coord.get_route()
+        assert list(coord.ds["route"]) == ["10_9_0_0_24_via_10_0_0_1_main_2"]
+        assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main_2"]["distance"] == 2
+
+    def test_a_new_twin_takes_the_free_key_not_the_survivors(self, hass):
+        base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "routing-table": "main", "static": True, "active": True}
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [{".id": "*1", **base, "distance": 1}, {".id": "*2", **base, "distance": 2}]
+        coord.get_route()
+        for _ in range(4):
+            coord.api.query_where.return_value = [{".id": "*2", **base, "distance": 2}]
+            coord.get_route()
+        coord.api.query_where.return_value = [{".id": "*2", **base, "distance": 2}, {".id": "*9", **base, "distance": 9}]
+        coord.get_route()
+        assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main_2"]["distance"] == 2
+        assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main"]["distance"] == 9
+
+    def test_a_kept_key_is_dropped_when_the_route_itself_changed(self, hass):
+        """Same list id, another gateway: that is another route and gets its own key."""
+        row = {".id": "*1", "dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "routing-table": "main", "static": True, "active": True}
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        coord.api.query_where.return_value = [dict(row)]
+        coord.get_route()
+        coord.api.query_where.return_value = [{**row, "gateway": "10.0.0.7"}]
+        coord.get_route()
+        assert "10_9_0_0_24_via_10_0_0_7_main" in coord.ds["route"]
+        assert coord.ds["route"]["10_9_0_0_24_via_10_0_0_1_main"]["present"] is False
+
     def test_list_ids_are_ordered_as_numbers(self, hass):
         """ "*10" comes after "*9" and "*A", which a text sort gets wrong."""
         base = {"dst-address": "10.9.0.0/24", "gateway": "10.0.0.1", "routing-table": "main", "static": True, "active": True}
@@ -2225,6 +2263,53 @@ class TestRestoreDynamicRoutes:
         assert list(coord.ds["route"]) == ["dynamic_0_0_0_0_0_via_pppoe_out1_main"]
         row = coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]
         assert row["active"] is True and row["present"] is True and row["gateway"] == "pppoe-out1"
+
+    def test_a_refused_first_read_brings_back_every_route_sensor(self, hass):
+        """Nothing could be read, so nothing may be judged gone."""
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "10_20_0_0_16_via_10_0_0_2_main", "site primary")
+        self._register(hass, coord, "dynamic_0_0_0_0_0_via_pppoe_out1_main", "0.0.0.0/0 via pppoe-out1")
+        coord.api.query_where.return_value = None
+        coord.get_route()
+        assert coord._routes_read is False
+        coord._restore_dynamic_routes(everything=not coord._routes_read)
+        assert set(coord.ds["route"]) == {"10_20_0_0_16_via_10_0_0_2_main", "dynamic_0_0_0_0_0_via_pppoe_out1_main"}
+        assert coord.ds["route"]["10_20_0_0_16_via_10_0_0_2_main"]["dynamic"] is False
+        assert coord.ds["route"]["dynamic_0_0_0_0_0_via_pppoe_out1_main"]["dynamic"] is True
+
+    def test_restored_static_route_that_is_really_gone_leaves_after_the_grace(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "10_20_0_0_16_via_10_0_0_2_main", "site primary")
+        coord.api.query_where.return_value = None
+        coord.get_route()
+        coord._restore_dynamic_routes(everything=True)
+        coord.api.query_where.return_value = []
+        coord.get_route()
+        coord.get_route()
+        assert "10_20_0_0_16_via_10_0_0_2_main" in coord.ds["route"]
+        coord.get_route()
+        assert coord.ds["route"] == {}
+
+    def test_restored_static_route_that_is_still_there_takes_over(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "10_20_0_0_16_via_10_0_0_2_main", "site primary")
+        coord.api.query_where.return_value = None
+        coord.get_route()
+        coord._restore_dynamic_routes(everything=True)
+        coord.api.query_where.return_value = [dict(TestGetRoute.MAIN)]
+        coord.get_route()
+        row = coord.ds["route"]["10_20_0_0_16_via_10_0_0_2_main"]
+        assert row["active"] is True and row["present"] is True and row["gateway"] == "10.0.0.2"
+
+    def test_a_successful_first_read_restores_dynamic_routes_only(self, hass):
+        coord = _make_coordinator(hass, options={"sensor_routes": True})
+        self._register(hass, coord, "10_20_0_0_16_via_10_0_0_2_main", "site primary")
+        self._register(hass, coord, "dynamic_0_0_0_0_0_via_pppoe_out1_main", "0.0.0.0/0 via pppoe-out1")
+        coord.api.query_where.return_value = []
+        coord.get_route()
+        assert coord._routes_read is True
+        coord._restore_dynamic_routes(everything=not coord._routes_read)
+        assert set(coord.ds["route"]) == {"dynamic_0_0_0_0_0_via_pppoe_out1_main"}
 
     def test_placeholder_does_not_replace_a_live_route(self, hass):
         coord = _make_coordinator(hass, options={"sensor_routes": True})
@@ -3884,7 +3969,9 @@ class TestTrackerInterval:
         assert self._interval(hass, {"track_network_hosts_interval": 300}) == timedelta(seconds=90), "default timeout is 180"
         assert self._interval(hass, {"track_network_hosts_interval": 300, "track_network_hosts_timeout": 600}) == timedelta(seconds=300)
         assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 60}) == timedelta(seconds=30)
-        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 4}) == timedelta(seconds=5), "never below the minimum"
+        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 4}) == timedelta(seconds=2), "half the timeout wins over the floor"
+        assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": 1}) == timedelta(seconds=1), "never zero"
+        assert self._interval(hass, {"track_network_hosts_interval": 5, "track_network_hosts_timeout": 9}) == timedelta(seconds=4)
         assert self._interval(hass, {"track_network_hosts_interval": 60, "track_network_hosts_timeout": "junk"}) == timedelta(seconds=60)
 
     def test_starts_at_the_default_pace(self, hass):
