@@ -516,6 +516,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | Scan interval | `30` s | How often the router is polled (minimum 10 s). Lower values increase load on the router. |
+| Device tracker interval | `10` s | How often tracked devices are pinged and their trackers refreshed (5 to 300 s). Raise it on large networks to lower the load on the router. |
 | Host tracking timeout | `180` s | Seconds after the last ARP/DHCP/wireless activity before a network device is marked as away. |
 | Zone | `home` | HA zone used for device tracker `home`/`not_home` state. |
 | Sensor preset | recommended | Quick preset selector — see below. |
