@@ -2432,30 +2432,45 @@ class TestWifiStacks:
             # [] = the menu exists and holds nothing enabled; None = no such menu
             return [] if path in menus else None
 
+        # From 7.13 the new stack's menu is part of RouterOS itself, with or
+        # without a wifi package, as a test router without any radio showed.
+        if minor >= 13:
+            menus = set(menus) | {"/interface/wifi"}
+
         coord.api.query_where.side_effect = probe
         with patch("custom_components.mikrotik_extended.coordinator.parse_api", return_value=packages):
             coord.get_capabilities()
         return coord
 
     def test_legacy_radio_on_a_new_release(self, hass):
-        """7.13+ with only the legacy wireless package: hAP ac2, cAP ac and friends."""
-        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}}, menus={"/interface/wireless"})
-        assert coord._wifimodules == ["wireless"], "the built-in wifi menu does not exist on such a router"
-        assert coord.support_wireless is True
-        assert coord.support_capsman is True, "the legacy CAPsMAN goes with the legacy stack"
+        """7.13+ with the legacy wireless package: hAP ac2, cAP ac and friends.
 
-    def test_both_stacks_at_once(self, hass):
-        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}, "wifi-qcom": {"name": "wifi-qcom", "enabled": True}}, menus={"/interface/wifi", "/interface/wireless"})
+        The built-in wifi menu is there too, empty, so both stacks are read,
+        and the legacy CAPsMAN controller next to the radio as well.
+        """
+        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}}, menus={"/interface/wireless", "/caps-man/interface"})
+        assert coord._wifimodules == ["wifi", "wireless"]
+        assert coord.support_wireless is True
+        assert coord.support_capsman is True
+
+    def test_legacy_radio_without_a_controller(self, hass):
+        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}}, menus={"/interface/wireless"})
         assert coord._wifimodules == ["wifi", "wireless"]
         assert coord.support_capsman is False
 
+    def test_both_stacks_at_once(self, hass):
+        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}, "wifi-qcom": {"name": "wifi-qcom", "enabled": True}}, menus={"/interface/wifi", "/interface/wireless", "/caps-man/interface"})
+        assert coord._wifimodules == ["wifi", "wireless"]
+        assert coord.support_capsman is True, "the legacy controller is read even next to the new stack"
+
     def test_new_stack_only(self, hass):
+        """The new stack's controller clients come with its own registration table."""
         coord = self._coord(hass, 16, {}, menus={"/interface/wifi"})
         assert coord._wifimodules == ["wifi"]
         assert coord.support_capsman is False
 
     def test_old_release_without_packages_keeps_the_legacy_stack(self, hass):
-        coord = self._coord(hass, 5, {}, menus={"/interface/wireless"})
+        coord = self._coord(hass, 5, {}, menus={"/interface/wireless", "/caps-man/interface"})
         assert coord._wifimodules == ["wireless"]
         assert coord.support_capsman is True
 
@@ -2491,15 +2506,11 @@ class TestWifiStacks:
         assert coord.ds["wireless"]["wifi1"]["ssid"] == "new" and coord.ds["wireless"]["wlan1"]["ssid"] == "old"
         assert coord.ds["interface"]["wlan1"]["ssid"] == "old", "the interface rows pick up the radio details"
 
-    def test_capsman_table_follows_the_stack(self, hass):
+    def test_capsman_hosts_come_from_the_legacy_controller_menu(self, hass):
         coord = _make_coordinator(hass)
         coord.api.query.return_value = None
-        coord._wifimodules = ["wireless"]
         coord.get_capsman_hosts()
         coord.api.query.assert_called_with("/caps-man/registration-table")
-        coord._wifimodules = ["wifi"]
-        coord.get_capsman_hosts()
-        coord.api.query.assert_called_with("/interface/wifi/registration-table")
 
 
 # ---------------------------------------------------------------------------

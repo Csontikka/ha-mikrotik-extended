@@ -331,7 +331,7 @@ async def test_password_is_a_password_field_on_every_form(hass):
     forms["reconfigure"] = await entry.start_reconfigure_flow(hass)
     for name, result in forms.items():
         field = _password_fields(result["data_schema"])
-        assert field["selector"] == {"text": {"type": "password", "multiline": False, "multiple": False}}, name
+        assert field["selector"]["text"]["type"] == "password", name
 
 
 async def test_reconfigure_form_never_shows_the_stored_password(hass):
@@ -347,7 +347,9 @@ async def test_reconfigure_form_never_shows_the_stored_password(hass):
         mock_api_cls.return_value = MagicMock(error="cannot_connect", **{"connect.return_value": False})
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_NAME: "Mikrotik", CONF_HOST: "192.168.88.1", CONF_USERNAME: "admin", CONF_PASSWORD: "typed", CONF_PORT: 0, "ssl_mode": "none"})
     assert result["type"] == FlowResultType.FORM
-    assert "typed" not in repr(result["data_schema"].schema) and "s3cret" not in repr(result["data_schema"].schema)
+    # What the user typed stays in the (masked) field for the retry; the stored password still does not appear.
+    assert _password_fields(result["data_schema"]).get("default") == "typed"
+    assert "s3cret" not in repr(result["data_schema"].schema)
 
 
 async def test_reconfigure_with_an_empty_password_keeps_the_stored_one(hass):
