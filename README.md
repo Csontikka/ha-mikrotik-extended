@@ -128,6 +128,7 @@ A binary sensor for every static IPv4 route and for every IPv4 default route, on
 - A failover pair with `check-gateway` shows which of the two routes is carrying traffic.
 - A default route handed out by PPPoE or DHCP leaves the routing table when the link drops. Its sensor stays and turns off, also when Home Assistant restarts during the outage, so an automation can react to the WAN going down.
 - Attributes: destination, gateway, immediate gateway, distance, routing table, comment, and whether the route is enabled, dynamic and still present in the table.
+- An **Active WAN** sensor per router names the interface the active default route of the `main` table leaves through, `pppoe-out1` or `lte1` for example, with the gateway and distance as attributes. It reads `none` when no default route is active, and lists every interface when several are active at once. With a main and a failover connection it tells which of the two is carrying the traffic.
 
 Other dynamic routes (connected, OSPF, BGP) are not read, so a large routing table costs nothing. Enable **Route sensors** in the options.
 
