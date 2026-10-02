@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import MikrotikEntity, async_add_entities
+from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_refused
 from .select_types import (
     POE_OPTIONS,
     POE_VALUES,
@@ -78,11 +78,7 @@ class MikrotikPoeSelect(MikrotikSelect):
         something to second guess here, but it is worth the log line.
         """
         if "write" not in self.coordinator.data["access"]:
-            _LOGGER.warning(
-                "Mikrotik %s user does not have write access rights, cannot set PoE output",
-                self.coordinator.host,
-            )
-            return
+            raise_no_write_access(self.coordinator.host)
 
         value = POE_OPTIONS.get(option)
         if value is None:
@@ -106,11 +102,6 @@ class MikrotikPoeSelect(MikrotikSelect):
             value,
         )
         if not success:
-            _LOGGER.error(
-                "Mikrotik %s refused the PoE output change on %s",
-                self.coordinator.host,
-                port,
-            )
-            return
+            raise_write_refused(self.coordinator.host, f"PoE out {port}")
 
         await self.coordinator.async_request_refresh()

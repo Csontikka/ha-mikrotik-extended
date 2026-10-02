@@ -9,6 +9,7 @@ from typing import Any, TypeVar
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ATTRIBUTION, CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import (
     device_registry as dr,
 )
@@ -313,6 +314,22 @@ _MikrotikCoordinatorT = TypeVar(
 # ---------------------------
 #   MikrotikEntity
 # ---------------------------
+def raise_write_refused(host: str, target: str) -> None:
+    """The router answered and said no: tell the user, not just the log.
+
+    The refusal itself is already logged where it happened, with the
+    router's reason. A service call that silently reports success while the
+    router kept its state would leave an automation believing the change
+    was made.
+    """
+    raise HomeAssistantError(translation_domain=DOMAIN, translation_key="write_refused", translation_placeholders={"host": host, "target": target})
+
+
+def raise_no_write_access(host: str) -> None:
+    """The configured account has no write policy; nothing was even sent."""
+    raise HomeAssistantError(translation_domain=DOMAIN, translation_key="no_write_access", translation_placeholders={"host": host})
+
+
 class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
     """Define entity"""
 
