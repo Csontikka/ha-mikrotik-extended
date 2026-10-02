@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host}이(가) {target} 변경을 거부했습니다. 라우터의 사유는 로그에 있습니다."
+    },
+    "no_write_access": {
+      "message": "{host}에 설정된 계정은 라우터에 쓰기 권한이 없어 아무것도 변경되지 않았습니다."
     }
   },
   "selector": {

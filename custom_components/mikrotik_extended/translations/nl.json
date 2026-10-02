@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} heeft de wijziging van {target} geweigerd. De reden van de router staat in het logboek."
+    },
+    "no_write_access": {
+      "message": "Het account dat voor {host} is ingesteld heeft geen schrijfrechten op de router, dus er is niets gewijzigd."
     }
   },
   "selector": {

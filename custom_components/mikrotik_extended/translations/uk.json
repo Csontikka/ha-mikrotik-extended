@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} відхилив зміну {target}. Причина маршрутизатора є в журналі."
+    },
+    "no_write_access": {
+      "message": "Обліковий запис, налаштований для {host}, не має прав запису на маршрутизаторі, тому нічого не змінено."
     }
   },
   "selector": {

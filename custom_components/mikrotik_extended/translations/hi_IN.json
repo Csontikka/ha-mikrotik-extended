@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} ने {target} में बदलाव अस्वीकार कर दिया। राउटर का कारण लॉग में है।"
+    },
+    "no_write_access": {
+      "message": "{host} के लिए सेट खाते को राउटर पर लिखने की अनुमति नहीं है, इसलिए कुछ नहीं बदला।"
     }
   },
   "selector": {

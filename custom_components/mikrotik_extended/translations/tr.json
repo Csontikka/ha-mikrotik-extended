@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host}, {target} değişikliğini reddetti. Yönlendiricinin gerekçesi günlükte."
+    },
+    "no_write_access": {
+      "message": "{host} için ayarlanan hesabın yönlendiricide yazma izni yok, bu yüzden hiçbir şey değiştirilmedi."
     }
   },
   "selector": {

@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} recusou a alteração de {target}. O motivo do router está no registo."
+    },
+    "no_write_access": {
+      "message": "A conta configurada para {host} não tem permissão de escrita no router, por isso nada foi alterado."
     }
   },
   "selector": {

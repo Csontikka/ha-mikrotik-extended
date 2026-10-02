@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "A(z) {host} címhez nem tartozik beállított router, semmi nem lett leállítva."
+    },
+    "write_refused": {
+      "message": "A(z) {host} elutasította a módosítást: {target}. A router indoklása a naplóban van."
+    },
+    "no_write_access": {
+      "message": "A(z) {host} routerhez beállított fióknak nincs írási jogosultsága, ezért semmi nem változott."
     }
   },
   "selector": {

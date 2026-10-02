@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} は {target} の変更を拒否しました。ルーター側の理由はログにあります。"
+    },
+    "no_write_access": {
+      "message": "{host} 用に設定されたアカウントにはルーターへの書き込み権限がないため、何も変更されませんでした。"
     }
   },
   "selector": {

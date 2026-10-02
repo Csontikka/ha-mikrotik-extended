@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} odmietol zmenu {target}. Dôvod routera je v logu."
+    },
+    "no_write_access": {
+      "message": "Účet nastavený pre {host} nemá na routeri oprávnenie na zápis, nič sa nezmenilo."
     }
   },
   "selector": {

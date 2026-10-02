@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "رفض {host} التغيير على {target}. سبب الراوتر موجود في السجل."
+    },
+    "no_write_access": {
+      "message": "الحساب المضبوط لـ {host} لا يملك صلاحية الكتابة على الراوتر، لذلك لم يتغيّر شيء."
     }
   },
   "selector": {

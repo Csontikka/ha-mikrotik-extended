@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} đã từ chối thay đổi {target}. Lý do của bộ định tuyến có trong nhật ký."
+    },
+    "no_write_access": {
+      "message": "Tài khoản được cấu hình cho {host} không có quyền ghi trên bộ định tuyến, nên không có gì thay đổi."
     }
   },
   "selector": {

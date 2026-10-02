@@ -276,6 +276,12 @@
     },
     "router_not_found": {
       "message": "No configured router matches the host {host}, nothing was shut down."
+    },
+    "write_refused": {
+      "message": "{host} hafnaði breytingunni á {target}. Ástæða beinisins er í skránni."
+    },
+    "no_write_access": {
+      "message": "Reikningurinn sem er stilltur fyrir {host} hefur ekki skrifheimild á beininum, svo engu var breytt."
     }
   },
   "selector": {
