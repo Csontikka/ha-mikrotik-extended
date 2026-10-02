@@ -494,7 +494,9 @@ def _route_interfaces(row: dict) -> list[str]:
     hops = str(row.get("immediate-gw") or "")
     if hops in ("", "unknown"):
         return []
-    return [hop.strip().rsplit("%", 1)[-1] for hop in hops.split(",") if hop.strip()]
+    # Everything after the first "%" is the interface, so a name that
+    # itself contains one stays whole.
+    return [hop.strip().split("%", 1)[-1] for hop in hops.split(",") if hop.strip()]
 
 
 def active_wan(routes: dict | None) -> dict:
@@ -508,6 +510,11 @@ def active_wan(routes: dict | None) -> dict:
     if routes is None:
         return {"interface": "unknown", **empty}
     rows = [row for row in routes.values() if row.get("dst-address") == "0.0.0.0/0" and row.get("routing-table") == "main" and row.get("active") and row.get("present", True)]
+    # A blackhole default route, the usual last line of a failover setup,
+    # is active and leads nowhere: it has neither a gateway nor a hop. When
+    # it is the one in charge there is no way out, and the sensor must say
+    # so, since that is the moment an automation waits for.
+    rows = [row for row in rows if _route_interfaces(row) or str(row.get("gateway") or "").strip()]
     if not rows:
         return {"interface": "none", **empty}
     # The lowest distance is the route RouterOS prefers; the rest of the key
@@ -515,7 +522,7 @@ def active_wan(routes: dict | None) -> dict:
     rows.sort(key=lambda row: (_as_int(row.get("distance"), 255), str(row.get("immediate-gw")), str(row.get("gateway"))))
     interfaces: list[str] = []
     for row in rows:
-        for name in _route_interfaces(row) or [str(row.get("gateway") or "unknown")]:
+        for name in _route_interfaces(row) or [str(row.get("gateway")).strip()]:
             if name not in interfaces:
                 interfaces.append(name)
     first = rows[0]
@@ -650,6 +657,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "system_packages": {},
             "dhcp_leases": {},
         }
+        # The sensor exists from the first moment the option is on, reading
+        # unknown until the routing table has been read. An empty store would
+        # leave it uncreated on a start that fails before the route query, and
+        # the orphan cleanup would then remove it with its name and area.
+        if config_entry.options.get(CONF_SENSOR_ROUTES, DEFAULT_SENSOR_ROUTES):
+            self.ds["active_wan"] = active_wan(None)
 
         self.notified_flags = []
 
