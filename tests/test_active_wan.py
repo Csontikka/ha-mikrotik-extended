@@ -72,6 +72,18 @@ class TestActiveWan:
         b = _route("192.0.2.2", "192.0.2.2%ether1", 1)
         assert active_wan({"a": a, "b": b})["interface"] == "ether1"
 
+    def test_blackhole_default_route_is_no_way_out(self):
+        """Active, but with neither a gateway nor a hop: every WAN is down."""
+        blackhole = _route("", "", 250)
+        assert active_wan({"a": {**PPPOE, "active": False}, "b": {**MODEM, "active": False}, "c": blackhole})["interface"] == "none"
+        assert active_wan({"c": {**blackhole, "gateway": None, "immediate-gw": None}})["interface"] == "none"
+        assert active_wan({"a": PPPOE, "c": blackhole})["interface"] == "pppoe-out1", "a real route beside it still wins"
+
+    def test_active_route_without_a_table_does_not_count(self):
+        row = _route("192.0.2.1", "192.0.2.1%ether1", 1)
+        del row["routing-table"]
+        assert active_wan({"a": row})["interface"] == "none"
+
     def test_no_immediate_gateway_falls_back_to_the_gateway(self):
         """RouterOS 6 has no immediate-gw; the gateway is the best there is."""
         assert active_wan({"a": _route("ether1-wan", "", 1)})["interface"] == "ether1-wan"
@@ -82,6 +94,7 @@ def test_route_interfaces():
     assert _route_interfaces({"immediate-gw": "192.0.2.1%ether1"}) == ["ether1"]
     assert _route_interfaces({"immediate-gw": "pppoe-out1"}) == ["pppoe-out1"]
     assert _route_interfaces({"immediate-gw": "192.0.2.1%ether1, 198.51.100.1%ether2"}) == ["ether1", "ether2"]
+    assert _route_interfaces({"immediate-gw": "10.0.0.1%wan%1"}) == ["wan%1"], "an interface name may contain the separator"
     assert _route_interfaces({"immediate-gw": ""}) == [] and _route_interfaces({}) == [] and _route_interfaces({"immediate-gw": "unknown"}) == []
 
 
@@ -137,9 +150,30 @@ class TestActiveWanInTheCoordinator:
         coord.get_route()
         assert coord.ds["active_wan"]["interface"] == "unknown"
 
-    def test_nothing_without_the_route_option(self, hass):
-        """The store stays empty, so no entity is created."""
+    def test_exists_from_the_start_only_with_the_route_option(self, hass):
+        """Empty store means no entity; with the option on it reads unknown until the table is read."""
         assert _coordinator(hass, options={"scan_interval": 30}).ds["active_wan"] == {}
+        assert _coordinator(hass).ds["active_wan"]["interface"] == "unknown"
+
+    def test_first_read_fails_then_succeeds(self, hass):
+        coord = _coordinator(hass)
+        coord.api.query_where.return_value = None
+        coord.get_route()
+        assert coord.ds["active_wan"]["interface"] == "unknown"
+        coord.api.query_where.return_value = [dict(WAN_ROW)]
+        coord.get_route()
+        assert coord.ds["active_wan"]["interface"] == "pppoe-out1"
+
+    def test_blackhole_default_route_as_the_router_sends_it(self, hass):
+        """RouterOS 7.24 reports it active, with an empty immediate-gw and no gateway key."""
+        blackhole = {".id": "*9", "dst-address": "0.0.0.0/0", "routing-table": "main", "blackhole": "", "immediate-gw": "", "distance": 250, "static": True, "active": True}
+        coord = _coordinator(hass)
+        coord.api.query_where.return_value = [blackhole]
+        coord.get_route()
+        assert coord.ds["active_wan"]["interface"] == "none"
+        coord.api.query_where.return_value = [blackhole, dict(WAN_ROW)]
+        coord.get_route()
+        assert coord.ds["active_wan"]["interface"] == "pppoe-out1"
 
 
 class TestActiveWanEntity:
