@@ -129,8 +129,36 @@ class TestLteRowEdges:
         assert lte_row("lte1", {}, {})["nr-capable"] is False
 
     def test_known_5g_values_are_numbers(self):
-        row = lte_row("lte1", MODEM, {"nr-rsrp": "-101dBm", "nr-rsrq": "-11dB", "nr-sinr": "9dB", "nr-cqi": 12})
-        assert (row["nr-rsrp"], row["nr-rsrq"], row["nr-sinr"], row["nr-cqi"]) == (-101, -11, 9, 12)
+        row = lte_row("lte1", MODEM, {"nr-rsrp": "-101dBm", "nr-rsrq": "-11dB", "nr-sinr": "9dB"})
+        assert (row["nr-rsrp"], row["nr-rsrq"], row["nr-sinr"]) == (-101, -11, 9)
+
+    def test_a_real_5g_nsa_reply(self):
+        """What the same modem printed while carrying traffic on 5G NSA."""
+        reply = {
+            **TERMINAL_REPLY,
+            "data-class": "5G NSA",
+            "ca-band": "n28@10Mhz earfcn: 154570 phy-cellid: 16\n                    B20@10Mhz earfcn: 6300 phy-cellid: 130",
+            "cqi": "12",
+            "ri": "1",
+            "rssi": "-62dBm",
+            "rsrq": "-12dB",
+            "sinr": "14dB",
+            "nr-dl-modulation": "16qam",
+            "nr-rsrp": "-88dBm",
+            "nr-rsrq": "-10dB",
+            "nr-sinr": "11dB",
+        }
+        row = lte_row("lte1", MODEM, reply)
+        assert row["data-class"] == "5G NSA"
+        assert (row["nr-rsrp"], row["nr-rsrq"], row["nr-sinr"]) == (-88, -10, 11)
+        assert (row["rssi"], row["rsrp"], row["rsrq"], row["sinr"], row["cqi"]) == (-62, -95, -12, 14, 12)
+        assert row["nr-dl-modulation"] == "16qam"
+        assert row["nr-other"] is None, "every 5G field this modem sends is known"
+        assert row["ca-band"] == "n28@10Mhz earfcn: 154570 phy-cellid: 16; B20@10Mhz earfcn: 6300 phy-cellid: 130"
+
+    def test_a_5g_cqi_would_surface_in_the_other_attribute(self):
+        """No modem has shown one yet, so it has no sensor, but it must not vanish."""
+        assert lte_row("lte1", MODEM, {"nr-cqi": 12})["nr-other"] == "nr-cqi=12"
 
     def test_unknown_5g_fields_are_kept_together_for_reporting(self):
         row = lte_row("lte1", MODEM, {"nr-rsrp": -101, "nr-band": "n78@100Mhz", "nr-phy-cellid": 77})
@@ -295,7 +323,7 @@ def test_lte_sensor_descriptions():
     from custom_components.mikrotik_extended.sensor_types import DEVICE_ATTRIBUTES_LTE, SENSOR_TYPES
 
     sensors = {d.key: d for d in SENSOR_TYPES if d.data_path == "lte"}
-    assert {d.data_attribute for d in sensors.values()} == {"current-operator", "data-class", "rssi", "rsrp", "rsrq", "sinr", "cqi", "primary-band", "ca-band", "nr-rsrp", "nr-rsrq", "nr-sinr", "nr-cqi"}
+    assert {d.data_attribute for d in sensors.values()} == {"current-operator", "data-class", "rssi", "rsrp", "rsrq", "sinr", "cqi", "primary-band", "ca-band", "nr-rsrp", "nr-rsrq", "nr-sinr"}
     for key in ("lte_rssi", "lte_rsrp", "lte_nr_rsrp"):
         assert sensors[key].native_unit_of_measurement == "dBm" and sensors[key].device_class is SensorDeviceClass.SIGNAL_STRENGTH
     for key in ("lte_rsrq", "lte_sinr", "lte_nr_rsrq", "lte_nr_sinr"):
@@ -304,6 +332,8 @@ def test_lte_sensor_descriptions():
     assert not {"imei", "imsi", "iccid", "uicc"} & set(everything)
     assert [d.data_attribute for d in BINARY if d.data_path == "lte"] == ["connected"]
     assert all(d.data_reference == "uid-ref" for d in sensors.values()), "the name of the modem goes in front, so two modems do not collide"
+    assert "nr-dl-modulation" in DEVICE_ATTRIBUTES_LTE
+    assert {d.ha_group for d in sensors.values()} == {"LTE modem"} and {d.ha_group for d in BINARY if d.data_path == "lte"} == {"LTE modem"}
 
 
 def test_log_redaction_covers_the_modem_identifiers():
