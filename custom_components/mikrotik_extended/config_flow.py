@@ -123,12 +123,12 @@ _TRACKER_INTERVAL_FIELD = vol.All(
     NumberSelector(NumberSelectorConfig(min=MIN_TRACK_HOSTS_INTERVAL, max=MAX_TRACK_HOSTS_INTERVAL, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement=UnitOfTime.SECONDS)), vol.Coerce(int)
 )
 
+# Drawn masked by the frontend.
+_PASSWORD_FIELD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+
 # The port switch option is deliberately not part of any preset. Turning it
 # off is a safeguard, and picking a preset later, to enable something
 # unrelated, must not quietly put the switch back on the uplink port.
-# Drawn masked, and never echoed back in a validation message.
-_PASSWORD_FIELD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
-
 _SENSOR_PRESETS = {
     "core": {
         CONF_SENSOR_INTERFACES: False,
@@ -546,7 +546,8 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             user_input[CONF_SSL] = ssl_mode in ("ssl", "ssl_verify")
             user_input[CONF_VERIFY_SSL] = ssl_mode == "ssl_verify"
             # The form shows no password; an empty field keeps the stored one.
-            if not user_input.get(CONF_PASSWORD):
+            typed_password = user_input.get(CONF_PASSWORD) or ""
+            if not typed_password:
                 user_input[CONF_PASSWORD] = reconfigure_entry.data.get(CONF_PASSWORD, "")
 
             api = MikrotikAPI(
@@ -568,7 +569,10 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
                 return self.async_abort(reason="reconfigure_successful")
 
-            return self._show_config_form(user_input={**user_input, CONF_PASSWORD: ""}, errors=errors, step_id="reconfigure")
+            # After a failed attempt the field keeps what the user typed, so a
+            # mistyped host does not silently fall back to the old password on
+            # the retry; the stored password is still never put on the form.
+            return self._show_config_form(user_input={**user_input, CONF_PASSWORD: typed_password}, errors=errors, step_id="reconfigure")
 
         return self._show_config_form(
             user_input={
@@ -602,7 +606,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     # Reconfiguring shows an empty password field and keeps the
                     # stored password when it stays empty; the stored one is never
                     # put on a form.
-                    (vol.Optional(CONF_PASSWORD, default="") if step_id == "reconfigure" else vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD])): _PASSWORD_FIELD,
+                    (vol.Optional(CONF_PASSWORD, default=user_input[CONF_PASSWORD]) if step_id == "reconfigure" else vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD])): _PASSWORD_FIELD,
                     vol.Optional(CONF_PORT, default=user_input[CONF_PORT]): int,
                     vol.Optional("ssl_mode", default=ssl_mode): SelectSelector(
                         SelectSelectorConfig(
