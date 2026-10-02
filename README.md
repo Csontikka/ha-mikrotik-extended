@@ -18,15 +18,16 @@ Full-featured Home Assistant integration for MikroTik routers running **RouterOS
 ## Comparison with the core integration
 
 Home Assistant ships its own `mikrotik` integration, and it grew a lot in 2026: the
-**2026.9** release added PoE control, interface switches and link status. The table
-below is a snapshot taken on **6 September 2026**, checked against the source of both
-projects, with the core integration as released in **2026.9.1**. At that date the core
-development branch carried no further MikroTik changes.
+**2026.9** release added PoE control, interface switches and link status, and **2026.10**
+adds a reconfigure flow and the removal of interfaces that disappeared. The table below is
+a snapshot taken on **3 October 2026**, checked against the source of both projects, with
+the core integration as in the **2026.10.0b0** beta. It will be checked again when 2026.10
+is released.
 
 The two can be installed side by side. This one is a standalone integration with its own
 domain, `mikrotik_extended`, so nothing conflicts.
 
-| Feature | Core<br>2026.9.1 | MikroTik<br>Extended |
+| Feature | Core<br>2026.10.0b0 | MikroTik<br>Extended |
 | --- | :---: | :---: |
 | **System** | | |
 | CPU load, memory and disk usage, uptime | ✅ | ✅ |
@@ -45,6 +46,7 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | TX and RX traffic rates and totals | ❌ | ✅ |
 | IP address per interface | ❌ | ✅ |
 | SFP status and information | ❌ | ✅ |
+| Interfaces that disappear from the router are removed as devices | ✅ | ✅ |
 | PoE output mode control | ✅ | ✅ |
 | PoE consumption | ✅ | ✅ |
 | Live PoE output status per port | ❌ | ✅ |
@@ -75,13 +77,17 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | Manual data refresh | ❌ | ✅ |
 | **Setup** | | |
 | Config flow, multiple routers, SSL, ARP ping | ✅ | ✅ |
+| Reconfigure the connection without removing the entry | ✅ | ✅ |
 | Entity categories individually switchable | ❌ | ✅ |
 | Automatic discovery over MNDP | ❌ | ✅ |
 
 The core integration is under active development, so this table will age. If you spot a
 row that is out of date, open an issue and it will be corrected.
 
-Built for **RouterOS 7+**, **Silver** quality scale, with a full test suite.
+Built for **RouterOS 7+**, with a full test suite. The official integration quality scale
+covers core integrations only, where `mikrotik` is rated **Gold** in 2026.10; this project
+tracks the same rules in its own `quality_scale.yaml`, which is a self-assessment and stands
+at **Silver** with three documentation rules left open.
 
 ## Features
 
