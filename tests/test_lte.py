@@ -115,8 +115,25 @@ class TestLteRow:
 class TestLteRowEdges:
     def test_status_words(self):
         assert lte_row("lte1", MODEM, {"status": "connected"})["connected"] is True
-        for status in ("searching", "disabled", "", None):
+        for status in ("searching", "disabled", "registered", "", None):
             assert lte_row("lte1", MODEM, {"status": status})["connected"] is False, status
+
+    def test_a_data_session_counts_as_connected_whatever_the_status_says(self):
+        """Issue 37: an R11e-LTE6 reports "registered" while it carries traffic."""
+        reply = {
+            "status": "registered",
+            "registration-status": "registered",
+            "model": "R11e-LTE6",
+            "revision": "R11e-LTE6_V039",
+            "data-class": "LTE CA",
+            "session-uptime": "1d2h49m32s",
+            "primary-band": "B1@15Mhz earfcn: 525 phy-cellid: 288",
+            "ca-band": "B20@5Mhz earfcn: 6275 phy-cellid: 288",
+        }
+        row = lte_row("lte1", MODEM, reply)
+        assert row["connected"] is True
+        assert row["data-class"] == "LTE CA" and row["session-uptime"] == "1d2h49m32s"
+        assert lte_row("lte1", MODEM, {"status": "registered", "session-uptime": ""})["connected"] is False, "attached to the network, but no data session"
 
     def test_an_empty_reply_gives_empty_values_not_an_error(self):
         row = lte_row("lte1", MODEM, {})

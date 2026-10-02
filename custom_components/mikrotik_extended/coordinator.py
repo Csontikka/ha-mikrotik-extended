@@ -469,7 +469,12 @@ def lte_row(key: str, modem: dict, info: dict) -> dict:
     known = set(_LTE_TEXT_FIELDS) | set(_LTE_ID_FIELDS) | set(_LTE_NUMBER_FIELDS) | set(_LTE_NEVER)
     other = {key: _lte_text(value) for key, value in info.items() if str(key).startswith("nr-") and key not in known}
     row["nr-other"] = ", ".join(f"{key}={value}" for key, value in sorted(other.items()) if value) or None
-    row["connected"] = row["status"] in ("running", "connected")
+    # Modem firmwares word the state differently: "running" and "connected"
+    # were seen first, an R11e-LTE6 says "registered" while it carries
+    # traffic. A data session has an uptime whatever the wording, so that is
+    # the sign of a connection, with the two known words as a fallback for a
+    # reply that leaves the uptime out.
+    row["connected"] = bool(row["session-uptime"]) or row["status"] in ("running", "connected")
     # Whether the 5G sensors exist depends on what the modem is set up for,
     # not on what it reports this minute, so they do not come and go as the
     # modem moves between LTE and 5G.
