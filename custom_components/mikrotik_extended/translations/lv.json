@@ -130,7 +130,8 @@
           "ssl_mode": "Savienojuma drošība"
         },
         "data_description": {
-          "port": "RouterOS API ports. Atstājiet 0, lai izmantotu noklusējumu: 8728 (bez SSL) vai 8729 (SSL)."
+          "port": "RouterOS API ports. Atstājiet 0, lai izmantotu noklusējumu: 8728 (bez SSL) vai 8729 (SSL).",
+          "password": "Atstājiet tukšu, lai saglabātu esošo paroli."
         }
       }
     },

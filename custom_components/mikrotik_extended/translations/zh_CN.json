@@ -130,7 +130,8 @@
           "ssl_mode": "连接安全"
         },
         "data_description": {
-          "port": "RouterOS API 端口。保留为 0 以使用默认值：8728（无 SSL）或 8729（SSL）。"
+          "port": "RouterOS API 端口。保留为 0 以使用默认值：8728（无 SSL）或 8729（SSL）。",
+          "password": "留空以保留已保存的密码。"
         }
       }
     },

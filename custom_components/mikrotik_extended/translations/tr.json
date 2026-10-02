@@ -130,7 +130,8 @@
           "ssl_mode": "Bağlantı güvenliği"
         },
         "data_description": {
-          "port": "RouterOS API portu. Varsayılanı kullanmak için 0 bırakın: 8728 (SSL yok) veya 8729 (SSL)."
+          "port": "RouterOS API portu. Varsayılanı kullanmak için 0 bırakın: 8728 (SSL yok) veya 8729 (SSL).",
+          "password": "Kayıtlı parolayı korumak için boş bırakın."
         }
       }
     },

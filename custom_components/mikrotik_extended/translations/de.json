@@ -130,7 +130,8 @@
           "ssl_mode": "Verbindungssicherheit"
         },
         "data_description": {
-          "port": "RouterOS API-Port. Bei 0 wird der Standard verwendet: 8728 (kein SSL) oder 8729 (SSL)."
+          "port": "RouterOS API-Port. Bei 0 wird der Standard verwendet: 8728 (kein SSL) oder 8729 (SSL).",
+          "password": "Leer lassen, um das gespeicherte Passwort zu behalten."
         }
       }
     },

@@ -130,7 +130,8 @@
           "ssl_mode": "Bảo mật kết nối"
         },
         "data_description": {
-          "port": "Cổng RouterOS API. Để 0 để dùng mặc định: 8728 (không SSL) hoặc 8729 (có SSL)."
+          "port": "Cổng RouterOS API. Để 0 để dùng mặc định: 8728 (không SSL) hoặc 8729 (có SSL).",
+          "password": "Để trống để giữ mật khẩu đã lưu."
         }
       }
     },

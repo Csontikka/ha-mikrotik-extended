@@ -130,7 +130,8 @@
           "ssl_mode": "Kapcsolat biztonsága"
         },
         "data_description": {
-          "port": "RouterOS API port. Hagyd 0-n az alapértelmezett port automatikus használatához: 8728 (SSL nélkül) vagy 8729 (SSL-lel)."
+          "port": "RouterOS API port. Hagyd 0-n az alapértelmezett port automatikus használatához: 8728 (SSL nélkül) vagy 8729 (SSL-lel).",
+          "password": "Hagyd üresen a tárolt jelszó megtartásához."
         }
       }
     },

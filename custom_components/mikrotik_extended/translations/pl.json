@@ -130,7 +130,8 @@
           "ssl_mode": "Bezpieczeństwo połączenia"
         },
         "data_description": {
-          "port": "Port API RouterOS. Pozostaw 0, aby użyć domyślnego: 8728 (bez SSL) lub 8729 (SSL)."
+          "port": "Port API RouterOS. Pozostaw 0, aby użyć domyślnego: 8728 (bez SSL) lub 8729 (SSL).",
+          "password": "Pozostaw puste, aby zachować zapisane hasło."
         }
       }
     },

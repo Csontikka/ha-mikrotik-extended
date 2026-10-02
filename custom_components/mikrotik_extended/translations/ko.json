@@ -130,7 +130,8 @@
           "ssl_mode": "연결 보안"
         },
         "data_description": {
-          "port": "RouterOS API 포트입니다. 기본값을 사용하려면 0으로 두세요: 8728 (SSL 없음) 또는 8729 (SSL)."
+          "port": "RouterOS API 포트입니다. 기본값을 사용하려면 0으로 두세요: 8728 (SSL 없음) 또는 8729 (SSL).",
+          "password": "저장된 비밀번호를 유지하려면 비워 두세요."
         }
       }
     },

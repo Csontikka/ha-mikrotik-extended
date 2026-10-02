@@ -130,7 +130,8 @@
           "ssl_mode": "Verbindingsbeveiliging"
         },
         "data_description": {
-          "port": "RouterOS API-poort. Laat op 0 staan voor de standaardwaarde: 8728 (zonder SSL) of 8729 (met SSL)."
+          "port": "RouterOS API-poort. Laat op 0 staan voor de standaardwaarde: 8728 (zonder SSL) of 8729 (met SSL).",
+          "password": "Laat leeg om het opgeslagen wachtwoord te behouden."
         }
       }
     },

@@ -130,7 +130,8 @@
           "ssl_mode": "Öryggistengingar"
         },
         "data_description": {
-          "port": "RouterOS API-gátt. Skildu eftir 0 til að nota sjálfgefið: 8728 (án SSL) eða 8729 (með SSL)."
+          "port": "RouterOS API-gátt. Skildu eftir 0 til að nota sjálfgefið: 8728 (án SSL) eða 8729 (með SSL).",
+          "password": "Skildu eftir autt til að halda vistaða lykilorðinu."
         }
       }
     },

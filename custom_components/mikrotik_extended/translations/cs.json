@@ -130,7 +130,8 @@
           "ssl_mode": "Zabezpečení připojení"
         },
         "data_description": {
-          "port": "Port API RouterOS. Ponechte 0 pro použití výchozího: 8728 (bez SSL) nebo 8729 (SSL)."
+          "port": "Port API RouterOS. Ponechte 0 pro použití výchozího: 8728 (bez SSL) nebo 8729 (SSL).",
+          "password": "Ponechte prázdné, chcete-li zachovat uložené heslo."
         }
       }
     },
