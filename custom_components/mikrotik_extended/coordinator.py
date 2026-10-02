@@ -489,6 +489,46 @@ def _route_interface(row: dict) -> str:
     return hop.rsplit("%", 1)[-1]
 
 
+def _route_interfaces(row: dict) -> list[str]:
+    """Every interface a route leaves through; an ECMP route lists several hops."""
+    hops = str(row.get("immediate-gw") or "")
+    if hops in ("", "unknown"):
+        return []
+    return [hop.strip().rsplit("%", 1)[-1] for hop in hops.split(",") if hop.strip()]
+
+
+def active_wan(routes: dict | None) -> dict:
+    """Which interface carries the traffic that leaves the network right now.
+
+    That is the active default route of the main table. ``routes`` is None
+    when the routing table has not been read yet, which is not the same as
+    having no way out: the first reads "unknown", the second "none".
+    """
+    empty = {"gateway": None, "immediate-gw": None, "distance": None, "dynamic": None, "active-routes": 0}
+    if routes is None:
+        return {"interface": "unknown", **empty}
+    rows = [row for row in routes.values() if row.get("dst-address") == "0.0.0.0/0" and row.get("routing-table") == "main" and row.get("active") and row.get("present", True)]
+    if not rows:
+        return {"interface": "none", **empty}
+    # The lowest distance is the route RouterOS prefers; the rest of the key
+    # only makes the order the same on every poll.
+    rows.sort(key=lambda row: (_as_int(row.get("distance"), 255), str(row.get("immediate-gw")), str(row.get("gateway"))))
+    interfaces: list[str] = []
+    for row in rows:
+        for name in _route_interfaces(row) or [str(row.get("gateway") or "unknown")]:
+            if name not in interfaces:
+                interfaces.append(name)
+    first = rows[0]
+    return {
+        "interface": ", ".join(interfaces)[:255],
+        "gateway": first.get("gateway"),
+        "immediate-gw": first.get("immediate-gw"),
+        "distance": first.get("distance"),
+        "dynamic": bool(first.get("dynamic")),
+        "active-routes": len(rows),
+    }
+
+
 def _as_int(value, default: int) -> int:
     """A stored option as a whole number, the default when it is not one."""
     try:
@@ -580,6 +620,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "raw": {},
             "lte": {},
             "route": {},
+            "active_wan": {},
             "ppp_secret": {},
             "ppp_active": {},
             "fw-update": {},
@@ -2548,6 +2589,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Get the static routes and the default routes from Mikrotik"""
         source = self.api.query_where("/ip/route", {"static": True, "dst-address": "0.0.0.0/0"})
         if source is None:
+            # Not read is not the same as no way out: keep the last answer,
+            # and say unknown if there never was one.
+            if not self.ds["active_wan"]:
+                self.ds["active_wan"] = active_wan(None)
             return
         self._routes_read = True
 
@@ -2652,6 +2697,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 del strikes[key]
                 if replaced:
                     self._routes_replaced.add(key)
+
+        self.ds["active_wan"] = active_wan(self.ds["route"])
 
     # ---------------------------
     #   get_lte

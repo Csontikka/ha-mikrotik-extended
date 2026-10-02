@@ -182,6 +182,14 @@ DEVICE_ATTRIBUTES_CONTAINER_SENSOR = [
     "start-on-boot",
 ]
 
+DEVICE_ATTRIBUTES_ACTIVE_WAN = [
+    "gateway",
+    "immediate-gw",
+    "distance",
+    "dynamic",
+    "active-routes",
+]
+
 DEVICE_ATTRIBUTES_LTE = [
     "status",
     "data-class",
@@ -820,6 +828,20 @@ SENSOR_TYPES: tuple[MikrotikSensorEntityDescription, ...] = (
         data_attributes_list=DEVICE_ATTRIBUTES_IFACE,
         func="MikrotikInterfaceErrorSensor",
         enable_on_option=CONF_SENSOR_PORT_ERRORS,
+    ),
+    MikrotikSensorEntityDescription(
+        key="active_wan",
+        name="Active WAN",
+        icon="mdi:wan",
+        ha_group="Routes",
+        ha_connection=DOMAIN,
+        ha_connection_value="Routes",
+        data_path="active_wan",
+        data_attribute="interface",
+        data_name="",
+        data_uid="",
+        data_reference="",
+        data_attributes_list=DEVICE_ATTRIBUTES_ACTIVE_WAN,
     ),
     MikrotikSensorEntityDescription(
         key="lte_operator",
