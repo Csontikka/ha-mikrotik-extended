@@ -3619,11 +3619,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     {"name": "ap", "type": "bool"},
                     {"name": "uptime"},
                     {"name": "signal-strength"},
+                    # The new wifi stack calls the same value "signal".
+                    {"name": "signal"},
                     {"name": "tx-ccq"},
                     {"name": "tx-rate"},
                     {"name": "rx-rate"},
                 ],
             )
+        for host in hosts.values():
+            if host.get("signal-strength") in ("", None) and host.get("signal") not in ("", None):
+                host["signal-strength"] = host["signal"]
         self.ds["wireless_hosts"] = hosts
 
     # ---------------------------

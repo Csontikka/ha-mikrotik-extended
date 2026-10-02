@@ -2475,6 +2475,8 @@ class TestWifiStacks:
         coord.get_wireless_hosts()
         assert set(coord.ds["wireless_hosts"]) == {"AA:AA", "BB:BB"}
         assert coord.ds["wireless_hosts"]["BB:BB"]["interface"] == "wlan1"
+        assert coord.ds["wireless_hosts"]["AA:AA"]["signal-strength"] == -50, "the new stack's 'signal' fills signal-strength"
+        assert coord.ds["wireless_hosts"]["BB:BB"]["signal-strength"] == "-60"
 
     def test_interfaces_of_every_stack_are_merged(self, hass):
         coord = _make_coordinator(hass)
