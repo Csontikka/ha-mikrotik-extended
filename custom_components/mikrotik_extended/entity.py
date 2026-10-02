@@ -70,6 +70,7 @@ _IFACE_TYPE_CATEGORY = {
     "ether": "port",
     "vlan": "vlan",
     "wlan": "wifi",
+    "wifi": "wifi",
     "bridge": "bridge",
     "pppoe-out": "ppp",
     "ppp": "ppp",
@@ -155,7 +156,7 @@ def _skip_client_traffic(entity_description, item) -> bool:
 def _skip_port_binary_sensor(config_entry, entity_description, item) -> bool:
     if entity_description.func != "MikrotikPortBinarySensor":
         return False
-    if item["type"] == "wlan":
+    if item["type"] in ("wlan", "wifi"):
         return True
     return not config_entry.options.get(CONF_SENSOR_PORT_TRACKER, DEFAULT_SENSOR_PORT_TRACKER)
 

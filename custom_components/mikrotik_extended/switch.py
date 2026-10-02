@@ -38,7 +38,7 @@ def _collect_iface_attributes(data: Mapping[str, Any]) -> dict[str, Any]:
         _add_present_attributes(collected, data, DEVICE_ATTRIBUTES_IFACE_ETHER)
         if "sfp-shutdown-temperature" in data:
             _add_present_attributes(collected, data, DEVICE_ATTRIBUTES_IFACE_SFP)
-    elif iface_type == "wlan":
+    elif iface_type in ("wlan", "wifi"):
         _add_present_attributes(collected, data, DEVICE_ATTRIBUTES_IFACE_WIRELESS)
     return collected
 
