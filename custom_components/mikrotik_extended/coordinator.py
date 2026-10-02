@@ -701,7 +701,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.support_wireguard = False
         self.support_containers = False
         self.support_cloud = False
-        self._wifimodule = "wireless"
+        # The wifi stacks whose menus the router really has; see _detect_v7_wifi.
+        self._wifimodules: list[str] = ["wireless"]
 
         self.major_fw_version = 0
         self.minor_fw_version = 0
@@ -1010,23 +1011,38 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             self.support_containers = True
 
     def _detect_v7_wifi(self, packages) -> None:
-        """Resolve wifi module and CAPsMAN/wireless flags on RouterOS v7."""
+        """Work out which wifi stacks the router runs, on RouterOS v7.
+
+        A router can run more than one: an older radio keeps the legacy
+        "wireless" package next to the new "wifi" one, and from 7.13 the new
+        stack is built in even where only the legacy radio is used. Picking
+        a single stack from the version left such routers asking a menu that
+        did not exist, and their wireless clients were never seen. So every
+        stack the packages point at is a candidate, and the router is asked
+        which of the menus it really has.
+        """
         self.support_ppp = True
-        self.support_wireless = True
+        candidates = []
         if _package_enabled(packages, "wifiwave2"):
-            self.support_capsman = False
-            self._wifimodule = "wifiwave2"
-        elif self._has_v7_wifi_module(packages):
-            self.support_capsman = False
-            self._wifimodule = "wifi"
-        else:
-            self.support_capsman = True
-            self.support_wireless = bool(self.minor_fw_version < 13)
+            candidates.append("wifiwave2")
+        if self._has_v7_wifi_module(packages):
+            candidates.append("wifi")
+        if _package_enabled(packages, "wireless") or (self.minor_fw_version < 13 and not candidates):
+            candidates.append("wireless")
+        present = [module for module in candidates if self.api.query_where(f"/interface/{module}", {"disabled": "no"}) is not None]
+        # The probe asks for enabled interfaces; a stack whose menu exists but
+        # holds none right now answers with an empty list, and is kept.
+        self._wifimodules = present or candidates[:1]
+        self.support_wireless = bool(self._wifimodules)
+        # The legacy CAPsMAN lives next to the legacy wireless stack; the new
+        # stacks carry their controller inside their own registration table.
+        self.support_capsman = "wifi" not in self._wifimodules and "wifiwave2" not in self._wifimodules
 
         _LOGGER.debug(
-            "Mikrotik %s wifi module=%s",
+            "Mikrotik %s wifi modules=%s (candidates %s)",
             self.host,
-            self._wifimodule,
+            self._wifimodules,
+            candidates,
         )
 
     def _has_v7_wifi_module(self, packages) -> bool:
@@ -3515,9 +3531,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def get_capsman_hosts(self) -> None:
         """Get CAPS-MAN hosts data from Mikrotik"""
 
-        if self.major_fw_version > 7 or (self.major_fw_version == 7 and self.minor_fw_version >= 13):
+        if "wifi" in self._wifimodules:
             registration_path = "/interface/wifi/registration-table"
-
         else:
             registration_path = "/caps-man/registration-table"
 
@@ -3538,9 +3553,24 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def get_wireless(self) -> None:
         """Get wireless data from Mikrotik"""
 
+        for module in self._wifimodules:
+            self._get_wireless_module(module)
+
+        for uid in self.ds["wireless"]:
+            if self.ds["wireless"][uid]["master-interface"]:
+                for tmp in self.ds["wireless"][uid]:
+                    if self.ds["wireless"][uid][tmp] == "unknown":
+                        self.ds["wireless"][uid][tmp] = self.ds["wireless"][self.ds["wireless"][uid]["master-interface"]][tmp]
+
+            if uid in self.ds["interface"]:
+                for tmp in self.ds["wireless"][uid]:
+                    self.ds["interface"][uid][tmp] = self.ds["wireless"][uid][tmp]
+
+    def _get_wireless_module(self, module: str) -> None:
+        """Read the interfaces of one wifi stack into the shared wireless store."""
         self.ds["wireless"] = parse_api(
             data=self.ds["wireless"],
-            source=self.api.query(f"/interface/{self._wifimodule}"),
+            source=self.api.query(f"/interface/{module}"),
             key="name",
             vals=[
                 {"name": "master-interface", "default": ""},
@@ -3570,36 +3600,31 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             ],
         )
 
-        for uid in self.ds["wireless"]:
-            if self.ds["wireless"][uid]["master-interface"]:
-                for tmp in self.ds["wireless"][uid]:
-                    if self.ds["wireless"][uid][tmp] == "unknown":
-                        self.ds["wireless"][uid][tmp] = self.ds["wireless"][self.ds["wireless"][uid]["master-interface"]][tmp]
-
-            if uid in self.ds["interface"]:
-                for tmp in self.ds["wireless"][uid]:
-                    self.ds["interface"][uid][tmp] = self.ds["wireless"][uid][tmp]
-
     # ---------------------------
     #   get_wireless_hosts
     # ---------------------------
     def get_wireless_hosts(self) -> None:
         """Get wireless hosts data from Mikrotik"""
-        self.ds["wireless_hosts"] = parse_api(
-            data={},
-            source=self.api.query(f"/interface/{self._wifimodule}/registration-table"),
-            key="mac-address",
-            vals=[
-                {"name": "mac-address"},
-                {"name": "interface", "default": "unknown"},
-                {"name": "ap", "type": "bool"},
-                {"name": "uptime"},
-                {"name": "signal-strength"},
-                {"name": "tx-ccq"},
-                {"name": "tx-rate"},
-                {"name": "rx-rate"},
-            ],
-        )
+        # Every stack's registration table, merged: a client is on exactly
+        # one radio, so the tables do not overlap.
+        hosts: dict = {}
+        for module in self._wifimodules:
+            hosts = parse_api(
+                data=hosts,
+                source=self.api.query(f"/interface/{module}/registration-table"),
+                key="mac-address",
+                vals=[
+                    {"name": "mac-address"},
+                    {"name": "interface", "default": "unknown"},
+                    {"name": "ap", "type": "bool"},
+                    {"name": "uptime"},
+                    {"name": "signal-strength"},
+                    {"name": "tx-ccq"},
+                    {"name": "tx-rate"},
+                    {"name": "rx-rate"},
+                ],
+            )
+        self.ds["wireless_hosts"] = hosts
 
     # ---------------------------
     #   async_process_host
