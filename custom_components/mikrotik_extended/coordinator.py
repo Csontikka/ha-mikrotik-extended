@@ -411,9 +411,12 @@ def _list_id_order(entry: dict):
 # than of what to leave out: the monitor reply also carries the IMEI, the IMSI
 # and the ICCID, and those must never reach the data store, the entities, the
 # diagnostics or the log, whatever a later RouterOS release adds next to them.
-_LTE_TEXT_FIELDS = ("status", "model", "revision", "current-operator", "data-class", "primary-band", "ca-band", "dl-modulation", "session-uptime")
+_LTE_TEXT_FIELDS = ("status", "model", "revision", "current-operator", "data-class", "primary-band", "ca-band", "dl-modulation", "nr-dl-modulation", "session-uptime")
 _LTE_ID_FIELDS = ("current-cellid", "enb-id", "sector-id", "phy-cellid")
-_LTE_NUMBER_FIELDS = ("rssi", "rsrp", "rsrq", "sinr", "cqi", "ri", "mcs", "nr-rsrp", "nr-rsrq", "nr-sinr", "nr-cqi")
+# The 5G names are the ones a real modem reported on 5G NSA. It sent no 5G
+# CQI, so there is no sensor for one; should a modem report it, it shows up
+# in the nr-other attribute like any other name not listed here.
+_LTE_NUMBER_FIELDS = ("rssi", "rsrp", "rsrq", "sinr", "cqi", "ri", "mcs", "nr-rsrp", "nr-rsrq", "nr-sinr")
 _LTE_NEVER = ("imei", "imsi", "iccid", "uicc")
 _LTE_NUMBER_RE = re.compile(r"^\s*([+-]?\d+(?:\.\d+)?)")
 
