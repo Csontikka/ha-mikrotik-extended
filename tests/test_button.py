@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -11,6 +12,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mikrotik_extended.button import (
@@ -153,8 +155,8 @@ async def test_script_button_runs_and_refreshes_on_success(hass):
     tracker.async_request_refresh.assert_awaited_once()
 
 
-async def test_script_button_aborts_on_failure(hass):
-    """MikrotikScriptButton.async_press aborts when run_script returns False."""
+async def test_script_button_raises_on_failure(hass):
+    """MikrotikScriptButton.async_press raises when run_script returns False, and refreshes nothing."""
     desc = _make_description(
         func="MikrotikScriptButton",
         data_path="script",
@@ -174,8 +176,11 @@ async def test_script_button_aborts_on_failure(hass):
 
     button = MikrotikScriptButton(coord, desc, uid="myscript")
     button.hass = hass
-    await button.async_press()
+    with pytest.raises(HomeAssistantError) as err:
+        await button.async_press()
 
+    assert err.value.translation_key == "write_refused"
+    assert "myscript" in err.value.translation_placeholders["target"]
     coord.async_refresh.assert_not_awaited()
     tracker.async_request_refresh.assert_not_awaited()
 
@@ -191,7 +196,9 @@ async def test_backup_button_aborts_without_write_access(hass):
     coord.ds = {"access": {"read"}}
     coord.execute = MagicMock()
     button = MikrotikBackupButton(coord, desc)
-    await button.async_press()
+    with pytest.raises(HomeAssistantError) as err:
+        await button.async_press()
+    assert err.value.translation_key == "no_write_access"
     coord.execute.assert_not_called()
 
 
@@ -212,16 +219,19 @@ async def test_backup_button_saves_under_a_fixed_name(hass):
     coord.execute.assert_called_once_with("/system/backup", "save", None, None, {"name": "homeassistant"})
 
 
-async def test_backup_button_survives_a_refused_save(hass):
-    """A refusal is reported, not raised."""
+async def test_backup_button_reports_a_refused_save(hass):
+    """A refusal is an error the user sees in the UI, with the router named."""
     desc = _make_description(func="MikrotikBackupButton")
     coord = _make_coordinator(hass, data={"resource": {"x": "y"}})
     coord.ds = {"access": {"write"}}
     coord.execute = MagicMock(return_value=False)
     button = MikrotikBackupButton(coord, desc)
     button.hass = hass
-    await button.async_press()
+    with pytest.raises(HomeAssistantError) as err:
+        await button.async_press()
     coord.execute.assert_called_once()
+    assert err.value.translation_key == "write_refused"
+    assert err.value.translation_placeholders["host"] == coord.host
 
 
 def test_backup_button_is_declared():

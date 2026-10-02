@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -11,6 +12,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mikrotik_extended.const import DOMAIN
@@ -118,7 +120,9 @@ async def test_selection_needs_write_access(hass):
     sel = MikrotikPoeSelect(coord, _make_description(), "ether1")
     sel.hass = hass
 
-    await sel.async_select_option("auto_on")
+    with pytest.raises(HomeAssistantError) as err:
+        await sel.async_select_option("auto_on")
+    assert err.value.translation_key == "no_write_access"
 
     coord.api.set_value.assert_not_called()
 
@@ -140,7 +144,10 @@ async def test_a_refused_write_does_not_claim_success(hass):
     sel = MikrotikPoeSelect(coord, _make_description(), "ether1")
     sel.hass = hass
 
-    await sel.async_select_option("forced_on")
+    with pytest.raises(HomeAssistantError) as err:
+        await sel.async_select_option("forced_on")
 
     coord.api.set_value.assert_called_once()
     coord.async_request_refresh.assert_not_awaited()
+    assert err.value.translation_key == "write_refused"
+    assert err.value.translation_placeholders["target"] == "PoE out ether1"

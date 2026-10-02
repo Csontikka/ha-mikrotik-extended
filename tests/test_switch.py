@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from homeassistant.const import (
     CONF_HOST,
     CONF_NAME,
@@ -11,6 +12,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mikrotik_extended.const import DOMAIN
@@ -136,14 +138,16 @@ async def test_mikrotik_switch_is_on_icon_and_stubs(hass):
 
 
 async def test_mikrotik_switch_async_turn_on_off_access_gated(hass):
-    """MikrotikSwitch.async_turn_on/off early-return when 'write' access is missing; otherwise call set_value."""
+    """MikrotikSwitch.async_turn_on/off raise when 'write' access is missing; otherwise call set_value."""
     desc = _make_description(data_attribute="enabled", data_reference="name")
 
     coord = _make_coordinator(hass, {"resource": {"enabled": True, "name": "ether1"}, "access": set()})
     sw = MikrotikSwitch(coord, desc)
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord2 = _make_coordinator(hass, {"resource": {"enabled": True, "name": "ether1"}, "access": {"write"}})
@@ -225,11 +229,12 @@ async def test_port_switch_async_turn_on_and_off(hass):
     sw = MikrotikPortSwitch(coord, desc, uid="ether1")
     sw.hass = hass
 
-    # access missing → noop
+    # access missing: an error the user sees, nothing sent
     coord.data["access"] = set()
-    await sw.async_turn_on()
-    coord.set_value.assert_not_called()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     # restore access
@@ -281,8 +286,10 @@ async def test_nat_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"nat": nat_data, "access": set()})
     sw = MikrotikNATSwitch(coord, desc, uid="r1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -316,8 +323,10 @@ async def test_mangle_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"mangle": mangle_data, "access": set()})
     sw = MikrotikMangleSwitch(coord, desc, uid="m1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -348,8 +357,10 @@ async def test_routing_rules_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"routing_rules": rr_data, "access": set()})
     sw = MikrotikRoutingRulesSwitch(coord, desc, uid="rr1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -388,8 +399,10 @@ async def test_filter_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"filter": fd, "access": set()})
     sw = MikrotikFilterSwitch(coord, desc, uid="f1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -407,8 +420,10 @@ async def test_queue_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"queue": queue_data, "access": set()})
     sw = MikrotikQueueSwitch(coord, desc, uid="q1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -426,8 +441,9 @@ async def test_kidcontrol_pause_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"kidcontrol": kc, "access": set()})
     sw = MikrotikKidcontrolPauseSwitch(coord, desc, uid="kid1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError):
+            await call()
     coord.execute.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -444,8 +460,10 @@ async def test_wireguard_peer_switch_async_turn_on_off(hass):
     coord = _make_coordinator(hass, {"wireguard_peer": wg, "access": set()})
     sw = MikrotikWireguardPeerSwitch(coord, desc, uid="p1")
     sw.hass = hass
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError) as err:
+            await call()
+        assert err.value.translation_key == "no_write_access"
     coord.set_value.assert_not_called()
 
     coord.data["access"] = {"write"}
@@ -471,8 +489,9 @@ async def test_container_switch_is_on_icon_and_turn_on_off(hass):
     assert sw.icon == "mdi:off"
 
     # access missing
-    await sw.async_turn_on()
-    await sw.async_turn_off()
+    for call in (sw.async_turn_on, sw.async_turn_off):
+        with pytest.raises(HomeAssistantError):
+            await call()
     coord.execute.assert_not_called()
 
     # granted
@@ -552,3 +571,48 @@ async def test_rule_switch_follows_recreated_row(hass):
 
     await sw.async_turn_on()
     assert coord.set_value.call_args.args == ("/ip/firewall/nat", ".id", "*9", desc.data_switch_parameter, False)
+
+
+async def test_a_refused_switch_write_is_an_error_the_user_sees(hass):
+    """The router said no: the service call fails with the router and the target named,
+    instead of reporting success while the switch snaps back on the next refresh."""
+    desc = _make_description(func="MikrotikFilterSwitch", data_path="filter", data_reference="uid-id", data_name="uid-id", data_switch_path="/ip/firewall/filter")
+    row = {".id": "*7", "uid-id": "block guests", "name": "block guests", "comment": "block guests", "enabled": True}
+    coord = _make_coordinator(hass, {"filter": {"*7": row}, "access": {"write"}})
+    coord.set_value = MagicMock(return_value=False)
+    sw = MikrotikFilterSwitch(coord, desc, uid="*7")
+    sw.hass = hass
+
+    with pytest.raises(HomeAssistantError) as err:
+        await sw.async_turn_off()
+    assert err.value.translation_key == "write_refused"
+    assert err.value.translation_placeholders["host"] == coord.host
+    assert "/ip/firewall/filter" in err.value.translation_placeholders["target"]
+    coord.async_refresh.assert_not_awaited()
+
+    coord.set_value = MagicMock(return_value=True)
+    await sw.async_turn_off()
+    coord.async_refresh.assert_awaited()
+
+
+async def test_a_refused_container_command_is_an_error_the_user_sees(hass):
+    desc = _make_description(func="MikrotikContainerSwitch", data_path="container", data_reference="name", data_name="name", data_switch_path="/container")
+    coord = _make_coordinator(hass, {"container": {"c1": {".id": "*c1", "name": "c1", "status": "running"}}, "access": {"write"}})
+    coord.execute = MagicMock(return_value=False)
+    sw = MikrotikContainerSwitch(coord, desc, uid="c1")
+    sw.hass = hass
+    with pytest.raises(HomeAssistantError) as err:
+        await sw.async_turn_off()
+    assert err.value.translation_placeholders["target"] == f"/container stop {sw.custom_name}"
+
+
+def test_every_translation_has_the_two_error_messages():
+    import glob
+    import json
+
+    for path in ["custom_components/mikrotik_extended/strings.json", *sorted(glob.glob("custom_components/mikrotik_extended/translations/*.json"))]:
+        with open(path, encoding="utf-8") as fh:
+            exc = json.load(fh)["exceptions"]
+        for key in ("write_refused", "no_write_access"):
+            assert "{host}" in exc[key]["message"], (path, key)
+        assert "{target}" in exc["write_refused"]["message"], path
