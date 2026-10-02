@@ -29,6 +29,9 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .const import (
@@ -123,6 +126,9 @@ _TRACKER_INTERVAL_FIELD = vol.All(
 # The port switch option is deliberately not part of any preset. Turning it
 # off is a safeguard, and picking a preset later, to enable something
 # unrelated, must not quietly put the switch back on the uplink port.
+# Drawn masked, and never echoed back in a validation message.
+_PASSWORD_FIELD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+
 _SENSOR_PRESETS = {
     "core": {
         CONF_SENSOR_INTERFACES: False,
@@ -300,7 +306,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME,
                         default=reauth_entry.data.get(CONF_USERNAME, ""),
                     ): str,
-                    vol.Required(CONF_PASSWORD): str,
+                    vol.Required(CONF_PASSWORD): _PASSWORD_FIELD,
                 }
             ),
             description_placeholders={"host": reauth_entry.data[CONF_HOST]},
@@ -539,6 +545,9 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
             ssl_mode = user_input.pop("ssl_mode", "none")
             user_input[CONF_SSL] = ssl_mode in ("ssl", "ssl_verify")
             user_input[CONF_VERIFY_SSL] = ssl_mode == "ssl_verify"
+            # The form shows no password; an empty field keeps the stored one.
+            if not user_input.get(CONF_PASSWORD):
+                user_input[CONF_PASSWORD] = reconfigure_entry.data.get(CONF_PASSWORD, "")
 
             api = MikrotikAPI(
                 host=user_input[CONF_HOST],
@@ -559,14 +568,14 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
                 return self.async_abort(reason="reconfigure_successful")
 
-            return self._show_config_form(user_input=user_input, errors=errors, step_id="reconfigure")
+            return self._show_config_form(user_input={**user_input, CONF_PASSWORD: ""}, errors=errors, step_id="reconfigure")
 
         return self._show_config_form(
             user_input={
                 CONF_NAME: reconfigure_entry.title,
                 CONF_HOST: reconfigure_entry.data.get(CONF_HOST, DEFAULT_HOST),
                 CONF_USERNAME: reconfigure_entry.data.get(CONF_USERNAME, DEFAULT_USERNAME),
-                CONF_PASSWORD: reconfigure_entry.data.get(CONF_PASSWORD, ""),
+                CONF_PASSWORD: "",
                 CONF_PORT: reconfigure_entry.data.get(CONF_PORT, DEFAULT_PORT),
                 CONF_SSL: reconfigure_entry.data.get(CONF_SSL, DEFAULT_SSL),
                 CONF_VERIFY_SSL: reconfigure_entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
@@ -590,7 +599,10 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_NAME, default=user_input[CONF_NAME]): str,
                     vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
                     vol.Required(CONF_USERNAME, default=user_input[CONF_USERNAME]): str,
-                    vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD]): str,
+                    # Reconfiguring shows an empty password field and keeps the
+                    # stored password when it stays empty; the stored one is never
+                    # put on a form.
+                    (vol.Optional(CONF_PASSWORD, default="") if step_id == "reconfigure" else vol.Required(CONF_PASSWORD, default=user_input[CONF_PASSWORD])): _PASSWORD_FIELD,
                     vol.Optional(CONF_PORT, default=user_input[CONF_PORT]): int,
                     vol.Optional("ssl_mode", default=ssl_mode): SelectSelector(
                         SelectSelectorConfig(
