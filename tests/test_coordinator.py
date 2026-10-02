@@ -575,7 +575,7 @@ class TestGetCapabilities:
         with self._patch_parse_api(packages):
             coord.get_capabilities()
         assert coord.support_wireless is True
-        assert coord._wifimodule == "wifiwave2"
+        assert coord._wifimodules == ["wifiwave2"]
         assert coord.support_ups is True
         assert coord.support_gps is True
         assert coord.support_wireguard is True
@@ -590,7 +590,7 @@ class TestGetCapabilities:
         }
         with self._patch_parse_api(packages):
             coord.get_capabilities()
-        assert coord._wifimodule == "wifi"
+        assert coord._wifimodules == ["wifi"]
 
     def test_get_capabilities_v7_old_minor_capsman_fallback(self, hass):
         coord = _make_coordinator(hass)
@@ -609,7 +609,7 @@ class TestGetCapabilities:
         packages = {}
         with self._patch_parse_api(packages):
             coord.get_capabilities()
-        assert coord._wifimodule == "wifi"
+        assert coord._wifimodules == ["wifi"]
 
     def test_get_capabilities_wireguard_external_package(self, hass):
         coord = _make_coordinator(hass)
@@ -2418,6 +2418,86 @@ def test_error_counter_descriptions():
         assert desc.data_path == "interface"
         assert desc.state_class is SensorStateClass.TOTAL_INCREASING, "a reboot resets the counter"
         assert desc.enable_on_option == CONF_SENSOR_PORT_ERRORS
+
+
+class TestWifiStacks:
+    """A router can run more than one wifi stack; every one that exists is read."""
+
+    def _coord(self, hass, minor, packages, menus):
+        coord = _make_coordinator(hass)
+        coord.major_fw_version = 7
+        coord.minor_fw_version = minor
+
+        def probe(path, any_of):
+            # [] = the menu exists and holds nothing enabled; None = no such menu
+            return [] if path in menus else None
+
+        coord.api.query_where.side_effect = probe
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", return_value=packages):
+            coord.get_capabilities()
+        return coord
+
+    def test_legacy_radio_on_a_new_release(self, hass):
+        """7.13+ with only the legacy wireless package: hAP ac2, cAP ac and friends."""
+        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}}, menus={"/interface/wireless"})
+        assert coord._wifimodules == ["wireless"], "the built-in wifi menu does not exist on such a router"
+        assert coord.support_wireless is True
+        assert coord.support_capsman is True, "the legacy CAPsMAN goes with the legacy stack"
+
+    def test_both_stacks_at_once(self, hass):
+        coord = self._coord(hass, 16, {"wireless": {"name": "wireless", "enabled": True}, "wifi-qcom": {"name": "wifi-qcom", "enabled": True}}, menus={"/interface/wifi", "/interface/wireless"})
+        assert coord._wifimodules == ["wifi", "wireless"]
+        assert coord.support_capsman is False
+
+    def test_new_stack_only(self, hass):
+        coord = self._coord(hass, 16, {}, menus={"/interface/wifi"})
+        assert coord._wifimodules == ["wifi"]
+        assert coord.support_capsman is False
+
+    def test_old_release_without_packages_keeps_the_legacy_stack(self, hass):
+        coord = self._coord(hass, 5, {}, menus={"/interface/wireless"})
+        assert coord._wifimodules == ["wireless"]
+        assert coord.support_capsman is True
+
+    def test_probe_failure_falls_back_to_the_first_candidate(self, hass):
+        """A dropped connection during the probe must not leave the router without any wifi stack."""
+        coord = self._coord(hass, 16, {}, menus=set())
+        assert coord._wifimodules == ["wifi"]
+
+    def test_hosts_of_every_stack_are_merged(self, hass):
+        coord = _make_coordinator(hass)
+        coord._wifimodules = ["wifi", "wireless"]
+        tables = {
+            "/interface/wifi/registration-table": [{"mac-address": "AA:AA", "interface": "wifi1", "signal": -50}],
+            "/interface/wireless/registration-table": [{"mac-address": "BB:BB", "interface": "wlan1", "signal-strength": "-60"}],
+        }
+        coord.api.query.side_effect = lambda path, **_: tables.get(path)
+        coord.get_wireless_hosts()
+        assert set(coord.ds["wireless_hosts"]) == {"AA:AA", "BB:BB"}
+        assert coord.ds["wireless_hosts"]["BB:BB"]["interface"] == "wlan1"
+
+    def test_interfaces_of_every_stack_are_merged(self, hass):
+        coord = _make_coordinator(hass)
+        coord._wifimodules = ["wifi", "wireless"]
+        coord.ds["interface"] = {"wifi1": {"type": "wifi"}, "wlan1": {"type": "wlan"}}
+        tables = {
+            "/interface/wifi": [{"name": "wifi1", "mac-address": "AA", "ssid": "new"}],
+            "/interface/wireless": [{"name": "wlan1", "mac-address": "BB", "ssid": "old"}],
+        }
+        coord.api.query.side_effect = lambda path, **_: tables.get(path)
+        coord.get_wireless()
+        assert coord.ds["wireless"]["wifi1"]["ssid"] == "new" and coord.ds["wireless"]["wlan1"]["ssid"] == "old"
+        assert coord.ds["interface"]["wlan1"]["ssid"] == "old", "the interface rows pick up the radio details"
+
+    def test_capsman_table_follows_the_stack(self, hass):
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = None
+        coord._wifimodules = ["wireless"]
+        coord.get_capsman_hosts()
+        coord.api.query.assert_called_with("/caps-man/registration-table")
+        coord._wifimodules = ["wifi"]
+        coord.get_capsman_hosts()
+        coord.api.query.assert_called_with("/interface/wifi/registration-table")
 
 
 # ---------------------------------------------------------------------------

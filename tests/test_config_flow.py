@@ -312,6 +312,68 @@ def test_sensor_presets_cover_interfaces_option():
     assert all(value is False for value in _SENSOR_PRESETS["core"].values())
 
 
+def _password_fields(schema):
+    """The password field of a form: (key, serialised selector)."""
+    import voluptuous_serialize
+    from homeassistant.helpers import config_validation as cv
+
+    fields = {f["name"]: f for f in voluptuous_serialize.convert(schema, custom_serializer=cv.custom_serializer)}
+    return fields[CONF_PASSWORD]
+
+
+async def test_password_is_a_password_field_on_every_form(hass):
+    """Drawn masked by the frontend, and serialisable, so the forms open."""
+    entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options={}, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    forms = {}
+    forms["user"] = await _init_and_skip_discovery(hass)
+    forms["reauth"] = await entry.start_reauth_flow(hass)
+    forms["reconfigure"] = await entry.start_reconfigure_flow(hass)
+    for name, result in forms.items():
+        field = _password_fields(result["data_schema"])
+        assert field["selector"] == {"text": {"type": "password", "multiline": False, "multiple": False}}, name
+
+
+async def test_reconfigure_form_never_shows_the_stored_password(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={**ENTRY_DATA, CONF_PASSWORD: "s3cret"}, options={}, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    result = await entry.start_reconfigure_flow(hass)
+    field = _password_fields(result["data_schema"])
+    assert field.get("default", "") == ""
+    assert "s3cret" not in repr(result["data_schema"].schema)
+
+    # Not after a failed attempt either.
+    with patch("custom_components.mikrotik_extended.config_flow.MikrotikAPI") as mock_api_cls:
+        mock_api_cls.return_value = MagicMock(error="cannot_connect", **{"connect.return_value": False})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_NAME: "Mikrotik", CONF_HOST: "192.168.88.1", CONF_USERNAME: "admin", CONF_PASSWORD: "typed", CONF_PORT: 0, "ssl_mode": "none"})
+    assert result["type"] == FlowResultType.FORM
+    assert "typed" not in repr(result["data_schema"].schema) and "s3cret" not in repr(result["data_schema"].schema)
+
+
+async def test_reconfigure_with_an_empty_password_keeps_the_stored_one(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={**ENTRY_DATA, CONF_PASSWORD: "s3cret"}, options={}, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    with patch("custom_components.mikrotik_extended.config_flow.MikrotikAPI") as mock_api_cls:
+        mock_api_cls.return_value = MagicMock(error=None, **{"connect.return_value": True})
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_NAME: "Mikrotik", CONF_HOST: "192.168.88.1", CONF_USERNAME: "admin", CONF_PORT: 0, "ssl_mode": "none"})
+    assert result["type"] == FlowResultType.ABORT
+    assert entry.data[CONF_PASSWORD] == "s3cret"
+    assert mock_api_cls.call_args.kwargs["password"] == "s3cret", "the connection test ran with the stored password"
+
+
+async def test_reconfigure_with_a_new_password_stores_it(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={**ENTRY_DATA, CONF_PASSWORD: "s3cret"}, options={}, unique_id="192.168.88.1")
+    entry.add_to_hass(hass)
+    with patch("custom_components.mikrotik_extended.config_flow.MikrotikAPI") as mock_api_cls:
+        mock_api_cls.return_value = MagicMock(error=None, **{"connect.return_value": True})
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_NAME: "Mikrotik", CONF_HOST: "192.168.88.1", CONF_USERNAME: "admin", CONF_PASSWORD: "newpass", CONF_PORT: 0, "ssl_mode": "none"})
+    assert result["type"] == FlowResultType.ABORT
+    assert entry.data[CONF_PASSWORD] == "newpass"
+    assert mock_api_cls.call_args.kwargs["password"] == "newpass"
+
+
 async def test_reconfigure_flow_success(hass):
     """Reconfigure flow updates entry data when credentials still work."""
     entry = MockConfigEntry(
