@@ -210,7 +210,7 @@ Without the required backend, sensors show "unavailable" instead of 0.
 - **DHCP Leases** — sensor showing total DHCP lease count, with bound count and per-lease details (MAC, IP, hostname, status, server, interface) as attributes
 - **IP Cloud** — public IP address sensor via MikroTik cloud service
 - **Device Mode & Packages** — diagnostic sensors showing enabled features and installed packages
-- **CAPsMAN** (v6) / **WiFi** (v7) — wireless client detection (auto-detected)
+- **Wireless clients** from every wifi stack the router runs: the legacy `wireless` package with its CAPsMAN controller, `wifiwave2`, and the `wifi` stack of RouterOS 7.13 and later, also side by side (auto-detected)
 
 ![Packages Details](docs/assets/images/screenshots/packages_attributes.png)
 
