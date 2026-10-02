@@ -1034,9 +1034,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # holds none right now answers with an empty list, and is kept.
         self._wifimodules = present or candidates[:1]
         self.support_wireless = bool(self._wifimodules)
-        # The legacy CAPsMAN lives next to the legacy wireless stack; the new
-        # stacks carry their controller inside their own registration table.
-        self.support_capsman = "wifi" not in self._wifimodules and "wifiwave2" not in self._wifimodules
+        # The legacy CAPsMAN has its own menu, and its clients show up only
+        # there. The new stacks list their controller's clients in their own
+        # registration table, which is read with the stack. A router that
+        # controls legacy CAPs from a release that also carries the new stack
+        # has both, so the controller is probed on its own rather than
+        # inferred from the stacks.
+        self.support_capsman = "wireless" in self._wifimodules and self.api.query_where("/caps-man/interface", {"disabled": "no"}) is not None
 
         _LOGGER.debug(
             "Mikrotik %s wifi modules=%s (candidates %s)",
@@ -3531,14 +3535,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def get_capsman_hosts(self) -> None:
         """Get CAPS-MAN hosts data from Mikrotik"""
 
-        if "wifi" in self._wifimodules:
-            registration_path = "/interface/wifi/registration-table"
-        else:
-            registration_path = "/caps-man/registration-table"
-
+        # Only the legacy controller is read here; the new stacks' controller
+        # clients come with the stack's own registration table.
         self.ds["capsman_hosts"] = parse_api(
             data={},
-            source=self.api.query(registration_path),
+            source=self.api.query("/caps-man/registration-table"),
             key="mac-address",
             vals=[
                 {"name": "mac-address"},
