@@ -421,7 +421,12 @@ class MikrotikAPI:
 
     def query(self, path, command=None, args=None, return_list=True) -> Optional(list):
         """Retrieve data from Mikrotik API."""
-        """Returns generator object, unless return_list passed as True"""
+        """Returns generator object, unless return_list passed as True.
+
+        A lost link is retried once, ``command`` included, so only a command
+        that reads (monitor, print) may go through here. A command with a
+        side effect belongs in execute(), which never repeats.
+        """
         if path == "/system/health" and self.disable_health:
             return None
 
@@ -804,6 +809,10 @@ class MikrotikAPI:
         response = self.query("/ping", return_list=False)
         if response is None:
             return False
+        # The handle belongs to this connection. If the other coordinator
+        # loses the link and reconnects before the ping runs, the error
+        # from the stale socket must not tear the fresh connection down.
+        connection = self._connection
 
         args = {
             "arp-ping": "no",
@@ -830,7 +839,8 @@ class MikrotikAPI:
                 )
                 return False
             except Exception as e:
-                self.disconnect("arp_ping", e)
+                if self._connection is connection:
+                    self.disconnect("arp_ping", e)
                 return False
 
         for tmp in ping:
