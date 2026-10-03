@@ -288,30 +288,26 @@ class MikrotikAPI:
             self.disconnect(f"building list for path {path}", e)
             return None, False
 
-    def query(self, path, command=None, args=None, return_list=True) -> Optional(list):
-        """Retrieve data from Mikrotik API."""
-        """Returns generator object, unless return_list passed as True"""
-        if path == "/system/health" and self.disable_health:
-            return None
+    # The outcome of one attempt at a read, so the caller can tell a lost
+    # link, which is worth one immediate retry, from an answer it must accept.
+    _LINK_LOST = object()
 
-        if args is None:
-            args = {}
-
-        if not self.connection_check():
-            return None
-
+    def _read_once(self, path, command, args, return_list):
+        """One attempt at a read; returns the rows, None, or _LINK_LOST."""
         with self.lock:
             try:
                 _LOGGER.debug("API query: %s", path)
                 response = self._connection.path(path)
             except Exception as e:
                 self.disconnect("path", e)
-                return None
+                return self._LINK_LOST
 
             if response and return_list and not command:
-                response, _missing = self._materialize_list(response, path)
+                response, missing = self._materialize_list(response, path)
                 if response is None:
-                    return None
+                    # A missing menu or a refusal is an answer; anything else
+                    # took the connection down.
+                    return None if missing else self._LINK_LOST
 
             elif response and command:
                 _LOGGER.debug("API query: %s, %s, %s", path, command, args)
@@ -324,9 +320,46 @@ class MikrotikAPI:
                     return None
                 except Exception as e:
                     self.disconnect("path", e)
-                    return None
+                    return self._LINK_LOST
 
         return response or None
+
+    def _retry_after_lost_link(self, path) -> bool:
+        """Reconnect at once after a read lost the link; True when the read may be repeated.
+
+        A connection the router dropped, for being idle or over a brief
+        network hiccup, used to cost the whole update cycle: every remaining
+        step was skipped, the entities went unavailable, and the next poll
+        reconnected half a minute later. One immediate attempt covers that.
+        If it fails too, connect() has started the usual back-off, and the
+        router is left alone until it passes. Only reads are repeated: a
+        command run twice, a reboot or a script, is worse than an error.
+        """
+        if not self.connection_check():
+            return False
+        _LOGGER.info("Mikrotik %s reconnected within the same poll after losing the connection while reading %s", self._host, path)
+        return True
+
+    def query(self, path, command=None, args=None, return_list=True) -> Optional(list):
+        """Retrieve data from Mikrotik API."""
+        """Returns generator object, unless return_list passed as True"""
+        if path == "/system/health" and self.disable_health:
+            return None
+
+        if args is None:
+            args = {}
+
+        if not self.connection_check():
+            return None
+
+        response = self._read_once(path, command, args, return_list)
+        if response is self._LINK_LOST:
+            if not self._retry_after_lost_link(path):
+                return None
+            response = self._read_once(path, command, args, return_list)
+            if response is self._LINK_LOST:
+                return None
+        return response
 
     # ---------------------------
     #   query_where
@@ -347,15 +380,28 @@ class MikrotikAPI:
 
         conditions = [Key(field) == value for field, value in any_of.items()]
         condition = conditions[0] if len(conditions) == 1 else Or(*conditions)
+        response = self._read_where_once(path, any_of, condition)
+        if response is self._LINK_LOST:
+            if not self._retry_after_lost_link(path):
+                return None
+            response = self._read_where_once(path, any_of, condition)
+            if response is self._LINK_LOST:
+                return None
+        return response
+
+    def _read_where_once(self, path, any_of, condition):
+        """One attempt at a filtered read; the rows, None, or _LINK_LOST."""
         with self.lock:
             try:
                 _LOGGER.debug("API query: %s where any of %s", path, any_of)
                 response = self._connection.path(path).select().where(condition)
             except Exception as e:
                 self.disconnect("path", e)
-                return None
+                return self._LINK_LOST
 
-            response, _missing = self._materialize_list(response, path)
+            response, missing = self._materialize_list(response, path)
+            if response is None and not missing:
+                return self._LINK_LOST
         return response
 
     # ---------------------------
