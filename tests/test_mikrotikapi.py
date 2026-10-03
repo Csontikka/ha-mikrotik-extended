@@ -321,7 +321,9 @@ class TestReadRetryAfterLostLink:
             assert self.api.query("/interface") is None
         assert self.api.connected() is False
         assert self.api._connection_epoch == 0
-        assert self.api.connection_check() is False or self.connects == 2
+        with self._reconnect():
+            assert self.api.connection_check() is True, "the next poll is not held back by the back-off"
+        assert self.connects == 2
 
     def test_a_recovered_hiccup_is_one_info_line(self, caplog):
         import logging
@@ -1732,3 +1734,33 @@ class TestWriteFailureReason:
         self.api._connection.path.return_value = rows
         assert self.api.set_value("/interface", "name", "ether1", "disabled", True) is True
         assert self.api.last_write_failure is None
+
+
+class TestArpPingStaleHandle:
+    """A ping handle from a connection the other coordinator has since replaced must not kill the new one."""
+
+    def test_error_on_a_stale_handle_leaves_the_fresh_connection_alone(self):
+        api = MikrotikAPI("192.168.88.1", "admin", "pass")
+        api._connected = True
+        old = MagicMock()
+        api._connection = old
+        stale_path = MagicMock(side_effect=OSError("stale socket"))
+        old.path.return_value = stale_path
+        fresh = MagicMock()
+
+        def swap_before_ping(*args, **kwargs):
+            api._connection = fresh
+            raise OSError("stale socket")
+
+        stale_path.side_effect = swap_before_ping
+        assert api.arp_ping("192.168.88.10", "ether1") is False
+        assert api._connection is fresh
+        assert api.connected() is True
+
+    def test_error_on_the_current_handle_still_disconnects(self):
+        api = MikrotikAPI("192.168.88.1", "admin", "pass")
+        api._connected = True
+        api._connection = MagicMock()
+        api._connection.path.return_value = MagicMock(side_effect=OSError("reset"))
+        assert api.arp_ping("192.168.88.10", "ether1") is False
+        assert api.connected() is False
