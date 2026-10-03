@@ -313,12 +313,52 @@ class TestReadRetryAfterLostLink:
             assert self.api.query("/interface") is None
         assert self.api.connected() is False
 
-    def test_reconnect_failure_starts_the_back_off(self):
+    def test_reconnect_failure_leaves_the_next_poll_free_to_try(self):
+        """A failed immediate retry must not add the back-off on top: before the
+        retry existed a dropped link cost one cycle, and it must not cost two."""
         self.api._connection.path.side_effect = OSError("connection reset")
         with self._reconnect(succeed=False):
             assert self.api.query("/interface") is None
         assert self.api.connected() is False
-        assert self.api._connection_epoch > 0, "connect() stamped the attempt, so the next poll waits"
+        assert self.api._connection_epoch == 0
+        assert self.api.connection_check() is False or self.connects == 2
+
+    def test_a_recovered_hiccup_is_one_info_line(self, caplog):
+        import logging
+
+        self.api.connection_error_reported = False
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with caplog.at_level(logging.DEBUG), self._reconnect():
+            assert self.api.query("/interface") == [{"name": "eth0"}]
+        records = [r for r in caplog.records if r.levelno >= logging.INFO and "192.168.88.1" in r.getMessage()]
+        assert len(records) == 1, [r.getMessage() for r in records]
+        assert records[0].levelno == logging.INFO
+        assert "connection reset" in records[0].getMessage()
+        assert "/interface" in records[0].getMessage()
+
+    def test_a_failed_retry_is_still_reported(self, caplog):
+        import logging
+
+        self.api.connection_error_reported = False
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with caplog.at_level(logging.DEBUG), self._reconnect(succeed=False):
+            assert self.api.query("/interface") is None
+        warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+        assert any("connection reset" in m and "/interface" in m for m in warnings), warnings
+
+    def test_the_lock_is_free_while_reconnecting(self):
+        """connect() takes the lock itself; the retry must not call it with the lock held."""
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with self._reconnect() as connect:
+            inner = connect.side_effect
+
+            def connect_checking_lock():
+                assert not self.api.lock.locked(), "deadlock: the read still holds the lock"
+                return inner()
+
+            connect.side_effect = connect_checking_lock
+            assert self.api.query("/interface") == [{"name": "eth0"}]
+        assert self.connects == 1
 
     def test_a_broken_iteration_is_retried_too(self):
         broken = MagicMock()
@@ -1560,3 +1600,77 @@ class TestScheduleEnvCreate:
         assert self.api._schedule_env_create("v", r'a"b\c$d', "_ha_env_set") is True
         on_event = sched.call_args.kwargs["on-event"]
         assert '\\"' in on_event and "\\\\" in on_event and "\\$" in on_event
+
+
+class TestWriteFailureReason:
+    """A write that returns False says why, so the entity's error text can be truthful."""
+
+    def setup_method(self):
+        self.api = MikrotikAPI("192.168.88.1", "admin", "pass")
+        self.api._connected = True
+        self.api._connection = MagicMock()
+
+    def test_a_trap_is_a_refusal(self):
+        from librouteros.exceptions import TrapError
+
+        rows = MagicMock()
+        rows.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        rows.update.side_effect = TrapError("not enough permissions (9)")
+        self.api._connection.path.return_value = rows
+        assert self.api.set_value("/interface", "name", "ether1", "disabled", True) is False
+        assert self.api.last_write_failure == "refused"
+        assert self.api.connected() is True
+
+    def test_a_lost_link_is_not_a_refusal(self):
+        rows = MagicMock()
+        rows.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        rows.update.side_effect = OSError("connection reset")
+        self.api._connection.path.return_value = rows
+        assert self.api.set_value("/interface", "name", "ether1", "disabled", True) is False
+        assert self.api.last_write_failure == "connection lost"
+        assert self.api.connected() is False
+
+    def test_a_missing_entry_is_not_a_refusal(self):
+        rows = MagicMock()
+        rows.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether2"}]))
+        self.api._connection.path.return_value = rows
+        assert self.api.set_value("/interface", "name", "ether1", "disabled", True) is False
+        assert self.api.last_write_failure == "entry not found"
+        assert self.api.execute("/interface", "reset", "name", "ether1") is False
+        assert self.api.last_write_failure == "entry not found"
+
+    def test_a_blocked_write_in_the_back_off_is_not_a_refusal(self):
+        self.api._connected = False
+        self.api._connection = None
+        self.api._connection_epoch = time()
+        for call in (
+            lambda: self.api.set_value("/interface", "name", "ether1", "disabled", True),
+            lambda: self.api.execute("/system", "reboot", None, None),
+            lambda: self.api.wol("AA:BB:CC:DD:EE:FF"),
+            lambda: self.api.run_script("x"),
+        ):
+            assert call() is False
+            assert self.api.last_write_failure == "not connected"
+
+    def test_a_script_that_fails_part_way_is_a_script_error(self):
+        from librouteros.exceptions import TrapError
+
+        rows = MagicMock()
+        rows.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "x"}]))
+        rows.side_effect = TrapError("script error: no such item")
+        self.api._connection.path.return_value = rows
+        assert self.api.run_script("x") is False
+        assert self.api.last_write_failure == "script error"
+        rows2 = MagicMock()
+        rows2.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "other"}]))
+        self.api._connection.path.return_value = rows2
+        assert self.api.run_script("x") is False
+        assert self.api.last_write_failure == "script not found"
+
+    def test_a_success_clears_the_reason(self):
+        self.api.last_write_failure = "refused"
+        rows = MagicMock()
+        rows.__iter__ = MagicMock(return_value=iter([{".id": "*1", "name": "ether1"}]))
+        self.api._connection.path.return_value = rows
+        assert self.api.set_value("/interface", "name", "ether1", "disabled", True) is True
+        assert self.api.last_write_failure is None

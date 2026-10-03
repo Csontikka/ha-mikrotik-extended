@@ -168,6 +168,7 @@ async def test_script_button_raises_on_failure(hass):
     coord = _make_coordinator(hass, data={"script": script_data})
     coord.api = MagicMock()
     coord.api.run_script = MagicMock(return_value=False)
+    coord.api.last_write_failure = "refused"
     coord.async_refresh = AsyncMock()
 
     tracker = MagicMock()
@@ -225,6 +226,7 @@ async def test_backup_button_reports_a_refused_save(hass):
     coord = _make_coordinator(hass, data={"resource": {"x": "y"}})
     coord.ds = {"access": {"write"}}
     coord.execute = MagicMock(return_value=False)
+    coord.api.last_write_failure = "refused"
     button = MikrotikBackupButton(coord, desc)
     button.hass = hass
     with pytest.raises(HomeAssistantError) as err:

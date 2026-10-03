@@ -141,6 +141,7 @@ async def test_an_unknown_option_is_not_sent_to_the_router(hass):
 async def test_a_refused_write_does_not_claim_success(hass):
     coord = _make_coordinator(hass, _iface("off"))
     coord.api.set_value = MagicMock(return_value=False)
+    coord.api.last_write_failure = "refused"
     sel = MikrotikPoeSelect(coord, _make_description(), "ether1")
     sel.hass = hass
 

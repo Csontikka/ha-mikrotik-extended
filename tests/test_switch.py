@@ -1,6 +1,6 @@
 """Tests for the switch platform."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from homeassistant.const import (
@@ -580,6 +580,7 @@ async def test_a_refused_switch_write_is_an_error_the_user_sees(hass):
     row = {".id": "*7", "uid-id": "block guests", "name": "block guests", "comment": "block guests", "enabled": True}
     coord = _make_coordinator(hass, {"filter": {"*7": row}, "access": {"write"}})
     coord.set_value = MagicMock(return_value=False)
+    coord.api.last_write_failure = "refused"
     sw = MikrotikFilterSwitch(coord, desc, uid="*7")
     sw.hass = hass
 
@@ -613,6 +614,39 @@ def test_every_translation_has_the_two_error_messages():
     for path in ["custom_components/mikrotik_extended/strings.json", *sorted(glob.glob("custom_components/mikrotik_extended/translations/*.json"))]:
         with open(path, encoding="utf-8") as fh:
             exc = json.load(fh)["exceptions"]
-        for key in ("write_refused", "no_write_access"):
+        for key in ("write_refused", "write_failed", "no_write_access"):
             assert "{host}" in exc[key]["message"], (path, key)
-        assert "{target}" in exc["write_refused"]["message"], path
+        for key in ("write_refused", "write_failed"):
+            assert "{target}" in exc[key]["message"], (path, key)
+
+
+async def test_a_write_that_did_not_reach_the_router_is_not_called_a_refusal(hass):
+    """The link was down, so the router never answered: the error must not say it refused anything."""
+    desc = _make_description(func="MikrotikFilterSwitch", data_path="filter", data_reference="uid-id", data_name="uid-id", data_switch_path="/ip/firewall/filter")
+    row = {".id": "*7", "uid-id": "block guests", "name": "block guests", "comment": "block guests", "enabled": True}
+    coord = _make_coordinator(hass, {"filter": {"*7": row}, "access": {"write"}})
+    coord.set_value = MagicMock(return_value=False)
+    sw = MikrotikFilterSwitch(coord, desc, uid="*7")
+    sw.hass = hass
+
+    for reason in ("not connected", "connection lost", "entry not found", None):
+        coord.api.last_write_failure = reason
+        with pytest.raises(HomeAssistantError) as err:
+            await sw.async_turn_off()
+        assert err.value.translation_key == "write_failed", reason
+        assert err.value.translation_placeholders["host"] == coord.host
+
+
+async def test_the_error_names_the_entity_when_the_row_has_no_name(hass):
+    desc = _make_description(func="MikrotikFilterSwitch", data_path="filter", data_reference="uid-id", data_name="uid-id", data_switch_path="/ip/firewall/filter")
+    row = {".id": "*7", "uid-id": "", "name": "", "comment": "", "enabled": True}
+    coord = _make_coordinator(hass, {"filter": {"*7": row}, "access": {"write"}})
+    coord.set_value = MagicMock(return_value=False)
+    coord.api.last_write_failure = "refused"
+    sw = MikrotikFilterSwitch(coord, desc, uid="*7")
+    sw.hass = hass
+    sw.entity_id = "switch.router_filter_7"
+
+    with patch.object(MikrotikFilterSwitch, "custom_name", new_callable=PropertyMock(return_value="")), pytest.raises(HomeAssistantError) as err:
+        await sw.async_turn_off()
+    assert err.value.translation_placeholders["target"] == "/ip/firewall/filter switch.router_filter_7"
