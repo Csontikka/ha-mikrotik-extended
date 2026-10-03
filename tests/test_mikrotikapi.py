@@ -270,6 +270,136 @@ class TestConnected:
         assert api.connected() is False
 
 
+class TestReadRetryAfterLostLink:
+    """A read that loses the link reconnects once and is repeated in the same call."""
+
+    def setup_method(self):
+        self.api = MikrotikAPI("192.168.88.1", "admin", "pass")
+        self.api._connected = True
+        self.api._connection = MagicMock()
+        self.connects = 0
+
+    def _reconnect(self, succeed=True):
+        """Stand in for connect(): a fresh connection object, or a failure that starts the back-off."""
+
+        def connect():
+            self.connects += 1
+            self.api._connection_epoch = time()
+            if not succeed:
+                self.api._connected = False
+                self.api._connection = None
+                return False
+            self.api._connection = MagicMock()
+            self.api._connection.path.return_value = _rows([{"name": "eth0"}])
+            self.api._connected = True
+            self.api._reconnected = True
+            return True
+
+        return patch.object(self.api, "connect", side_effect=connect)
+
+    def test_lost_link_then_success(self):
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with self._reconnect():
+            assert self.api.query("/interface") == [{"name": "eth0"}]
+        assert self.connects == 1
+        assert self.api.connected() is True
+        assert self.api.has_reconnected() is True, "the next cycle re-reads what a reconnect re-reads"
+
+    def test_lost_link_twice_gives_up(self):
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with self._reconnect() as connect:
+            # the fresh connection breaks as well
+            connect.side_effect = lambda: (setattr(self.api, "_connection", MagicMock(path=MagicMock(side_effect=OSError("again")))), setattr(self.api, "_connected", True), True)[-1]
+            assert self.api.query("/interface") is None
+        assert self.api.connected() is False
+
+    def test_reconnect_failure_starts_the_back_off(self):
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with self._reconnect(succeed=False):
+            assert self.api.query("/interface") is None
+        assert self.api.connected() is False
+        assert self.api._connection_epoch > 0, "connect() stamped the attempt, so the next poll waits"
+
+    def test_a_broken_iteration_is_retried_too(self):
+        broken = MagicMock()
+        broken.__iter__ = MagicMock(side_effect=OSError("reset while reading"))
+        self.api._connection.path.return_value = broken
+        with self._reconnect():
+            assert self.api.query("/interface") == [{"name": "eth0"}]
+        assert self.connects == 1
+
+    def test_a_refusal_is_not_retried(self):
+        from librouteros.exceptions import TrapError
+
+        refused = MagicMock()
+        refused.__iter__ = MagicMock(side_effect=TrapError("not enough permissions (9)"))
+        self.api._connection.path.return_value = refused
+        with self._reconnect():
+            assert self.api.query("/interface") is None
+        assert self.connects == 0
+        assert self.api.connected() is True
+
+    def test_a_missing_menu_is_not_retried(self):
+        from librouteros.exceptions import TrapError
+
+        missing = MagicMock()
+        missing.__iter__ = MagicMock(side_effect=TrapError("no such command prefix"))
+        self.api._connection.path.return_value = missing
+        with self._reconnect():
+            assert self.api.query("/interface/wifiwave2") is None
+        assert self.connects == 0
+
+    def test_command_read_is_retried(self):
+        first = MagicMock(side_effect=OSError("reset"))
+        self.api._connection.path.return_value = first
+        with self._reconnect() as connect:
+
+            def reconnect():
+                self.connects += 1
+                fresh = MagicMock()
+                fresh.path.return_value = MagicMock(return_value=iter([{"status": "link-ok"}]))
+                self.api._connection = fresh
+                self.api._connected = True
+                return True
+
+            connect.side_effect = reconnect
+            assert self.api.query("/interface/ethernet", command="monitor", args={".id": "*1", "once": True}) == [{"status": "link-ok"}]
+        assert self.connects == 1
+
+    def test_filtered_read_is_retried(self):
+        self.api._connection.path.side_effect = OSError("reset")
+        with self._reconnect() as connect:
+
+            def reconnect():
+                self.connects += 1
+                fresh = MagicMock()
+                fresh.path.return_value.select.return_value.where.return_value = _rows([{"dst-address": "0.0.0.0/0"}])
+                self.api._connection = fresh
+                self.api._connected = True
+                return True
+
+            connect.side_effect = reconnect
+            assert self.api.query_where("/ip/route", {"static": True}) == [{"dst-address": "0.0.0.0/0"}]
+        assert self.connects == 1
+
+    def test_writes_are_not_retried(self):
+        """A command run twice is worse than an error; only reads are repeated within a call."""
+        self.api._connection.path.side_effect = OSError("reset")
+        with self._reconnect():
+            assert self.api.set_value("/interface", "name", "ether1", "disabled", True) is False
+            assert self.connects == 0, "the lost link ended the write, no second attempt"
+            assert self.api.connected() is False
+            # The next call starts, as always, by connecting again.
+            assert self.api.execute("/system", "reboot", None, None) is True
+        assert self.connects == 1
+
+
+def _rows(rows):
+    result = MagicMock()
+    result.__iter__ = MagicMock(return_value=iter(rows))
+    return result
+
+
 class TestQueryWhere:
     """A filtered read: the router picks the rows, an empty answer is an answer."""
 
