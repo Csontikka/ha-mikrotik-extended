@@ -195,9 +195,12 @@ class MikrotikAPI:
                 self._connection = None
                 return False
             else:
-                if not quiet and self.connection_error_reported and not self._first_connect:
-                    _LOGGER.warning("Mikrotik Reconnected to %s", self._host)
-                self.connection_error_reported = False
+                if not quiet:
+                    if self.connection_error_reported and not self._first_connect:
+                        _LOGGER.warning("Mikrotik Reconnected to %s", self._host)
+                    # In quiet mode the flag is the caller's to settle, once it
+                    # knows whether the new connection holds.
+                    self.connection_error_reported = False
                 self._first_connect = False
 
                 self._connected = True

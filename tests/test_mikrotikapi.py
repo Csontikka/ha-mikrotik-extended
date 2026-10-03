@@ -385,7 +385,10 @@ class TestReadRetryAfterLostLink:
         self.api.connection_error_reported = True
         self.api._first_connect = False
         self.api._connection.path.side_effect = OSError("connection reset")
-        with caplog.at_level(logging.DEBUG), self._reconnect():
+        fresh = MagicMock()
+        fresh.path.return_value = _rows([{"name": "eth0"}])
+        # the real connect(): it must leave the flag to the retry path in quiet mode
+        with caplog.at_level(logging.DEBUG), patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect", return_value=fresh):
             assert self.api.query("/interface") == [{"name": "eth0"}]
         msgs = [r.getMessage() for r in caplog.records if r.levelno >= logging.INFO]
         assert msgs == ["Mikrotik Reconnected to 192.168.88.1"], msgs
