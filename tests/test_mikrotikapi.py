@@ -336,6 +336,20 @@ class TestReadRetryAfterLostLink:
         assert "connection reset" in records[0].getMessage()
         assert "/interface" in records[0].getMessage()
 
+    def test_a_hiccup_while_iterating_is_one_info_line_too(self, caplog):
+        """The loss can come while the rows are being read, not only on opening the path."""
+        import logging
+
+        self.api.connection_error_reported = False
+        broken = MagicMock()
+        broken.__iter__ = MagicMock(side_effect=OSError("reset while reading"))
+        self.api._connection.path.return_value = broken
+        with caplog.at_level(logging.DEBUG), self._reconnect():
+            assert self.api.query("/interface") == [{"name": "eth0"}]
+        records = [r for r in caplog.records if r.levelno >= logging.INFO and "192.168.88.1" in r.getMessage()]
+        assert len(records) == 1, [r.getMessage() for r in records]
+        assert "reset while reading" in records[0].getMessage()
+
     def test_a_failed_retry_is_still_reported(self, caplog):
         import logging
 
