@@ -66,6 +66,7 @@ class MikrotikAPI:
         self._connection_epoch = 0
         self._connection_retry_sec = 58
         self.error = None
+        self.connect_error = None
         # Why the last write returned False: "refused" when the router
         # answered and said no, otherwise what kept the request from
         # getting through. The entity turns it into the right error text.
@@ -146,8 +147,12 @@ class MikrotikAPI:
     # ---------------------------
     #   connect
     # ---------------------------
-    def connect(self) -> bool:
-        """Connect to Mikrotik device."""
+    def connect(self, quiet=False) -> bool:
+        """Connect to Mikrotik device.
+
+        ``quiet`` leaves the logging to the caller, who knows more about why
+        the connection is being made than this method does.
+        """
         self.error = ""
         self._connected = False
         self._connection_epoch = time()
@@ -181,15 +186,16 @@ class MikrotikAPI:
                     kwargs["ssl_wrapper"] = self._ssl_wrapper
                 self._connection = librouteros.connect(self._host, self._username, self._password, **kwargs)
             except Exception as e:
-                if not self.connection_error_reported:
+                if not quiet and not self.connection_error_reported:
                     _LOGGER.error("Mikrotik %s error while connecting: %s", self._host, e)
                     self.connection_error_reported = True
 
                 self.error_to_strings(f"{e}")
+                self.connect_error = e
                 self._connection = None
                 return False
             else:
-                if self.connection_error_reported and not self._first_connect:
+                if not quiet and self.connection_error_reported and not self._first_connect:
                     _LOGGER.warning("Mikrotik Reconnected to %s", self._host)
                 self.connection_error_reported = False
                 self._first_connect = False
@@ -361,23 +367,57 @@ class MikrotikAPI:
         command run twice, a reboot or a script, is worse than an error.
         """
         error = self._lost_link_error or "unknown"
-        was_reported = self.connection_error_reported
-        if self.connection_check():
-            _LOGGER.info(
-                "Mikrotik %s lost the connection while reading %s (%s) and reconnected within the same poll",
-                self._host,
-                path,
-                error,
-            )
+        # The disconnect was quiet and connect() is told to be, so whatever
+        # happens is one line from here, in the order it happened: on
+        # success it is written once the repeated read has shown that the
+        # new connection holds, see _recovered() and _lost_link_again().
+        if self.connect(quiet=True):
             return True
         # The attempt failed: now the loss is worth its warning, once, and
         # the next scheduled poll must be free to try again. Leaving the
         # back-off that connect() started would silence it for a minute,
         # longer than a dropped link cost before the immediate retry existed.
-        if not was_reported:
-            _LOGGER.warning("Mikrotik %s lost the connection while reading %s: %s", self._host, path, error)
+        if not self.connection_error_reported:
+            _LOGGER.warning(
+                "Mikrotik %s lost the connection while reading %s (%s) and reconnecting failed: %s",
+                self._host,
+                path,
+                error,
+                self.connect_error,
+            )
+            self.connection_error_reported = True
         self._connection_epoch = 0
         return False
+
+    def _recovered(self, path) -> None:
+        """The repeated read went through on the new connection: the loss was a hiccup."""
+        if not self.connection_error_reported:
+            _LOGGER.info(
+                "Mikrotik %s lost the connection while reading %s (%s) and reconnected within the same poll",
+                self._host,
+                path,
+                self._lost_link_error or "unknown",
+            )
+        elif not self._first_connect:
+            _LOGGER.warning("Mikrotik Reconnected to %s", self._host)
+        self.connection_error_reported = False
+
+    def _lost_link_again(self, path) -> None:
+        """The repeated read lost the link too: this is an outage, and it is reported once.
+
+        Both disconnects on this path were quiet, so without this line a
+        failure that comes back on every read, a timeout on one large table
+        for instance, would take the entities unavailable with nothing but
+        an INFO line saying the poll had recovered.
+        """
+        if not self.connection_error_reported:
+            _LOGGER.warning(
+                "Mikrotik %s lost the connection again while repeating the read of %s: %s",
+                self._host,
+                path,
+                self._lost_link_error or "unknown",
+            )
+            self.connection_error_reported = True
 
     def query(self, path, command=None, args=None, return_list=True) -> Optional(list):
         """Retrieve data from Mikrotik API."""
@@ -397,7 +437,9 @@ class MikrotikAPI:
                 return None
             response = self._read_once(path, command, args, return_list)
             if response is self._LINK_LOST:
+                self._lost_link_again(path)
                 return None
+            self._recovered(path)
         return response
 
     # ---------------------------
@@ -425,7 +467,9 @@ class MikrotikAPI:
                 return None
             response = self._read_where_once(path, any_of, condition)
             if response is self._LINK_LOST:
+                self._lost_link_again(path)
                 return None
+            self._recovered(path)
         return response
 
     def _read_where_once(self, path, any_of, condition):
