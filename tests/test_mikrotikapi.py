@@ -282,7 +282,7 @@ class TestReadRetryAfterLostLink:
     def _reconnect(self, succeed=True):
         """Stand in for connect(): a fresh connection object, or a failure that starts the back-off."""
 
-        def connect():
+        def connect(quiet=False):
             self.connects += 1
             self.api._connection_epoch = time()
             if not succeed:
@@ -309,7 +309,7 @@ class TestReadRetryAfterLostLink:
         self.api._connection.path.side_effect = OSError("connection reset")
         with self._reconnect() as connect:
             # the fresh connection breaks as well
-            connect.side_effect = lambda: (setattr(self.api, "_connection", MagicMock(path=MagicMock(side_effect=OSError("again")))), setattr(self.api, "_connected", True), True)[-1]
+            connect.side_effect = lambda quiet=False: (setattr(self.api, "_connection", MagicMock(path=MagicMock(side_effect=OSError("again")))), setattr(self.api, "_connected", True), True)[-1]
             assert self.api.query("/interface") is None
         assert self.api.connected() is False
 
@@ -360,15 +360,59 @@ class TestReadRetryAfterLostLink:
         warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
         assert any("connection reset" in m and "/interface" in m for m in warnings), warnings
 
+    def test_a_loss_that_repeats_is_a_warning_once(self, caplog):
+        """Reconnect succeeds, the repeated read breaks again: an outage, reported, not an INFO line saying all is well."""
+        import logging
+
+        self.api.connection_error_reported = False
+        self.api._connection.path.side_effect = OSError("timeout reading")
+        with caplog.at_level(logging.DEBUG), self._reconnect() as connect:
+            connect.side_effect = lambda quiet=False: (setattr(self.api, "_connection", MagicMock(path=MagicMock(side_effect=OSError("timeout reading")))), setattr(self.api, "_connected", True), True)[-1]
+            for _ in range(3):
+                assert self.api.query("/ip/arp") is None
+        warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1, warnings
+        assert "again" in warnings[0] and "/ip/arp" in warnings[0] and "timeout reading" in warnings[0]
+        assert self.api.connection_error_reported is True
+        assert not [r for r in caplog.records if "reconnected within the same poll" in r.getMessage()], "no claim of recovery when every poll fails"
+
+    def test_recovery_after_a_reported_outage_is_the_reconnected_line(self, caplog):
+        """The outage was already reported; a quiet reconnect that holds still owes the usual Reconnected line."""
+        import logging
+
+        self.api.connection_error_reported = True
+        self.api._first_connect = False
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with caplog.at_level(logging.DEBUG), self._reconnect():
+            assert self.api.query("/interface") == [{"name": "eth0"}]
+        msgs = [r.getMessage() for r in caplog.records if r.levelno >= logging.INFO]
+        assert msgs == ["Mikrotik Reconnected to 192.168.88.1"], msgs
+        assert self.api.connection_error_reported is False
+
+    def test_a_failed_retry_is_one_warning_with_both_reasons(self, caplog):
+        """A real outage begins: one line, the read error and the connect error together, nothing else."""
+        import logging
+
+        self.api.connection_error_reported = False
+        self.api._connection.path.side_effect = OSError("connection reset")
+        with caplog.at_level(logging.DEBUG), patch("custom_components.mikrotik_extended.mikrotikapi.librouteros.connect", side_effect=OSError("timed out")):
+            assert self.api.query("/interface") is None
+        records = [r for r in caplog.records if r.levelno >= logging.INFO and "192.168.88.1" in r.getMessage()]
+        assert len(records) == 1, [r.getMessage() for r in records]
+        assert records[0].levelno == logging.WARNING
+        assert "connection reset" in records[0].getMessage() and "timed out" in records[0].getMessage()
+        assert self.api.connection_error_reported is True
+        assert self.api._connection_epoch == 0
+
     def test_the_lock_is_free_while_reconnecting(self):
         """connect() takes the lock itself; the retry must not call it with the lock held."""
         self.api._connection.path.side_effect = OSError("connection reset")
         with self._reconnect() as connect:
             inner = connect.side_effect
 
-            def connect_checking_lock():
+            def connect_checking_lock(quiet=False):
                 assert not self.api.lock.locked(), "deadlock: the read still holds the lock"
-                return inner()
+                return inner(quiet=quiet)
 
             connect.side_effect = connect_checking_lock
             assert self.api.query("/interface") == [{"name": "eth0"}]
@@ -408,7 +452,7 @@ class TestReadRetryAfterLostLink:
         self.api._connection.path.return_value = first
         with self._reconnect() as connect:
 
-            def reconnect():
+            def reconnect(quiet=False):
                 self.connects += 1
                 fresh = MagicMock()
                 fresh.path.return_value = MagicMock(return_value=iter([{"status": "link-ok"}]))
@@ -424,7 +468,7 @@ class TestReadRetryAfterLostLink:
         self.api._connection.path.side_effect = OSError("reset")
         with self._reconnect() as connect:
 
-            def reconnect():
+            def reconnect(quiet=False):
                 self.connects += 1
                 fresh = MagicMock()
                 fresh.path.return_value.select.return_value.where.return_value = _rows([{"dst-address": "0.0.0.0/0"}])

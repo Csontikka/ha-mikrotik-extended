@@ -614,9 +614,9 @@ def test_every_translation_has_the_two_error_messages():
     for path in ["custom_components/mikrotik_extended/strings.json", *sorted(glob.glob("custom_components/mikrotik_extended/translations/*.json"))]:
         with open(path, encoding="utf-8") as fh:
             exc = json.load(fh)["exceptions"]
-        for key in ("write_refused", "write_failed", "no_write_access"):
+        for key in ("write_refused", "write_failed", "write_unconfirmed", "no_write_access"):
             assert "{host}" in exc[key]["message"], (path, key)
-        for key in ("write_refused", "write_failed"):
+        for key in ("write_refused", "write_failed", "write_unconfirmed"):
             assert "{target}" in exc[key]["message"], (path, key)
 
 
@@ -629,12 +629,29 @@ async def test_a_write_that_did_not_reach_the_router_is_not_called_a_refusal(has
     sw = MikrotikFilterSwitch(coord, desc, uid="*7")
     sw.hass = hass
 
-    for reason in ("not connected", "connection lost", "entry not found", None):
+    for reason in ("not connected", "entry not found", "no answer", None):
         coord.api.last_write_failure = reason
         with pytest.raises(HomeAssistantError) as err:
             await sw.async_turn_off()
         assert err.value.translation_key == "write_failed", reason
         assert err.value.translation_placeholders["host"] == coord.host
+
+
+async def test_a_write_that_may_have_been_applied_says_so(hass):
+    """The request went out and the answer never came, or a script stopped part way: the user is
+    told to look before repeating it, because the first half may already be done."""
+    desc = _make_description(func="MikrotikFilterSwitch", data_path="filter", data_reference="uid-id", data_name="uid-id", data_switch_path="/ip/firewall/filter")
+    row = {".id": "*7", "uid-id": "block guests", "name": "block guests", "comment": "block guests", "enabled": True}
+    coord = _make_coordinator(hass, {"filter": {"*7": row}, "access": {"write"}})
+    coord.set_value = MagicMock(return_value=False)
+    sw = MikrotikFilterSwitch(coord, desc, uid="*7")
+    sw.hass = hass
+
+    for reason in ("connection lost", "script error"):
+        coord.api.last_write_failure = reason
+        with pytest.raises(HomeAssistantError) as err:
+            await sw.async_turn_off()
+        assert err.value.translation_key == "write_unconfirmed", reason
 
 
 async def test_the_error_names_the_entity_when_the_row_has_no_name(hass):
