@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} a refusé la modification de {target}. La raison donnée par le routeur est dans le journal."
     },
+    "write_failed": {
+      "message": "La modification de {target} n'a pas abouti sur {host}. Les détails sont dans le journal."
+    },
     "no_write_access": {
       "message": "Le compte configuré pour {host} n'a pas le droit d'écriture sur le routeur, rien n'a été modifié."
     }

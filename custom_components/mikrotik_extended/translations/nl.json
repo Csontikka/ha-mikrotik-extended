@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} heeft de wijziging van {target} geweigerd. De reden van de router staat in het logboek."
     },
+    "write_failed": {
+      "message": "De wijziging aan {target} is op {host} niet doorgekomen. De details staan in het logboek."
+    },
     "no_write_access": {
       "message": "Het account dat voor {host} is ingesteld heeft geen schrijfrechten op de router, dus er is niets gewijzigd."
     }

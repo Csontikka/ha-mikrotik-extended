@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} refused the change to {target}. The router's reason is in the log."
     },
+    "write_failed": {
+      "message": "The change to {target} did not go through on {host}. The details are in the log."
+    },
     "no_write_access": {
       "message": "The account configured for {host} has no write permission on the router, so nothing was changed."
     }

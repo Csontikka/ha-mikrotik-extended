@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} recusou a alteração em {target}. O motivo do roteador está no log."
     },
+    "write_failed": {
+      "message": "A alteração em {target} não foi aplicada em {host}. Os detalhes estão no log."
+    },
     "no_write_access": {
       "message": "A conta configurada para {host} não tem permissão de escrita no roteador, então nada foi alterado."
     }

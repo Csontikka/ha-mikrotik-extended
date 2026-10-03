@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} noraidīja izmaiņu {target}. Maršrutētāja iemesls ir žurnālā."
     },
+    "write_failed": {
+      "message": "Izmaiņas {target} netika veiktas ierīcē {host}. Sīkāka informācija ir žurnālā."
+    },
     "no_write_access": {
       "message": "Kontam, kas iestatīts {host}, nav rakstīšanas tiesību maršrutētājā, tāpēc nekas netika mainīts."
     }

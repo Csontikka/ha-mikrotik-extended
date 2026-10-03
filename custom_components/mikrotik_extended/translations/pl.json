@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} odrzucił zmianę {target}. Powód podany przez router jest w dzienniku."
     },
+    "write_failed": {
+      "message": "Zmiana {target} nie powiodła się na {host}. Szczegóły są w dzienniku."
+    },
     "no_write_access": {
       "message": "Konto skonfigurowane dla {host} nie ma uprawnień do zapisu na routerze, więc nic nie zostało zmienione."
     }

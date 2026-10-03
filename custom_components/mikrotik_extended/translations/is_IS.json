@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} hafnaði breytingunni á {target}. Ástæða beinisins er í skránni."
     },
+    "write_failed": {
+      "message": "Breytingin á {target} komst ekki í gegn á {host}. Nánari upplýsingar eru í atvikaskránni."
+    },
     "no_write_access": {
       "message": "Reikningurinn sem er stilltur fyrir {host} hefur ekki skrifheimild á beininum, svo engu var breytt."
     }

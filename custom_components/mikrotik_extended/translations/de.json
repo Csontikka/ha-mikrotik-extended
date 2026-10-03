@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} hat die Änderung an {target} abgelehnt. Die Begründung des Routers steht im Log."
     },
+    "write_failed": {
+      "message": "Die Änderung an {target} ist auf {host} nicht durchgegangen. Die Einzelheiten stehen im Log."
+    },
     "no_write_access": {
       "message": "Das für {host} eingerichtete Konto hat auf dem Router keine Schreibberechtigung, es wurde nichts geändert."
     }

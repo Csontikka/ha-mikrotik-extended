@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "A(z) {host} elutasította a módosítást: {target}. A router indoklása a naplóban van."
     },
+    "write_failed": {
+      "message": "A(z) {target} módosítása nem ment át a(z) {host} routeren. A részletek a naplóban vannak."
+    },
     "no_write_access": {
       "message": "A(z) {host} routerhez beállított fióknak nincs írási jogosultsága, ezért semmi nem változott."
     }

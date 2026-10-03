@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} odmietol zmenu {target}. Dôvod routera je v logu."
     },
+    "write_failed": {
+      "message": "Zmena {target} na {host} neprebehla. Podrobnosti sú v protokole."
+    },
     "no_write_access": {
       "message": "Účet nastavený pre {host} nemá na routeri oprávnenie na zápis, nič sa nezmenilo."
     }

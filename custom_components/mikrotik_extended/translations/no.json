@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} avviste endringen av {target}. Ruterens begrunnelse står i loggen."
     },
+    "write_failed": {
+      "message": "Endringen av {target} gikk ikke gjennom på {host}. Detaljene står i loggen."
+    },
     "no_write_access": {
       "message": "Kontoen som er satt opp for {host} har ikke skriverettigheter på ruteren, så ingenting ble endret."
     }

@@ -280,6 +280,9 @@
     "write_refused": {
       "message": "{host} ha rifiutato la modifica a {target}. Il motivo del router è nel registro."
     },
+    "write_failed": {
+      "message": "La modifica a {target} non è andata a buon fine su {host}. I dettagli sono nel log."
+    },
     "no_write_access": {
       "message": "L'account configurato per {host} non ha il permesso di scrittura sul router, quindi non è cambiato nulla."
     }
