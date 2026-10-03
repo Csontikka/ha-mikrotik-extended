@@ -319,15 +319,24 @@ def raise_write_failed(coordinator, target: str) -> None:
 
     A service call that silently reports success while the router kept its
     state would leave an automation believing the change was made. The
-    wording follows what happened: "refused" only when the router answered
-    and said no, which the API recorded; a link that was down, a lost
-    connection or an entry that is no longer there is "did not go through".
-    Either way the details are already in the log, where they happened.
+    wording follows what happened, which the API recorded: "refused" only
+    when the router answered and said no; "could not be confirmed" when the
+    request was sent and the answer never came, or a script failed part way,
+    because then repeating it blindly may do the first half twice; a link
+    that was down or an entry that is no longer there is "did not go
+    through". Either way the details are already in the log, where they
+    happened.
     """
-    refused = getattr(coordinator.api, "last_write_failure", None) == "refused"
+    reason = getattr(coordinator.api, "last_write_failure", None)
+    if reason == "refused":
+        key = "write_refused"
+    elif reason in ("connection lost", "script error"):
+        key = "write_unconfirmed"
+    else:
+        key = "write_failed"
     raise HomeAssistantError(
         translation_domain=DOMAIN,
-        translation_key="write_refused" if refused else "write_failed",
+        translation_key=key,
         translation_placeholders={"host": coordinator.host, "target": target},
     )
 
