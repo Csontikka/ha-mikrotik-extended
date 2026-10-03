@@ -15,7 +15,7 @@ from .button_types import (
     SENSOR_SERVICES,  # noqa: F401 — accessed via platform.platform.SENSOR_SERVICES
     SENSOR_TYPES,  # noqa: F401 — accessed via platform.platform.SENSOR_TYPES
 )
-from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_refused
+from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_failed
 
 _LOGGER = getLogger(__name__)
 
@@ -100,7 +100,7 @@ class MikrotikBackupButton(MikrotikButton):
             {"name": self.BACKUP_NAME},
         )
         if not success:
-            raise_write_refused(self.coordinator.host, "/system/backup save")
+            raise_write_failed(self.coordinator, "/system/backup save")
 
 
 # ---------------------------
@@ -114,6 +114,6 @@ class MikrotikScriptButton(MikrotikButton):
         _LOGGER.debug("Running script %s on %s", self._data["name"], self.coordinator.host)
         success = await self.hass.async_add_executor_job(self.coordinator.api.run_script, self._data["name"])
         if not success:
-            raise_write_refused(self.coordinator.host, f"script {self._data['name']}")
+            raise_write_failed(self.coordinator, f"script {self._data['name']}")
         await self.coordinator.async_refresh()
         await self._config_entry.runtime_data.tracker_coordinator.async_request_refresh()

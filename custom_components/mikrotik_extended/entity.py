@@ -314,15 +314,22 @@ _MikrotikCoordinatorT = TypeVar(
 # ---------------------------
 #   MikrotikEntity
 # ---------------------------
-def raise_write_refused(host: str, target: str) -> None:
-    """The router answered and said no: tell the user, not just the log.
+def raise_write_failed(coordinator, target: str) -> None:
+    """A write returned False: tell the user, not just the log.
 
-    The refusal itself is already logged where it happened, with the
-    router's reason. A service call that silently reports success while the
-    router kept its state would leave an automation believing the change
-    was made.
+    A service call that silently reports success while the router kept its
+    state would leave an automation believing the change was made. The
+    wording follows what happened: "refused" only when the router answered
+    and said no, which the API recorded; a link that was down, a lost
+    connection or an entry that is no longer there is "did not go through".
+    Either way the details are already in the log, where they happened.
     """
-    raise HomeAssistantError(translation_domain=DOMAIN, translation_key="write_refused", translation_placeholders={"host": host, "target": target})
+    refused = getattr(coordinator.api, "last_write_failure", None) == "refused"
+    raise HomeAssistantError(
+        translation_domain=DOMAIN,
+        translation_key="write_refused" if refused else "write_failed",
+        translation_placeholders={"host": coordinator.host, "target": target},
+    )
 
 
 def raise_no_write_access(host: str) -> None:

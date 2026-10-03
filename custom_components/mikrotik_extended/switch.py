@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_refused
+from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_failed
 from .helper import format_attribute
 from .switch_types import (
     DEVICE_ATTRIBUTES_IFACE_ETHER,
@@ -104,12 +104,16 @@ class MikrotikSwitch(MikrotikEntity, SwitchEntity, RestoreEntity):
     async def _write(self, path, param, value, mod_param, mod_value) -> None:
         """Change one value on the router; a refusal is an error the user sees."""
         if not await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, mod_param, mod_value):
-            raise_write_refused(self.coordinator.host, f"{path} {self.custom_name}")
+            raise_write_failed(self.coordinator, self._target(path))
 
     async def _run(self, path, command, param, value) -> None:
         """Run one command on the router; a refusal is an error the user sees."""
         if not await self.hass.async_add_executor_job(self.coordinator.execute, path, command, param, value):
-            raise_write_refused(self.coordinator.host, f"{path} {command} {self.custom_name}")
+            raise_write_failed(self.coordinator, self._target(path, command))
+
+    def _target(self, *parts) -> str:
+        """Name the thing being changed for the error text; the row may have no name of its own."""
+        return " ".join(str(p) for p in (*parts, self.custom_name or self.entity_id) if p)
 
     async def async_turn_on(self) -> None:
         """Turn on the switch."""

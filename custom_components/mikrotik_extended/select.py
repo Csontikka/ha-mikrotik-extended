@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_refused
+from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_failed
 from .select_types import (
     POE_OPTIONS,
     POE_VALUES,
@@ -102,6 +102,6 @@ class MikrotikPoeSelect(MikrotikSelect):
             value,
         )
         if not success:
-            raise_write_refused(self.coordinator.host, f"PoE out {port}")
+            raise_write_failed(self.coordinator, f"PoE out {port}")
 
         await self.coordinator.async_request_refresh()
