@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "{target} üzerindeki değişiklik {host} üzerinde uygulanamadı. Ayrıntılar günlükte."
     },
+    "write_unconfirmed": {
+      "message": "{host} üzerinde {target} değişikliği doğrulanamadı: yönlendirici yanıt vermedi ya da bir betik yarıda durdu. Yinelemeden önce yönlendiriciyi kontrol edin. Ayrıntılar günlükte."
+    },
     "no_write_access": {
       "message": "{host} için ayarlanan hesabın yönlendiricide yazma izni yok, bu yüzden hiçbir şey değiştirilmedi."
     }

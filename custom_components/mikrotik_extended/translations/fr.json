@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "La modification de {target} n'a pas abouti sur {host}. Les détails sont dans le journal."
     },
+    "write_unconfirmed": {
+      "message": "La modification de {target} sur {host} n'a pas pu être confirmée : le routeur n'a pas répondu, ou un script s'est arrêté en cours de route. Vérifiez le routeur avant de recommencer. Les détails sont dans le journal."
+    },
     "no_write_access": {
       "message": "Le compte configuré pour {host} n'a pas le droit d'écriture sur le routeur, rien n'a été modifié."
     }

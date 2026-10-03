@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "对 {target} 的更改未能在 {host} 上生效。详情见日志。"
     },
+    "write_unconfirmed": {
+      "message": "无法确认对 {host} 上 {target} 的更改：路由器未应答，或脚本中途停止。重试前请先检查路由器。详情见日志。"
+    },
     "no_write_access": {
       "message": "为 {host} 配置的账户在路由器上没有写入权限，因此未做任何更改。"
     }

@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Změna {target} na {host} neproběhla. Podrobnosti jsou v protokolu."
     },
+    "write_unconfirmed": {
+      "message": "Změnu {target} na {host} se nepodařilo potvrdit: router neodpověděl, nebo se skript zastavil v půli. Před opakováním zkontrolujte router. Podrobnosti jsou v protokolu."
+    },
     "no_write_access": {
       "message": "Účet nastavený pro {host} nemá na routeru oprávnění k zápisu, nic se nezměnilo."
     }

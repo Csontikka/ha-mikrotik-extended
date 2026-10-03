@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "The change to {target} did not go through on {host}. The details are in the log."
     },
+    "write_unconfirmed": {
+      "message": "The change to {target} on {host} could not be confirmed: the router did not answer, or a script stopped part way. Check the router before repeating it. The details are in the log."
+    },
     "no_write_access": {
       "message": "The account configured for {host} has no write permission on the router, so nothing was changed."
     }

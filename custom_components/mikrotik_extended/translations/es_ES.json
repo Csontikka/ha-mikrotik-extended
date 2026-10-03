@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "El cambio en {target} no se aplicó en {host}. Los detalles están en el registro."
     },
+    "write_unconfirmed": {
+      "message": "El cambio en {target} en {host} no se pudo confirmar: el router no respondió o un script se detuvo a medias. Compruebe el router antes de repetirlo. Los detalles están en el registro."
+    },
     "no_write_access": {
       "message": "La cuenta configurada para {host} no tiene permiso de escritura en el router, así que no se cambió nada."
     }

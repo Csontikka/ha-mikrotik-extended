@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Zmiana {target} nie powiodła się na {host}. Szczegóły są w dzienniku."
     },
+    "write_unconfirmed": {
+      "message": "Nie udało się potwierdzić zmiany {target} na {host}: router nie odpowiedział lub skrypt zatrzymał się w połowie. Sprawdź router przed powtórzeniem. Szczegóły są w dzienniku."
+    },
     "no_write_access": {
       "message": "Konto skonfigurowane dla {host} nie ma uprawnień do zapisu na routerze, więc nic nie zostało zmienione."
     }

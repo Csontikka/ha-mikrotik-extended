@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Breytingin á {target} komst ekki í gegn á {host}. Nánari upplýsingar eru í atvikaskránni."
     },
+    "write_unconfirmed": {
+      "message": "Ekki tókst að staðfesta breytinguna á {target} á {host}: beinirinn svaraði ekki, eða skrifta stöðvaðist hálfnuð. Athugaðu beininn áður en þú endurtekur. Nánari upplýsingar eru í atvikaskránni."
+    },
     "no_write_access": {
       "message": "Reikningurinn sem er stilltur fyrir {host} hefur ekki skrifheimild á beininum, svo engu var breytt."
     }

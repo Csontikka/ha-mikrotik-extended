@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "A(z) {target} módosítása nem ment át a(z) {host} routeren. A részletek a naplóban vannak."
     },
+    "write_unconfirmed": {
+      "message": "A(z) {target} módosítása a(z) {host} routeren nem erősíthető meg: a router nem válaszolt, vagy egy script félúton megállt. Ismétlés előtt nézd meg a routert. A részletek a naplóban vannak."
+    },
     "no_write_access": {
       "message": "A(z) {host} routerhez beállított fióknak nincs írási jogosultsága, ezért semmi nem változott."
     }

@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Izmaiņas {target} netika veiktas ierīcē {host}. Sīkāka informācija ir žurnālā."
     },
+    "write_unconfirmed": {
+      "message": "Izmaiņas {target} ierīcē {host} neizdevās apstiprināt: maršrutētājs neatbildēja vai skripts apstājās pusceļā. Pirms atkārtošanas pārbaudiet maršrutētāju. Sīkāka informācija ir žurnālā."
+    },
     "no_write_access": {
       "message": "Kontam, kas iestatīts {host}, nav rakstīšanas tiesību maršrutētājā, tāpēc nekas netika mainīts."
     }

@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Endringen av {target} gikk ikke gjennom på {host}. Detaljene står i loggen."
     },
+    "write_unconfirmed": {
+      "message": "Endringen av {target} på {host} kunne ikke bekreftes: ruteren svarte ikke, eller et skript stoppet halvveis. Sjekk ruteren før du gjentar. Detaljene står i loggen."
+    },
     "no_write_access": {
       "message": "Kontoen som er satt opp for {host} har ikke skriverettigheter på ruteren, så ingenting ble endret."
     }

@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Thay đổi đối với {target} không được áp dụng trên {host}. Chi tiết có trong nhật ký."
     },
+    "write_unconfirmed": {
+      "message": "Không thể xác nhận thay đổi đối với {target} trên {host}: bộ định tuyến không phản hồi, hoặc một tập lệnh đã dừng giữa chừng. Hãy kiểm tra bộ định tuyến trước khi lặp lại. Chi tiết có trong nhật ký."
+    },
     "no_write_access": {
       "message": "Tài khoản được cấu hình cho {host} không có quyền ghi trên bộ định tuyến, nên không có gì thay đổi."
     }

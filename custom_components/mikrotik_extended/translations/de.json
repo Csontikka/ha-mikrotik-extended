@@ -283,6 +283,9 @@
     "write_failed": {
       "message": "Die Änderung an {target} ist auf {host} nicht durchgegangen. Die Einzelheiten stehen im Log."
     },
+    "write_unconfirmed": {
+      "message": "Die Änderung an {target} auf {host} konnte nicht bestätigt werden: der Router hat nicht geantwortet, oder ein Skript ist mittendrin abgebrochen. Vor einer Wiederholung den Router prüfen. Die Einzelheiten stehen im Log."
+    },
     "no_write_access": {
       "message": "Das für {host} eingerichtete Konto hat auf dem Router keine Schreibberechtigung, es wurde nichts geändert."
     }
