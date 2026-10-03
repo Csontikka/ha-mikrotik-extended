@@ -282,8 +282,8 @@ class MikrotikAPI:
         """Convert the API generator into a list; returns (response, missing_sentinel).
 
         Returns ``(response, False)`` on success, ``(None, True)`` when the API path
-        is unavailable on this RouterOS version, and ``(None, False)`` on a hard
-        error (connection has already been torn down by the caller).
+        is unavailable on this RouterOS version or refused, and ``(None, False)`` on
+        a hard error, which tears the connection down quietly for the caller's retry.
         """
         try:
             response = list(response)
@@ -304,7 +304,8 @@ class MikrotikAPI:
                 # unavailable over a single unreadable path.
                 self._note_refusal(path, e)
                 return None, True
-            self.disconnect(f"building list for path {path}", e)
+            # Both callers retry a lost link once, so the loss is theirs to log.
+            self._lose_link(e)
             return None, False
 
     # The outcome of one attempt at a read, so the caller can tell a lost
