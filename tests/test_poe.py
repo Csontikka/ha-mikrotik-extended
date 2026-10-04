@@ -59,7 +59,7 @@ class TestReadings:
         _poe_readings(port)
         assert (port["poe-out-voltage"], port["poe-out-current"], port["poe-out-power"]) == (54.2, 449, 24.3)
 
-    @pytest.mark.parametrize("status", ["disabled", "waiting-for-load", "short-circuit", "off"])
+    @pytest.mark.parametrize("status", ["disabled", "waiting-for-load", "short-circuit", "overload"])
     def test_port_without_power_reads_zero_watts_and_nothing_else(self, status):
         port = {"name": "ether2", "poe-out": "off", "poe-out-status": status, **dict.fromkeys(POE_READINGS)}
         _poe_readings(port)
@@ -125,6 +125,58 @@ class TestFetch:
         port = coord.ds["interface"]["ether2"]
         assert port["poe-out-power"] == 0 and port["poe-out-voltage"] is None and port["poe-out-current"] is None
         assert port["poe-metered"] is True
+
+    def test_a_failed_query_does_not_turn_last_polls_zero_into_a_reading(self, hass):
+        """The zero is ours, not the router's: reading it back must not mark the port as measuring."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether2": {"name": "ether2", "poe-out": "auto-on"}}
+        coord.api.query = MagicMock(return_value=[{"name": "ether2", "poe-out": "auto-on", "poe-out-status": "waiting-for-load"}])
+        coord._fetch_poe_status()
+        assert coord.ds["interface"]["ether2"]["poe-out-power"] == 0
+
+        for _ in range(2):
+            coord.api.query = MagicMock(return_value=None)
+            coord._fetch_poe_status()
+
+        port = coord.ds["interface"]["ether2"]
+        assert "poe-metered" not in port
+        assert [port[field] for field in POE_READINGS] == [None, None, None]
+
+    @pytest.mark.parametrize("reply", [None, [], [{"name": "ether9", "poe-out-status": "disabled"}]], ids=["failed", "empty", "port missing"])
+    def test_last_readings_are_not_shown_when_the_router_says_nothing(self, hass, reply):
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether2": {"name": "ether2", "poe-out": "auto-on"}}
+        coord.api.query = MagicMock(return_value=[dict(POWERED_API)])
+        coord._fetch_poe_status()
+
+        coord.api.query = MagicMock(return_value=reply)
+        coord._fetch_poe_status()
+
+        port = coord.ds["interface"]["ether2"]
+        assert [port[field] for field in POE_READINGS] == [None, None, None], "24.3 W from the last poll is not a reading of this one"
+        assert port["poe-metered"] is True, "the port still is one that measures"
+
+    def test_every_poe_port_has_the_fields_after_a_failed_first_query(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether2": {"name": "ether2", "poe-out": "auto-on"}}
+        coord.api.query = MagicMock(return_value=None)
+        coord._fetch_poe_status()
+        assert [coord.ds["interface"]["ether2"][field] for field in POE_READINGS] == [None, None, None]
+
+    def test_a_port_that_lost_poe_loses_its_readings(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether2": {"name": "ether2", "poe-out": "auto-on"}}
+        coord.api.query = MagicMock(return_value=[dict(POWERED_API)])
+        coord._fetch_poe_status()
+
+        coord.ds["interface"]["ether2"]["poe-out"] = "N/A"
+        coord.api.query = MagicMock()
+        coord._fetch_poe_status()
+
+        port = coord.ds["interface"]["ether2"]
+        coord.api.query.assert_not_called()
+        assert "poe-metered" not in port
+        assert [port[field] for field in POE_READINGS] == [None, None, None]
 
 
 class TestDescriptions:
@@ -208,6 +260,20 @@ class TestCreation:
         ):
             await async_add_entities(hass, entry, {"MikrotikPoeSensor": _Fake})
         return platform.async_add_entities.await_count
+
+    async def test_known_sensors_go_when_the_port_can_no_longer_supply_power(self, hass):
+        assert await self._run(hass, {"poe-out": "N/A"}, registered=True) == 0
+
+    def test_sensor_reads_nothing_before_its_port_was_asked(self, hass):
+        """A sensor kept through a restart exists before the first PoE reply."""
+        from custom_components.mikrotik_extended.sensor import MikrotikPoeSensor
+
+        sensor = MikrotikPoeSensor.__new__(MikrotikPoeSensor)
+        sensor.entity_description = POE_DESCRIPTIONS[0]
+        sensor._data = {"name": "ether2", "poe-out": "off"}
+        assert sensor.native_value is None
+        sensor._data = {"name": "ether2", "poe-out-power": 24.3}
+        assert sensor.native_value == 24.3
 
     async def test_no_sensor_for_a_port_that_never_measured(self, hass):
         assert await self._run(hass, {"poe-out": "off", "poe-out-power": 0}, registered=False) == 0

@@ -150,6 +150,15 @@ class MikrotikPoeSensor(MikrotikInterfaceTrafficSensor):
     traffic and error options say.
     """
 
+    @property
+    def native_value(self) -> StateType:
+        """Return the reading, nothing when the port has none.
+
+        A sensor that is kept through a restart exists before its port has
+        been asked, so the field may not be in the store yet.
+        """
+        return self._data.get(self.entity_description.data_attribute)
+
 
 # ---------------------------
 #   MikrotikIPAddressSensor

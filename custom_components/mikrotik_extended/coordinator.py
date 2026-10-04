@@ -441,8 +441,13 @@ def _lte_number(value):
 POE_READINGS = ("poe-out-voltage", "poe-out-current", "poe-out-power")
 
 
-def _poe_readings(port: dict) -> None:
+def _poe_readings(port: dict, answered: bool = True) -> None:
     """Turn what the PoE monitor said about one port into numbers.
+
+    `answered` is False when the router said nothing about this port in this
+    poll: the query failed, or the port was missing from the reply. What the
+    store holds is then last poll's, zero included, so it is neither a reading
+    nor a value to keep showing.
 
     The router only sends the readings while it measures something, so a port
     that is off carries none. Power is then zero, which is true and keeps a
@@ -453,6 +458,9 @@ def _poe_readings(port: dict) -> None:
     `poe-metered` marks a port that has sent a reading at least once. It is
     what the sensors wait for, so hardware that never measures gets none.
     """
+    if not answered:
+        port.update(dict.fromkeys(POE_READINGS))
+        return
     for field in POE_READINGS:
         # The same shapes as the modem values: a plain number from the API, or
         # the terminal form with its unit ("54.2V", "449mA", "24.3W").
@@ -1724,16 +1732,23 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         the per port ethernet monitor above.
         """
         names = [vals["name"] for vals in self.ds["interface"].values() if vals.get("poe-out") not in (None, "", "N/A")]
+        # A port that stopped being PoE capable, a module that was pulled for
+        # example, must not keep its last readings or its sensors.
+        for vals in self.ds["interface"].values():
+            if vals.get("name") not in names and vals.pop("poe-metered", False):
+                vals.update(dict.fromkeys(POE_READINGS))
         if not names:
             return
 
+        rows = self.api.query(
+            PATH_INTERFACE_ETHERNET_POE,
+            command="monitor",
+            args={"numbers": ",".join(names), "once": True},
+        )
+        answered = {row.get("name") for row in rows or ()}
         self.ds["interface"] = parse_api(
             data=self.ds["interface"],
-            source=self.api.query(
-                PATH_INTERFACE_ETHERNET_POE,
-                command="monitor",
-                args={"numbers": ",".join(names), "once": True},
-            ),
+            source=rows,
             key_search="name",
             vals=[
                 {"name": "poe-out-status", "default": "unknown"},
@@ -1742,7 +1757,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         )
         for vals in self.ds["interface"].values():
             if vals.get("name") in names:
-                _poe_readings(vals)
+                _poe_readings(vals, answered=vals["name"] in answered)
 
     def _compute_interface_traffic_deltas(self) -> None:
         """Convert rx/tx byte counters into per-second rates."""

@@ -95,7 +95,11 @@ def _skip_non_poe_port(entity_description, item) -> bool:
     """
     if entity_description.func != "MikrotikPoeSelect":
         return False
-    return item.get("poe-out") in (None, "", "N/A", "unknown")
+    return not _has_poe(item)
+
+
+def _has_poe(item) -> bool:
+    return item.get("poe-out") not in (None, "", "N/A", "unknown")
 
 
 def _waits_for_poe_reading(entity_description, item) -> bool:
@@ -297,7 +301,8 @@ async def async_add_entities(hass: HomeAssistant, config_entry: ConfigEntry, dis
             # A port that is switched off sends no reading, also right after a
             # restart. A sensor that already exists is kept through that, or
             # the orphan cleanup below would remove it and its history link.
-            if _waits_for_poe_reading(entity_description, data[uid]) and not _is_registered(obj, uid):
+            # A port that can no longer supply power loses them like any other.
+            if _waits_for_poe_reading(entity_description, data[uid]) and not (_has_poe(data[uid]) and _is_registered(obj, uid)):
                 continue
             await async_check_exist(obj, uid)
 
