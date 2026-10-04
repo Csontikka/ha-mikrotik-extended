@@ -63,6 +63,7 @@ async def async_setup_entry(
         "MikrotikSensor": MikrotikSensor,
         "MikrotikInterfaceTrafficSensor": MikrotikInterfaceTrafficSensor,
         "MikrotikInterfaceErrorSensor": MikrotikInterfaceErrorSensor,
+        "MikrotikPoeSensor": MikrotikPoeSensor,
         "MikrotikClientTrafficSensor": MikrotikClientTrafficSensor,
         "MikrotikIPAddressSensor": MikrotikIPAddressSensor,
     }
@@ -136,6 +137,17 @@ class MikrotikInterfaceErrorSensor(MikrotikInterfaceTrafficSensor):
     Its own class so that it has its own option: the counters are for finding
     a bad cable or a failing port, which not everybody who wants traffic
     graphs is after, and the other way round.
+    """
+
+
+# ---------------------------
+#   MikrotikPoeSensor
+# ---------------------------
+class MikrotikPoeSensor(MikrotikInterfaceTrafficSensor):
+    """What a port measures on its PoE output.
+
+    Its own class because it exists only on a port that measures, whatever the
+    traffic and error options say.
     """
 
 
