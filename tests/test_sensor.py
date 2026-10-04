@@ -92,6 +92,7 @@ async def test_async_setup_entry_invokes_add_entities(hass):
         "MikrotikSensor",
         "MikrotikInterfaceTrafficSensor",
         "MikrotikInterfaceErrorSensor",
+        "MikrotikPoeSensor",
         "MikrotikClientTrafficSensor",
         "MikrotikIPAddressSensor",
     }
