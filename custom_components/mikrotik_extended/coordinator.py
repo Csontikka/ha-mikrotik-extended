@@ -438,6 +438,31 @@ def _lte_number(value):
     return int(number) if number.is_integer() else number
 
 
+POE_READINGS = ("poe-out-voltage", "poe-out-current", "poe-out-power")
+
+
+def _poe_readings(port: dict) -> None:
+    """Turn what the PoE monitor said about one port into numbers.
+
+    The router only sends the readings while it measures something, so a port
+    that is off carries none. Power is then zero, which is true and keeps a
+    graph continuous; voltage and current stay without a value. A port that is
+    powered but sends no power reading has hardware that does not measure, and
+    gets no number made up for it.
+
+    `poe-metered` marks a port that has sent a reading at least once. It is
+    what the sensors wait for, so hardware that never measures gets none.
+    """
+    for field in POE_READINGS:
+        # The same shapes as the modem values: a plain number from the API, or
+        # the terminal form with its unit ("54.2V", "449mA", "24.3W").
+        port[field] = _lte_number(port.get(field))
+    if any(port[field] is not None for field in POE_READINGS):
+        port["poe-metered"] = True
+    if port["poe-out-power"] is None and port.get("poe-out-status") not in ("powered-on", "unknown", None):
+        port["poe-out-power"] = 0
+
+
 def _lte_text(value):
     """A text value on one line, None when empty.
 
@@ -1712,8 +1737,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             key_search="name",
             vals=[
                 {"name": "poe-out-status", "default": "unknown"},
+                *({"name": field, "default": None} for field in POE_READINGS),
             ],
         )
+        for vals in self.ds["interface"].values():
+            if vals.get("name") in names:
+                _poe_readings(vals)
 
     def _compute_interface_traffic_deltas(self) -> None:
         """Convert rx/tx byte counters into per-second rates."""
