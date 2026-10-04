@@ -87,7 +87,7 @@ row that is out of date, open an issue and it will be corrected.
 Built for **RouterOS 7+**, with a full test suite. The official integration quality scale
 covers core integrations only, where `mikrotik` is rated **Gold** in 2026.10; this project
 tracks the same rules in its own `quality_scale.yaml`, which is a self-assessment and stands
-at **Silver** with three documentation rules left open.
+at **Gold**.
 
 ## Features
 
@@ -386,6 +386,18 @@ The file stays on the device: RouterOS does not expose file contents over its AP
             host: "192.168.88.1"
   ```
 
+## Use cases
+
+What people set this integration up for, and which part of it does the job:
+
+- **Presence from the router.** Every host the router sees in its ARP, DHCP and wireless registration tables becomes a device tracker, so the phones on your WiFi drive home/away automations without an app on the phone. The *Host tracking timeout* and *Device tracker interval* options tune how quickly a device is marked away.
+- **Know when the internet fails over.** With route sensors on, the *Active WAN* sensor names the interface the default route leaves through, and the per-route binary sensors show which default routes are up. A change on that sensor is the trigger for a notification, or for pausing backups while on the LTE line.
+- **Watch a link that matters.** Netwatch probes on the router become binary sensors with round trip time and loss as attributes; a probe going down can restart a PoE-fed access point through the PoE selector, or switch a WireGuard peer on.
+- **Switch things on the router from Home Assistant.** Firewall rules (filter, NAT, mangle, raw), Kid Control, WireGuard peers, interfaces, containers, PoE output, scripts and the configuration backup are entities or actions, so a schedule or a dashboard button can toggle them. A change the router does not make fails the call, so an automation sees it.
+- **Capacity and health.** Traffic per interface and per client, CPU, memory, temperature, port error counters, firmware update availability, and the LTE / 5G modem signal on routers with a modem.
+
+The [Automation Examples](#automation-examples) below show two of these in full.
+
 ## Automation Examples
 
 ### Auto-enable WireGuard VPN when leaving home
@@ -579,6 +591,20 @@ Switching presets takes effect after saving:
 - Disabling a category **removes** the entities and their devices from Home Assistant.
 - Entities without a corresponding option (fan speed, PSU sensors, GPS, etc.) remain disabled by default and must be enabled manually.
 
+## How the data is updated
+
+Everything is polled over the RouterOS API; the router pushes nothing. Three schedules run side by side:
+
+| What | How often | Where to change it |
+|------|-----------|--------------------|
+| Entities on the router: interfaces, traffic, firewall rules, routes, netwatch, system health, LTE, containers and the rest | every *Scan interval*, 30 s by default | Configure, *Scan interval* (minimum 10 s) |
+| Device trackers: the hosts are pinged and their state refreshed | every *Device tracker interval*, 10 s by default | Configure, *Device tracker interval* (5 to 300 s) |
+| Slow-changing data: firmware and update availability, RouterOS capabilities, routerboard details, scripts, DHCP networks, DNS | every 4 hours, and at once after every reconnect | not configurable; the `mikrotik_extended.refresh_data` action forces it, together with a full poll |
+
+Traffic rates are calculated from the counters and the time that really passed between two polls, so a slow cycle does not inflate them. A poll that cannot reach the router marks the router's entities unavailable until the next successful one; a connection the router closed in between is reopened within the same poll. Scripts and environment variables created on the router after setup appear after the next slow refresh or after reloading the entry.
+
+Actions and entity writes go to the router at once, and the entities concerned are refreshed right after, without waiting for the next poll.
+
 ## Removal
 
 1. **Settings -> Devices & Services**
@@ -632,6 +658,17 @@ recorder:
       - sensor.mikrotik_*_tx_total
       - sensor.mikrotik_*_rx_total
 ```
+
+## Known limitations
+
+- **RouterOS 7 is the target.** The integration is tested on RouterOS 7; it starts on RouterOS 6, but menus that only exist on 7 (WireGuard, containers, the `wifi` stack, netwatch statistics, routes with routing tables, LTE 5G fields) are skipped or empty there. No RouterOS 6 device is in the test setup, so reports from one are welcome.
+- **One device per host, per integration.** Every tracked host gets its own device in Home Assistant, named after the router's view of it. A device that another integration also knows, a Shelly or an ESPHome node for example, appears twice in the device list, once from each integration; Home Assistant does not merge them.
+- **The device tracker follows the router's tables, not the device.** A host that stops answering ARP pings, a phone in deep sleep for instance, is marked away after the *Host tracking timeout* even while it is still associated to WiFi. A device behind a separate access point or mesh that the router does not see in a registration table counts as a wired client.
+- **Entities follow the router's configuration.** A firewall rule, a netwatch probe or a WireGuard peer deleted on the router loses its entity after a few polls; renaming one keeps the entity. Turning a sensor category off removes its entities and their devices, and a name or an area given to them in Home Assistant is not restored when the category comes back.
+- **One API user, its permissions decide.** Writes need the `write` policy, scripts `test`, the backup `sensitive`, the reboot and shutdown `reboot`; an action the account is not allowed to do fails with an error that says so. The integration cannot do more than the account it logs in with; the full policy list is under [Requirements](#requirements).
+- **CHR and switches without PoE** report no PoE selectors; a port's PoE entities exist only where the hardware reports `poe-out`.
+- **Polling cost grows with the router.** A switch with 48 ports and a large firewall produces many entities and several API queries per poll. Turn off *Interface entities* on such a device, pick the *Core* preset, or raise the scan interval; the [Performance & Database Tips](#performance--database-tips) section has the details.
+- **No local push, no cloud.** State changes made on the router show up at the next poll, up to one scan interval later.
 
 ## Troubleshooting
 
