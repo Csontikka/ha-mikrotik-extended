@@ -99,7 +99,7 @@ CPU load, memory/HDD usage, uptime, temperatures (CPU, board, PHY, switch), volt
 
 ### Network Interfaces
 
-Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status and consumption (the selector is part of the interface entities, so it follows that option), connected device MAC/IP info per interface.
+Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status (the selector is part of the interface entities, so it follows that option), PoE out power, voltage and current sensors on every port that measures them, connected device MAC/IP info per interface.
 
 ![Interface Traffic](docs/assets/images/screenshots/interface_tx.png)
 
@@ -467,6 +467,7 @@ automation:
 | System monitoring (CPU, memory, temps, fans, PSU, uptime) | ✓ | ✓ | No |
 | Network interfaces (status, traffic, IP address) | ✓ | ✓ | Traffic: Yes |
 | PoE out control (per port) | ✓ | ? | With interfaces |
+| PoE out power, voltage, current (per port, where the hardware measures) | ✓ | ? | With interfaces |
 | Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
 | Route sensors (static and default routes) | ✓ | ? | Yes |
@@ -666,7 +667,7 @@ recorder:
 - **The device tracker follows the router's tables, not the device.** A host that stops answering ARP pings, a phone in deep sleep for instance, is marked away after the *Host tracking timeout* even while it is still associated to WiFi. A device behind a separate access point or mesh that the router does not see in a registration table counts as a wired client.
 - **Entities follow the router's configuration.** A firewall rule, a netwatch probe or a WireGuard peer deleted on the router loses its entity after a few polls; renaming one keeps the entity. Turning a sensor category off removes its entities and their devices, and a name or an area given to them in Home Assistant is not restored when the category comes back.
 - **One API user, its permissions decide.** Writes need the `write` policy, scripts `test`, the backup `sensitive`, the reboot and shutdown `reboot`; an action the account is not allowed to do fails with an error that says so. The integration cannot do more than the account it logs in with; the full policy list is under [Requirements](#requirements).
-- **CHR and switches without PoE** report no PoE selectors; a port's PoE entities exist only where the hardware reports `poe-out`.
+- **CHR and switches without PoE** report no PoE selectors; a port's PoE entities exist only where the hardware reports `poe-out`. The PoE power, voltage and current sensors of a port appear once the port has sent a reading, which hardware that supplies power without measuring it never does.
 - **Polling cost grows with the router.** A switch with 48 ports and a large firewall produces many entities and several API queries per poll. Turn off *Interface entities* on such a device, pick the *Core* preset, or raise the scan interval; the [Performance & Database Tips](#performance--database-tips) section has the details.
 - **No local push, no cloud.** State changes made on the router show up at the next poll, up to one scan interval later.
 
