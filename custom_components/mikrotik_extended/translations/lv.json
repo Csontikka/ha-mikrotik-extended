@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "PoE izejas patēriņš"
       },
+      "poe_out_power": {
+        "name": "PoE izejas jauda"
+      },
+      "poe_out_voltage": {
+        "name": "PoE izejas spriegums"
+      },
+      "poe_out_current": {
+        "name": "PoE izejas strāva"
+      },
       "system_fan1_speed": {
         "name": "Ventilatora 1 ātrums"
       },

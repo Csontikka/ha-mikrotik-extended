@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "PoE 输出功耗"
       },
+      "poe_out_power": {
+        "name": "PoE 输出功率"
+      },
+      "poe_out_voltage": {
+        "name": "PoE 输出电压"
+      },
+      "poe_out_current": {
+        "name": "PoE 输出电流"
+      },
       "system_fan1_speed": {
         "name": "风扇 1 转速"
       },

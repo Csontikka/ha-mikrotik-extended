@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "PoE kimenet teljesítményfelvétel"
       },
+      "poe_out_power": {
+        "name": "PoE kimenet teljesítmény"
+      },
+      "poe_out_voltage": {
+        "name": "PoE kimenet feszültség"
+      },
+      "poe_out_current": {
+        "name": "PoE kimenet áramerősség"
+      },
       "system_fan1_speed": {
         "name": "Ventilátor 1 fordulatszám"
       },

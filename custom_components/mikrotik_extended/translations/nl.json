@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "PoE-uitgangsverbruik"
       },
+      "poe_out_power": {
+        "name": "PoE-uitgangsvermogen"
+      },
+      "poe_out_voltage": {
+        "name": "PoE-uitgangsspanning"
+      },
+      "poe_out_current": {
+        "name": "PoE-uitgangsstroom"
+      },
       "system_fan1_speed": {
         "name": "Ventilator 1 snelheid"
       },

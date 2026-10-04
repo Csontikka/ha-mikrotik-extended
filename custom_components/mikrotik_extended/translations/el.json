@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "Κατανάλωση PoE εξόδου"
       },
+      "poe_out_power": {
+        "name": "Ισχύς εξόδου PoE"
+      },
+      "poe_out_voltage": {
+        "name": "Τάση εξόδου PoE"
+      },
+      "poe_out_current": {
+        "name": "Ρεύμα εξόδου PoE"
+      },
       "system_fan1_speed": {
         "name": "Ταχύτητα ανεμιστήρα 1"
       },

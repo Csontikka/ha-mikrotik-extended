@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "Tiêu thụ PoE đầu ra"
       },
+      "poe_out_power": {
+        "name": "Công suất PoE đầu ra"
+      },
+      "poe_out_voltage": {
+        "name": "Điện áp PoE đầu ra"
+      },
+      "poe_out_current": {
+        "name": "Dòng điện PoE đầu ra"
+      },
       "system_fan1_speed": {
         "name": "Tốc độ quạt 1"
       },

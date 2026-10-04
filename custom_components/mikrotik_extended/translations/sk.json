@@ -363,6 +363,15 @@
       "system_poe_out_consumption": {
         "name": "Spotreba PoE výstupu"
       },
+      "poe_out_power": {
+        "name": "Výkon PoE výstupu"
+      },
+      "poe_out_voltage": {
+        "name": "Napätie PoE výstupu"
+      },
+      "poe_out_current": {
+        "name": "Prúd PoE výstupu"
+      },
       "system_fan1_speed": {
         "name": "Otáčky ventilátora 1"
       },
