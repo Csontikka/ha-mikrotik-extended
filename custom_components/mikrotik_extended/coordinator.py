@@ -2298,14 +2298,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def get_containers(self) -> None:
         """Get Container data from Mikrotik"""
         _LOGGER.debug("Mikrotik %s fetching containers", self.host)
-        source = self.api.query("/container") or []
+        # None is a failed read and must stay None for parse_api, which
+        # prunes on an empty answer but never on a failed one.
+        source = self.api.query("/container")
         # The RouterOS list id changes when a container is re-created, which
         # is the standard container upgrade workflow and would spawn duplicate
         # entities (same pattern as issue #20). Key entries by the veth
         # interface instead: every container has one and it survives
         # re-creation. Entries without an interface keep the list id.
         seen_per_iface: dict = {}
-        for entry in sorted(source, key=lambda e: (str(e.get("interface", "")), str(e.get("root-dir", "")))):
+        for entry in sorted(source or [], key=lambda e: (str(e.get("interface", "")), str(e.get("root-dir", "")))):
             ref = str(entry.get("interface", "")) or str(entry.get(".id", "")) or "unknown"
             count = seen_per_iface.get(ref, 0) + 1
             seen_per_iface[ref] = count
@@ -2927,13 +2929,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_netwatch(self) -> None:
         """Get netwatch data from Mikrotik"""
-        source = self.api.query("/tool/netwatch") or []
+        # None is a failed read and must stay None for parse_api, which
+        # prunes on an empty answer but never on a failed one.
+        source = self.api.query("/tool/netwatch")
         # Keying on the host alone collapses several probes watching the same
         # address (for example an icmp and a tcp check) into one entity, so one
         # of them disappears. Build the reference from host, type and port, and
         # fall back to a deterministic suffix when even that is not unique.
         seen_ref: dict = {}
-        for entry in sorted(source, key=lambda e: (str(e.get("comment", "")), str(e.get(".id", "")))):
+        for entry in sorted(source or [], key=lambda e: (str(e.get("comment", "")), str(e.get(".id", "")))):
             parts = [str(entry.get("host", "")) or "unknown", str(entry.get("type", "")) or "simple"]
             if str(entry.get("port", "")):
                 parts.append(str(entry["port"]))
@@ -3473,13 +3477,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_ip_address(self) -> None:
         """Get IP address data from Mikrotik"""
-        source = self.api.query("/ip/address") or []
+        # None is a failed read and must stay None for parse_api, which
+        # prunes on an empty answer but never on a failed one.
+        source = self.api.query("/ip/address")
         # The RouterOS list id is not stable: dynamic addresses (PPPoE, DHCP)
         # are re-created with a new id on every reconnect, which would spawn a
         # new entity each time (issue #20). Key entries by interface instead,
         # with a deterministic suffix when an interface holds more addresses.
         seen_per_iface: dict = {}
-        for entry in sorted(source, key=lambda e: (str(e.get("interface", "")), str(e.get("address", "")))):
+        for entry in sorted(source or [], key=lambda e: (str(e.get("interface", "")), str(e.get("address", "")))):
             iface = str(entry.get("interface", "")) or "unknown"
             count = seen_per_iface.get(iface, 0) + 1
             seen_per_iface[iface] = count

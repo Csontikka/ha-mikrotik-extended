@@ -3278,6 +3278,32 @@ class TestNetworkGetters:
         assert poll(3) == (0, [])
         assert coord.ds["dhcp_leases"]["leases"] == []
 
+    @pytest.mark.parametrize(
+        ("method", "store", "path", "row"),
+        [
+            ("get_containers", "containers", "/container", {".id": "*1", "name": "c1", "interface": "veth1"}),
+            ("get_netwatch", "netwatch", "/tool/netwatch", {".id": "*1", "host": "10.0.0.1", "type": "icmp"}),
+            ("get_ip_address", "ip_address", "/ip/address", {".id": "*1", "address": "10.0.0.1/24", "interface": "ether1"}),
+        ],
+    )
+    def test_failed_read_keeps_rows_and_empty_answer_drops_them(self, hass, method, store, path, row):
+        """A failed read is not an empty menu: only the router's empty answer removes the last row."""
+        coord = _make_coordinator(hass)
+        coord.ds["interface"] = {"ether1": {"name": "ether1", "port-mac-address": "02:00:00:00:00:01"}}
+        reply = {"rows": [dict(row)]}
+        coord.api.query.side_effect = lambda p, *a, **k: ([dict(r) for r in reply["rows"]] if reply["rows"] is not None else None) if p == path else []
+
+        getattr(coord, method)()
+        assert len(coord.ds[store]) == 1
+        reply["rows"] = None
+        for _ in range(5):
+            getattr(coord, method)()
+        assert len(coord.ds[store]) == 1
+        reply["rows"] = []
+        for _ in range(3):
+            getattr(coord, method)()
+        assert coord.ds[store] == {}
+
     def test_get_dhcp_server(self, hass):
         coord = _make_coordinator(hass)
         servers = {"server1": {"name": "server1", "interface": "ether1"}}
