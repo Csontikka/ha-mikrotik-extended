@@ -534,6 +534,35 @@ class TestPruneStale:
             data = parse_api(data=data, source=[], key=".id", vals=[{"name": "name", "source": "name"}])
         assert "*1" in data
 
+    def test_a_row_back_after_empty_answers_starts_over(self):
+        data = {"*1": {"name": "eth0"}}
+        counters = {}
+        args = {"key": ".id", "vals": [{"name": "name", "source": "name"}], "prune_stale": True, "stale_counters": counters}
+        for _ in range(2):
+            data = parse_api(data=data, source=[], **args)
+        assert counters["*1"] == 2
+        data = parse_api(data=data, source=[{".id": "*1", "name": "eth0"}], **args)
+        assert counters == {}
+        for _ in range(2):
+            data = parse_api(data=data, source=[], **args)
+        assert "*1" in data
+
+    def test_empty_reply_merged_by_key_search_prunes_nothing(self):
+        """A key_search reply is merged into rows another query owns, so an empty one removes none of them."""
+        data = {"*1": {"name": "eth0"}}
+        counters = {}
+        for _ in range(5):
+            data = parse_api(
+                data=data,
+                source=[],
+                key_search="name",
+                vals=[{"name": "status"}],
+                prune_stale=True,
+                stale_counters=counters,
+            )
+        assert "*1" in data
+        assert counters == {}
+
     def test_prune_disabled_by_default(self):
         data = {"*1": {"name": "eth0"}, "*2": {"name": "eth1"}}
         source = [{"name": "eth0", ".id": "*1"}]

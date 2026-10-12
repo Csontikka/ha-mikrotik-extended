@@ -147,8 +147,10 @@ def parse_api(
     if not source:
         # An empty list is an answer: the router has no rows left, so the last
         # one deleted has to go like any other. None is a failed query, which
-        # says nothing about the rows and keeps them.
-        if source == [] and prune_stale and stale_counters is not None and (key or key_search):
+        # says nothing about the rows and keeps them. Only a table read by its
+        # own key: a key_search caller merges a reply into rows that another
+        # query owns, and an empty reply there says nothing about those rows.
+        if source == [] and prune_stale and stale_counters is not None and key:
             _prune_stale_entries(data, set(), stale_counters)
         if not key and not key_search:
             data = fill_defaults(data, vals)
