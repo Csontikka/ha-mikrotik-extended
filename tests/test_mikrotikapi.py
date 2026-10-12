@@ -638,12 +638,17 @@ class TestQuery:
         assert result is None
         assert self.api.connected() is False
 
-    def test_query_empty_response_returns_none(self):
+    def test_query_empty_menu_is_an_empty_list(self):
+        """No rows is an answer, told apart from a failed read (None), so a pruned table can drop its last row."""
         mock_path = MagicMock()
         mock_path.__iter__ = MagicMock(return_value=iter([]))
         self.api._connection.path.return_value = mock_path
-        result = self.api.query("/interface")
-        assert result is None
+        assert self.api.query("/interface") == []
+
+    def test_query_command_with_no_rows_is_an_empty_list(self):
+        mock_path = MagicMock(return_value=iter([]))
+        self.api._connection.path.return_value = mock_path
+        assert self.api.query("/interface/ethernet/poe", command="monitor", args={"once": True}) == []
 
     def test_refused_query_keeps_the_session(self):
         """A trap means the router answered and refused, not that the link died.

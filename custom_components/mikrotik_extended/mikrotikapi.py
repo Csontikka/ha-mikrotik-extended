@@ -351,7 +351,10 @@ class MikrotikAPI:
                     self._lose_link(e)
                     return self._LINK_LOST
 
-        return response or None
+        # An empty list is the router's answer that the menu has no rows, and
+        # a caller pruning its table needs it to drop the last one; None is
+        # kept for a read that failed, so the two never look alike.
+        return response
 
     def _lose_link(self, error) -> None:
         """A read took the connection down; keep the reason for the retry's one log line."""
