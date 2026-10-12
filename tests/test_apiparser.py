@@ -495,6 +495,45 @@ class TestPruneStale:
         )
         assert "*2" not in counters
 
+    def test_empty_answer_prunes_the_last_rows(self):
+        """A router with no rows left answers with an empty list, and the rows go after three strikes."""
+        data = {"*1": {"name": "eth0"}}
+        counters = {}
+        for poll in range(3):
+            assert "*1" in data, poll
+            data = parse_api(
+                data=data,
+                source=[],
+                key=".id",
+                vals=[{"name": "name", "source": "name"}],
+                prune_stale=True,
+                stale_counters=counters,
+            )
+        assert data == {}
+        assert counters == {}
+
+    def test_failed_query_keeps_the_rows(self):
+        """None is a failed query, not an empty table: nothing is counted or removed."""
+        data = {"*1": {"name": "eth0"}}
+        counters = {}
+        for _ in range(5):
+            data = parse_api(
+                data=data,
+                source=None,
+                key=".id",
+                vals=[{"name": "name", "source": "name"}],
+                prune_stale=True,
+                stale_counters=counters,
+            )
+        assert "*1" in data
+        assert counters == {}
+
+    def test_empty_answer_without_prune_keeps_the_rows(self):
+        data = {"*1": {"name": "eth0"}}
+        for _ in range(5):
+            data = parse_api(data=data, source=[], key=".id", vals=[{"name": "name", "source": "name"}])
+        assert "*1" in data
+
     def test_prune_disabled_by_default(self):
         data = {"*1": {"name": "eth0"}, "*2": {"name": "eth1"}}
         source = [{"name": "eth0", ".id": "*1"}]
