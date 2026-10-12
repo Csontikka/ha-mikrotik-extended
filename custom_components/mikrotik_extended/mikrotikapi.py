@@ -426,8 +426,13 @@ class MikrotikAPI:
             self.connection_error_reported = True
 
     def query(self, path, command=None, args=None, return_list=True) -> Optional(list):
-        """Retrieve data from Mikrotik API."""
-        """Returns generator object, unless return_list passed as True.
+        """Retrieve data from Mikrotik API.
+
+        Returns the rows as a list, an empty list when the menu has none, and
+        None when the read failed, was refused or the menu does not exist.
+        Callers must keep the two apart: a table pruned on an empty answer
+        would lose every row to a failed read turned into []. With
+        return_list False and no command the path object comes back instead.
 
         A lost link is retried once, ``command`` included, so only a command
         that reads (monitor, print) may go through here. A command with a
