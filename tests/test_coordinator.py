@@ -3251,6 +3251,33 @@ class TestNetworkGetters:
         assert coord.ds["dhcp_leases"]["bound"] == 1
         assert coord.ds["dhcp_leases"]["total"] == 3
 
+    def test_get_dhcp_drops_a_lease_deleted_on_the_router(self, hass):
+        """A deleted lease leaves the count after three polls, the last one included; a failed query keeps them."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {"server1": {"name": "server1", "interface": "ether1"}}
+        coord.ds["arp"] = {}
+
+        def lease(mac, ip):
+            return {"mac-address": mac, "address": ip, "server": "server1", "status": "bound", "disabled": "false"}
+
+        reply = {"rows": [lease("02:00:00:00:00:01", "10.0.0.11"), lease("02:00:00:00:00:02", "10.0.0.12")]}
+        coord.api.query.side_effect = lambda path, *a, **k: reply["rows"] if path == "/ip/dhcp-server/lease" else []
+
+        def poll(times=1):
+            for _ in range(times):
+                coord.get_dhcp()
+            return coord.ds["dhcp_leases"]["total"], sorted(coord.ds["dhcp"])
+
+        assert poll() == (2, ["02:00:00:00:00:01", "02:00:00:00:00:02"])
+        reply["rows"] = reply["rows"][:1]
+        assert poll(2)[0] == 2
+        assert poll() == (1, ["02:00:00:00:00:01"])
+        reply["rows"] = None
+        assert poll(5) == (1, ["02:00:00:00:00:01"])
+        reply["rows"] = []
+        assert poll(3) == (0, [])
+        assert coord.ds["dhcp_leases"]["leases"] == []
+
     def test_get_dhcp_server(self, hass):
         coord = _make_coordinator(hass)
         servers = {"server1": {"name": "server1", "interface": "ether1"}}

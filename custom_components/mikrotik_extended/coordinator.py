@@ -3381,6 +3381,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 },
             ],
             ensure_vals=[{"name": "interface", "default": "unknown"}],
+            # A lease deleted on the router has to leave the lease count too.
+            prune_stale=True,
+            stale_counters=self._get_stale_counters("dhcp"),
         )
 
         dhcpserver_query = False
