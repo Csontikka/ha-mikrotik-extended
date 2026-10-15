@@ -1559,6 +1559,27 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         return str(aaa.get("default-group", "") or "")
 
     # ---------------------------
+    #   _active_session_group
+    # ---------------------------
+    def _active_session_group(self, username: str) -> str:
+        """Return the group of our own API login as the router sees it.
+
+        /user/active lists every live login with the group it actually got.
+        For a RADIUS-validated account that is the group the server sent
+        back, which neither /user (the account is not local) nor /user/aaa
+        (default-group only applies when the server sends none) can tell.
+        Empty when no API session of ours is listed.
+        """
+        rows = self.api.query("/user/active") or []
+        for row in rows:
+            if row.get("name") != username or row.get("via") != "api":
+                continue
+            group = str(row.get("group", "") or "")
+            if group:
+                return group
+        return ""
+
+    # ---------------------------
     #   get_access
     # ---------------------------
     def get_access(self) -> None:
@@ -1589,10 +1610,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             # Not a local user. RouterOS can validate router logins against a
             # RADIUS server (/user/aaa use-radius), and such an account exists
             # on the server rather than on the router, so it is absent from
-            # /user. Those logins get the configured default group, which is
-            # where their policies come from. Indexing /user directly used to
-            # raise KeyError straight out of the update cycle here.
-            group_name = self._remote_login_group()
+            # /user. The server names the group in its reply, and the only
+            # place the router shows that is the live login itself. Falling
+            # back to default-group here used to report a "full" account as
+            # read-only, because default-group is what a login gets when the
+            # server sends no group, not what this login got.
+            group_name = self._active_session_group(username) or self._remote_login_group()
 
         policy = tmp_group.get(group_name, {}).get("policy") if group_name else None
         if policy:
