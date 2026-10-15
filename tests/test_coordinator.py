@@ -827,6 +827,70 @@ class TestGetAccess:
         assert "read" in coord.ds["access"]
         assert coord.ds["access_missing"] == []
 
+    def test_remote_user_gets_the_group_of_its_own_login(self, hass):
+        """A RADIUS account's rights come from the group the server assigned.
+
+        The server names the group in its reply and the router shows it only
+        on the live login. default-group is what a login gets when the server
+        sends none, so reading that reported a "full" account as read-only
+        and refused every write (issue 39).
+        """
+        coord = _make_coordinator(hass)
+        tmp_user = {"someone-else": {"name": "someone-else", "group": "full"}}
+        tmp_group = {
+            "full": {"name": "full", "policy": "read,write,policy,test,reboot,api"},
+            "read": {"name": "read", "policy": "read,test,reboot,api"},
+        }
+        aaa = {"default-group": "read"}
+        coord.api.query.return_value = [
+            {"name": "someone-else", "via": "winbox", "group": "full", "radius": False},
+            {"name": "admin", "via": "ssh", "group": "read", "radius": True},
+            {"name": "admin", "via": "api", "group": "full", "radius": True},
+        ]
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[tmp_user, tmp_group, aaa],
+        ):
+            coord.get_access()
+
+        assert "write" in coord.ds["access"]
+        assert coord.ds["access_missing"] == []
+
+    def test_remote_user_without_a_listed_login_falls_back_to_default_group(self, hass):
+        """No API login of ours in the listing: the default group still applies."""
+        coord = _make_coordinator(hass)
+        tmp_user = {}
+        tmp_group = {"read": {"name": "read", "policy": "read,test,reboot,api"}}
+        aaa = {"default-group": "read"}
+        coord.api.query.return_value = [
+            {"name": "admin", "via": "ssh", "group": "full", "radius": True},
+        ]
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[tmp_user, tmp_group, aaa],
+        ):
+            coord.get_access()
+
+        assert coord.ds["access"] == ["read", "test", "reboot", "api"]
+        assert coord.ds["access_missing"] == ["write", "policy"]
+
+    def test_unreadable_active_listing_falls_back_to_default_group(self, hass):
+        """A refused /user/active read is None, not a crash, and aaa still counts."""
+        coord = _make_coordinator(hass)
+        tmp_group = {"full": {"name": "full", "policy": "read,write,policy,test,reboot"}}
+        aaa = {"default-group": "full"}
+        coord.api.query.return_value = None
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[{}, tmp_group, aaa],
+        ):
+            coord.get_access()
+
+        assert coord.ds["access_missing"] == []
+
     def test_unknown_user_without_aaa_group_leaves_access_unresolved(self, hass):
         """No local user and no usable default group: unresolved, still no crash."""
         coord = _make_coordinator(hass)
