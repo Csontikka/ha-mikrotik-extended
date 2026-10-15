@@ -817,6 +817,8 @@ class TestGetAccess:
         tmp_group = {"full": {"name": "full", "policy": "read,write,policy,test,reboot,api"}}
         aaa = {"default-group": "full"}
 
+        coord.api.query.return_value = []
+
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
             side_effect=[tmp_user, tmp_group, aaa],
@@ -826,6 +828,21 @@ class TestGetAccess:
         # The rights come from the group RouterOS assigns to remote logins.
         assert "read" in coord.ds["access"]
         assert coord.ds["access_missing"] == []
+
+    def test_local_user_does_not_consult_the_login_listing(self, hass):
+        """A user listed under /user has its group there; no extra query."""
+        coord = _make_coordinator(hass)
+        tmp_user = {"admin": {"name": "admin", "group": "full"}}
+        tmp_group = {"full": {"name": "full", "policy": "read,write,policy,test,reboot"}}
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[tmp_user, tmp_group],
+        ):
+            coord.get_access()
+
+        assert coord.ds["access_missing"] == []
+        assert "/user/active" not in [c.args[0] for c in coord.api.query.call_args_list]
 
     def test_remote_user_gets_the_group_of_its_own_login(self, hass):
         """A RADIUS account's rights come from the group the server assigned.
@@ -918,6 +935,8 @@ class TestGetAccess:
         tmp_user = {"someone-else": {"name": "someone-else", "group": "full"}}
         tmp_group = {"full": {"name": "full", "policy": "read,write"}}
         aaa = {"default-group": ""}
+
+        coord.api.query.return_value = []
 
         with patch(
             "custom_components.mikrotik_extended.coordinator.parse_api",
