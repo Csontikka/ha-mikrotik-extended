@@ -1568,16 +1568,29 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         For a RADIUS-validated account that is the group the server sent
         back, which neither /user (the account is not local) nor /user/aaa
         (default-group only applies when the server sends none) can tell.
-        Empty when no API session of ours is listed.
+        Empty when no API session of ours is listed, or when the API logins
+        of this account disagree: a RADIUS server may hand out the group by
+        source, and the listing does not say which login is this one.
         """
         rows = self.api.query("/user/active") or []
+        groups = set()
         for row in rows:
+            # An api-ssl login is listed as "api" too, checked on RouterOS 7.
             if row.get("name") != username or row.get("via") != "api":
                 continue
             group = str(row.get("group", "") or "")
             if group:
-                return group
-        return ""
+                groups.add(group)
+        if len(groups) != 1:
+            if groups:
+                _LOGGER.debug(
+                    "Mikrotik %s lists user %s with more than one group (%s), rights not taken from the login",
+                    self.host,
+                    username,
+                    ", ".join(sorted(groups)),
+                )
+            return ""
+        return groups.pop()
 
     # ---------------------------
     #   get_access

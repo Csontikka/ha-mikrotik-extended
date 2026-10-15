@@ -876,6 +876,27 @@ class TestGetAccess:
         assert coord.ds["access"] == ["read", "test", "reboot", "api"]
         assert coord.ds["access_missing"] == ["write", "policy"]
 
+    def test_disagreeing_logins_fall_back_to_default_group(self, hass):
+        """Two API logins of the account with different groups: pick neither."""
+        coord = _make_coordinator(hass)
+        tmp_group = {
+            "full": {"name": "full", "policy": "read,write,policy,test,reboot,api"},
+            "read": {"name": "read", "policy": "read,test,reboot,api"},
+        }
+        aaa = {"default-group": "read"}
+        coord.api.query.return_value = [
+            {"name": "admin", "via": "api", "group": "full", "radius": True},
+            {"name": "admin", "via": "api", "group": "read", "radius": True},
+        ]
+
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            side_effect=[{}, tmp_group, aaa],
+        ):
+            coord.get_access()
+
+        assert coord.ds["access_missing"] == ["write", "policy"]
+
     def test_unreadable_active_listing_falls_back_to_default_group(self, hass):
         """A refused /user/active read is None, not a crash, and aaa still counts."""
         coord = _make_coordinator(hass)
