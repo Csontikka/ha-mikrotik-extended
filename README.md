@@ -51,6 +51,7 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | PoE consumption | ✅ | ✅ |
 | Live PoE output status per port | ❌ | ✅ |
 | PoE out power, voltage and current per port | ❌ | ✅ |
+| PoE power cycle button per port | ❌ | ✅ |
 | **Firewall and routing** | | |
 | NAT, mangle, filter and routing rules as switches | ❌ | ✅ |
 | Simple queues | ❌ | ✅ |
@@ -100,7 +101,7 @@ CPU load, memory/HDD usage, uptime, temperatures (CPU, board, PHY, switch), volt
 
 ### Network Interfaces
 
-Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status (the selector is part of the interface entities, so it follows that option), PoE out power, voltage and current sensors on every port that measures them, connected device MAC/IP info per interface.
+Per-interface monitoring: link status (binary sensor), enable/disable (switch), TX/RX traffic rates and totals (optional), IP address sensor per interface, SFP status and information, PoE output mode control per port with live power status (the selector is part of the interface entities, so it follows that option), a PoE power cycle button per port that cuts the supply for 5 seconds so the powered device restarts, PoE out power, voltage and current sensors on every port that measures them, connected device MAC/IP info per interface.
 
 ![Interface Traffic](docs/assets/images/screenshots/interface_tx.png)
 
@@ -393,7 +394,7 @@ What people set this integration up for, and which part of it does the job:
 
 - **Presence from the router.** Every host the router sees in its ARP, DHCP and wireless registration tables becomes a device tracker, so the phones on your WiFi drive home/away automations without an app on the phone. The *Host tracking timeout* and *Device tracker interval* options tune how quickly a device is marked away.
 - **Know when the internet fails over.** With route sensors on, the *Active WAN* sensor names the interface the default route leaves through, and the per-route binary sensors show which default routes are up. A change on that sensor is the trigger for a notification, or for pausing backups while on the LTE line.
-- **Watch a link that matters.** Netwatch probes on the router become binary sensors with round trip time and loss as attributes; a probe going down can restart a PoE-fed access point through the PoE selector, or switch a WireGuard peer on.
+- **Watch a link that matters.** Netwatch probes on the router become binary sensors with round trip time and loss as attributes; a probe going down can restart a PoE-fed access point with the PoE power cycle button, or switch a WireGuard peer on.
 - **Switch things on the router from Home Assistant.** Firewall rules (filter, NAT, mangle, raw), Kid Control, WireGuard peers, interfaces, containers, PoE output, scripts and the configuration backup are entities or actions, so a schedule or a dashboard button can toggle them. A change the router does not make fails the call, so an automation sees it.
 - **Capacity and health.** Traffic per interface and per client, CPU, memory, temperature, port error counters, firmware update availability, and the LTE / 5G modem signal on routers with a modem.
 
@@ -468,6 +469,7 @@ automation:
 | System monitoring (CPU, memory, temps, fans, PSU, uptime) | ✓ | ✓ | No |
 | Network interfaces (status, traffic, IP address) | ✓ | ✓ | Traffic: Yes |
 | PoE out control (per port) | ✓ | ? | With interfaces |
+| PoE power cycle button (per port) | ✓ | ? | With interfaces |
 | PoE out power, voltage, current (per port, where the hardware measures) | ✓ | ? | With interfaces |
 | Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | Routing rules | ✓ | ✓ | Yes |
