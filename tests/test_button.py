@@ -260,7 +260,6 @@ def _poe_button(hass, access, execute_result=True):
     coord = _make_coordinator(hass, data={"interface": {"ether5": _PORT}})
     coord.ds = {"access": set(access)}
     coord.execute = MagicMock(return_value=execute_result)
-    coord.api.last_write_failure = "refused"
     button = MikrotikPoePowerCycleButton(coord, desc)
     button._data = _PORT
     button.hass = hass
@@ -290,6 +289,7 @@ async def test_poe_power_cycle_sends_the_command_for_the_port(hass):
 async def test_poe_power_cycle_reports_a_refused_command(hass):
     """A refusal reaches the UI as an error naming the router."""
     button, coord = _poe_button(hass, access={"write"}, execute_result=False)
+    coord.api.last_write_failure = "refused"
     with pytest.raises(HomeAssistantError) as err:
         await button.async_press()
     assert err.value.translation_key == "write_refused"

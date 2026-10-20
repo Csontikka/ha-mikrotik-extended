@@ -219,6 +219,18 @@ class TestSkipSensor:
         for func in ("MikrotikPortBinarySensor", "MikrotikPoeSelect", "MikrotikSwitch", "MikrotikNATSwitch"):
             assert _skip_sensor(entry, self._desc(func=func, data_path="interface"), port, "e") is False, func
 
+    def test_poe_power_cycle_button_follows_the_interface_option_and_the_port(self):
+        """The button lives and dies with the interface entities, on PoE ports only."""
+        from custom_components.mikrotik_extended.const import CONF_SENSOR_INTERFACES
+        from custom_components.mikrotik_extended.entity import _skip_sensor
+
+        button = self._desc(func="MikrotikPoePowerCycleButton", data_path="interface", data_attribute="poe-out")
+        poe = {"e": {"type": "ether", "poe-out": "auto-on"}}
+        plain = {"e": {"type": "ether", "poe-out": "N/A"}}
+        assert _skip_sensor(self._entry(), button, poe, "e") is False
+        assert _skip_sensor(self._entry(), button, plain, "e") is True
+        assert _skip_sensor(self._entry(**{CONF_SENSOR_INTERFACES: False}), button, poe, "e") is True
+
     def test_error_counters_only_with_their_option(self):
         from custom_components.mikrotik_extended.const import CONF_SENSOR_PORT_ERRORS, CONF_SENSOR_PORT_TRAFFIC
         from custom_components.mikrotik_extended.entity import _skip_sensor
