@@ -34,6 +34,7 @@ async def async_setup_entry(
         "MikrotikScriptButton": MikrotikScriptButton,
         "MikrotikRebootButton": MikrotikRebootButton,
         "MikrotikBackupButton": MikrotikBackupButton,
+        "MikrotikPoePowerCycleButton": MikrotikPoePowerCycleButton,
     }
     await async_add_entities(hass, config_entry, dispatcher)
 
@@ -101,6 +102,45 @@ class MikrotikBackupButton(MikrotikButton):
         )
         if not success:
             raise_write_failed(self.coordinator, "/system/backup save")
+
+
+# ---------------------------
+#   MikrotikPoePowerCycleButton
+# ---------------------------
+class MikrotikPoePowerCycleButton(MikrotikButton):
+    """Cut the PoE supply of a port for a moment so the powered device restarts."""
+
+    # RouterOS's own default and what its Power Cycle button does. The mode
+    # of the port is left alone, the power simply comes back on its own.
+    DURATION = "5s"
+
+    async def async_press(self) -> None:
+        """Power cycle the port.
+
+        The command lives in the PoE menu, which is a view of the ethernet
+        ports addressed by interface name, so the row is looked up by name
+        the same way the PoE out selector finds it.
+        """
+        if "write" not in self.coordinator.ds["access"]:
+            raise_no_write_access(self.coordinator.host)
+
+        port = self._data[self.entity_description.data_uid]
+        _LOGGER.info(
+            "Mikrotik %s power cycling PoE on %s for %s",
+            self.coordinator.host,
+            port,
+            self.DURATION,
+        )
+        success = await self.hass.async_add_executor_job(
+            self.coordinator.execute,
+            "/interface/ethernet/poe",
+            "power-cycle",
+            "name",
+            port,
+            {"duration": self.DURATION},
+        )
+        if not success:
+            raise_write_failed(self.coordinator, f"PoE power cycle {port}")
 
 
 # ---------------------------

@@ -87,13 +87,17 @@ def _same_text(left, right) -> bool:
     return left is not None and right is not None and str(left).lower() == str(right).lower()
 
 
+POE_PORT_CONTROLS = frozenset({"MikrotikPoeSelect", "MikrotikPoePowerCycleButton"})
+
+
 def _skip_non_poe_port(entity_description, item) -> bool:
-    """Only a port that can actually supply power gets a PoE selector.
+    """Only a port that can actually supply power gets the PoE controls.
 
     Ports without the capability report a placeholder instead of a mode, so
-    creating a selector for them would offer a control that does nothing.
+    creating a selector or a power cycle button for them would offer a
+    control that does nothing.
     """
-    if entity_description.func != "MikrotikPoeSelect":
+    if entity_description.func not in POE_PORT_CONTROLS:
         return False
     return not _has_poe(item)
 

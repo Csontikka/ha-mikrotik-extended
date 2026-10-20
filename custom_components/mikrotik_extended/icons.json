@@ -117,6 +117,9 @@
       }
     },
     "button": {
+      "poe_power_cycle": {
+        "default": "mdi:power-cycle"
+      },
       "reboot": {
         "default": "mdi:restart"
       }

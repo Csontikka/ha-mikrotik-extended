@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import CONF_SENSOR_SCRIPTS, DOMAIN
@@ -58,6 +59,25 @@ SENSOR_TYPES: tuple[MikrotikButtonEntityDescription, ...] = (
         data_path="resource",
         data_attribute="board-name",
         func="MikrotikBackupButton",
+    ),
+    MikrotikButtonEntityDescription(
+        key="poe_power_cycle",
+        name="PoE power cycle",
+        translation_key="poe_power_cycle",
+        icon="mdi:power-cycle",
+        device_class=None,
+        entity_category=EntityCategory.CONFIG,
+        # Same device and same port row as the PoE out selector, so the
+        # button sits next to it and exists only where that selector does.
+        ha_group="data__default-name",
+        ha_connection=CONNECTION_NETWORK_MAC,
+        ha_connection_value="data__port-mac-address",
+        data_path="interface",
+        data_attribute="poe-out",
+        data_name="default-name",
+        data_uid="name",
+        data_reference="default-name",
+        func="MikrotikPoePowerCycleButton",
     ),
     MikrotikButtonEntityDescription(
         key="script",
