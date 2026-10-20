@@ -18,6 +18,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.mikrotik_extended.button import (
     MikrotikBackupButton,
     MikrotikButton,
+    MikrotikPoePowerCycleButton,
     MikrotikRebootButton,
     MikrotikScriptButton,
     async_setup_entry,
@@ -82,6 +83,7 @@ async def test_async_setup_entry_invokes_add_entities(hass):
     _, _, dispatcher = mock_add.await_args.args
     assert set(dispatcher.keys()) == {
         "MikrotikButton",
+        "MikrotikPoePowerCycleButton",
         "MikrotikScriptButton",
         "MikrotikRebootButton",
         "MikrotikBackupButton",
@@ -244,3 +246,75 @@ def test_backup_button_is_declared():
     assert "backup" in keys
     backup = next(d for d in SENSOR_TYPES if d.key == "backup")
     assert backup.func == "MikrotikBackupButton"
+
+
+# ---------------------------------------------------------------------------
+# PoE power cycle
+# ---------------------------------------------------------------------------
+
+_PORT = {"name": "ether5", "default-name": "ether5", "poe-out": "auto-on"}
+
+
+def _poe_button(hass, access, execute_result=True):
+    desc = _make_description(func="MikrotikPoePowerCycleButton", key="poe_power_cycle", data_path="interface", data_attribute="poe-out", data_uid="name")
+    coord = _make_coordinator(hass, data={"interface": {"ether5": _PORT}})
+    coord.ds = {"access": set(access)}
+    coord.execute = MagicMock(return_value=execute_result)
+    coord.api.last_write_failure = "refused"
+    button = MikrotikPoePowerCycleButton(coord, desc)
+    button._data = _PORT
+    button.hass = hass
+    return button, coord
+
+
+async def test_poe_power_cycle_aborts_without_write_access(hass):
+    """Cutting power is a write; a read only account is told so, nothing is sent."""
+    button, coord = _poe_button(hass, access={"read"})
+    with pytest.raises(HomeAssistantError) as err:
+        await button.async_press()
+    assert err.value.translation_key == "no_write_access"
+    coord.execute.assert_not_called()
+
+
+async def test_poe_power_cycle_sends_the_command_for_the_port(hass):
+    """The PoE menu is addressed by interface name, with RouterOS's default duration.
+
+    The command is the one behind the Power Cycle button of the router's own
+    UI; the mode of the port is not touched, so the power returns by itself.
+    """
+    button, coord = _poe_button(hass, access={"write"})
+    await button.async_press()
+    coord.execute.assert_called_once_with("/interface/ethernet/poe", "power-cycle", "name", "ether5", {"duration": "5s"})
+
+
+async def test_poe_power_cycle_reports_a_refused_command(hass):
+    """A refusal reaches the UI as an error naming the router."""
+    button, coord = _poe_button(hass, access={"write"}, execute_result=False)
+    with pytest.raises(HomeAssistantError) as err:
+        await button.async_press()
+    assert err.value.translation_key == "write_refused"
+    assert err.value.translation_placeholders["host"] == coord.host
+
+
+def test_poe_power_cycle_button_is_declared_next_to_the_selector():
+    """Same device and same port row as the PoE out selector."""
+    from custom_components.mikrotik_extended.button_types import SENSOR_TYPES
+    from custom_components.mikrotik_extended.select_types import SENSOR_TYPES as SELECTS
+
+    button = next(d for d in SENSOR_TYPES if d.key == "poe_power_cycle")
+    selector = next(d for d in SELECTS if d.key == "poe_out")
+    assert button.func == "MikrotikPoePowerCycleButton"
+    for attr in ("ha_group", "ha_connection", "ha_connection_value", "data_path", "data_uid", "data_reference"):
+        assert getattr(button, attr) == getattr(selector, attr), attr
+
+
+def test_poe_power_cycle_button_only_on_poe_ports():
+    """A port that cannot supply power gets no button, like it gets no selector."""
+    from custom_components.mikrotik_extended.entity import _skip_non_poe_port
+
+    desc = MagicMock(func="MikrotikPoePowerCycleButton")
+    assert _skip_non_poe_port(desc, {"poe-out": "N/A"}) is True
+    assert _skip_non_poe_port(desc, {"poe-out": ""}) is True
+    assert _skip_non_poe_port(desc, {}) is True
+    assert _skip_non_poe_port(desc, {"poe-out": "auto-on"}) is False
+    assert _skip_non_poe_port(desc, {"poe-out": "off"}) is False
