@@ -321,6 +321,9 @@
       "backup": {
         "name": "Configuration backup"
       },
+      "poe_power_cycle": {
+        "name": "PoE 电源循环"
+      },
       "reboot": {
         "name": "重启"
       }

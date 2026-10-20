@@ -321,6 +321,9 @@
       "backup": {
         "name": "Konfiguráció mentése"
       },
+      "poe_power_cycle": {
+        "name": "PoE tápciklus"
+      },
       "reboot": {
         "name": "Újraindítás"
       }

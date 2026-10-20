@@ -321,6 +321,9 @@
       "backup": {
         "name": "Configuration backup"
       },
+      "poe_power_cycle": {
+        "name": "Reštart napájania PoE"
+      },
       "reboot": {
         "name": "Reštartovať"
       }
