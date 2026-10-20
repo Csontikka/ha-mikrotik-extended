@@ -20,14 +20,14 @@ Full-featured Home Assistant integration for MikroTik routers running **RouterOS
 Home Assistant ships its own `mikrotik` integration, and it grew a lot in 2026: the
 **2026.9** release added PoE control, interface switches and link status, and **2026.10**
 adds a reconfigure flow and the removal of interfaces that disappeared. The table below is
-a snapshot taken on **3 October 2026**, checked against the source of both projects, with
-the core integration as in the **2026.10.0b0** beta. It will be checked again when 2026.10
+a snapshot taken on **20 October 2026**, checked against the source of both projects, with
+the core integration as in the **2026.10.2** release. It will be checked again when 2026.11
 is released.
 
 The two can be installed side by side. This one is a standalone integration with its own
 domain, `mikrotik_extended`, so nothing conflicts.
 
-| Feature | Core<br>2026.10.0b0 | MikroTik<br>Extended |
+| Feature | Core<br>2026.10.2 | MikroTik<br>Extended |
 | --- | :---: | :---: |
 | **System** | | |
 | CPU load, memory and disk usage, uptime | ✅ | ✅ |
@@ -42,7 +42,7 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | Configuration backup | ✅ | ✅ |
 | **Interfaces** | | |
 | Link status | ✅ | ✅ |
-| Enable and disable | ether, wlan | ✅ |
+| Enable and disable | ether, wlan, wifi | ✅ |
 | TX and RX traffic rates and totals | ❌ | ✅ |
 | IP address per interface | ❌ | ✅ |
 | SFP status and information | ❌ | ✅ |
@@ -50,6 +50,7 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | PoE output mode control | ✅ | ✅ |
 | PoE consumption | ✅ | ✅ |
 | Live PoE output status per port | ❌ | ✅ |
+| PoE out power, voltage and current per port | ❌ | ✅ |
 | **Firewall and routing** | | |
 | NAT, mangle, filter and routing rules as switches | ❌ | ✅ |
 | Simple queues | ❌ | ✅ |
