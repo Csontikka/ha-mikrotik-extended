@@ -3465,6 +3465,64 @@ class TestNetworkGetters:
         coord.get_dhcp()
         assert coord.ds["dhcp_leases"]["total"] == 1
 
+    @pytest.mark.parametrize("flip", [False, True])
+    @pytest.mark.parametrize(
+        ("winner", "loser"),
+        [
+            # Both waiting: the one seen more recently is the device's.
+            ({"status": "waiting", "last-seen": "3m12s"}, {"status": "waiting", "last-seen": "5w2d"}),
+            # A lease never seen ranks below one that was.
+            ({"status": "waiting", "last-seen": "5w2d"}, {"status": "waiting", "last-seen": "never"}),
+            # An offered lease is further along than a waiting one.
+            ({"status": "offered"}, {"status": "waiting", "last-seen": "1s"}),
+            # A disabled lease loses even when the router calls it bound.
+            ({"status": "waiting", "last-seen": "1h"}, {"status": "bound", "active-address": "10.0.9.9", "disabled": "true"}),
+        ],
+        ids=["more_recent", "never_seen", "offered", "disabled_bound"],
+    )
+    def test_one_lease_per_mac_ranks_the_rows(self, winner, loser, flip):
+        """With no plain bound lease, the order the router lists them in does not decide."""
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        win = {"mac-address": "02:00:00:00:00:01", "address": "10.0.1.1", **winner}
+        lose = {"mac-address": "02:00:00:00:00:01", "address": "10.0.2.2", **loser}
+        rows = [lose, win] if flip else [win, lose]
+        assert _one_lease_per_mac(rows) == [win]
+
+    def test_one_lease_per_mac_leaves_other_devices_and_rows_without_mac_alone(self):
+        """One lease per device stays as it was, in the router's order."""
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        a = {"mac-address": "02:00:00:00:00:01", "status": "waiting"}
+        b = {"mac-address": "02:00:00:00:00:02", "status": "bound"}
+        no_mac = {"address": "10.0.0.9"}
+        kept = _one_lease_per_mac([a, no_mac, b])
+        assert a in kept and b in kept
+        assert kept.index(a) < kept.index(b)
+
+    def test_get_dhcp_other_lease_brings_its_comment_and_its_server(self, hass):
+        """The lease that lost still names the device and its server is read for it."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {"dhcp-main": {"name": "dhcp-main", "interface": "vlan10"}}
+        coord.ds["arp"] = {}
+        old, current = self._two_server_leases("old_first")
+        old["comment"] = "Kitchen speaker"
+        servers = [{"name": "dhcp-main", "interface": "vlan10"}, {"name": "dhcp-iot", "interface": "vlan20"}]
+
+        def query(path, *a, **k):
+            if path == "/ip/dhcp-server/lease":
+                return [dict(old), dict(current)]
+            if path == "/ip/dhcp-server":
+                return [dict(r) for r in servers]
+            return []
+
+        coord.api.query.side_effect = query
+        coord.get_dhcp()
+
+        assert coord.ds["dhcp"]["02:00:00:00:00:01"]["comment"] == "Kitchen speaker"
+        iot = next(lease for lease in coord.ds["dhcp_leases"]["leases"] if lease["server"] == "dhcp-iot")
+        assert iot["interface"] == "vlan20"
+
     def test_one_lease_per_mac_keeps_a_failed_query_failed(self):
         """None is a failed read and must reach the parser as one, not as an empty table."""
         from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac

@@ -438,21 +438,36 @@ def _lte_number(value):
     return int(number) if number.is_integer() else number
 
 
+def _lease_rank(row: dict) -> tuple:
+    """How sure a lease row is to be the address its device holds now.
+
+    In order: an enabled lease, a bound one, one with an active address, one
+    in any state but waiting, and the one seen most recently. RouterOS gives
+    last-seen as the time since, so a smaller value is more recent; a lease
+    never seen ranks below every other.
+    """
+    enabled = str(row.get("disabled", "false")).lower() not in ("true", "yes")
+    status = row.get("status")
+    last_seen = str(row.get("last-seen", "") or "")
+    age = float("inf") if last_seen in ("", "never") else _parse_duration_seconds(last_seen)
+    return (enabled, status == "bound", bool(row.get("active-address")), status not in (None, "", "waiting"), -age)
+
+
 def _one_lease_per_mac(rows: list | None) -> list | None:
-    """Keep one lease row per MAC address, the bound one when there is one.
+    """Keep one lease row per MAC address, the one the device holds now.
 
     The DHCP store is keyed by MAC, so with leases for the same device on
     two servers the later row used to overwrite the earlier one, and an old
     lease waiting on another network could hide the one the device holds
-    now. A bound lease is the address the device has; when none is bound the
-    later row wins as before. A failed query stays a failed query.
+    now. The rows are ranked by _lease_rank; on a full tie the later row wins
+    as before. A failed query stays a failed query.
     """
     if rows is None:
         return None
     chosen: dict = {}
     for row in rows:
         mac = row.get("mac-address")
-        if mac in chosen and chosen[mac].get("status") == "bound" and row.get("status") != "bound":
+        if mac in chosen and _lease_rank(row) < _lease_rank(chosen[mac]):
             continue
         chosen[mac] = row
     return list(chosen.values())
@@ -3457,6 +3472,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         dhcpserver_query = False
         for uid in self.ds["dhcp"]:
             dhcpserver_query = self._process_dhcp_entry(uid, dhcpserver_query)
+
+        # The other leases of a device name their own server, which may not
+        # have been read yet, and may carry the comment the user gave it.
+        if not dhcpserver_query and any(row.get("server") not in self.ds["dhcp-server"] for row in self._dhcp_other_leases):
+            self.get_dhcp_server()
+        for row in self._dhcp_other_leases:
+            entry = self.ds["dhcp"].get(row["mac-address"])
+            comment = str(row.get("comment", "") or "")
+            if entry is not None and not entry["comment"] and comment and _lease_rank(row)[0]:
+                entry["comment"] = comment
 
         self._build_dhcp_lease_summary()
 
