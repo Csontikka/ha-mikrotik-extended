@@ -3617,6 +3617,53 @@ class TestNetworkGetters:
         iot = {"mac-address": mac, "address": "10.0.20.5", "active-address": "10.0.20.5", "server": "iot", "status": "bound", "last-seen": "2h"}
         assert _one_lease_per_mac([iot, lan] if flip else [lan, iot]) == [lan]
 
+    @pytest.mark.parametrize("flip", [False, True])
+    def test_server_is_as_fresh_as_its_freshest_bound_lease(self, flip):
+        """On one server the router's order picks among bound leases; across servers the freshest of each counts.
+
+        lan holds a lease seen 10 s ago, listed before one seen an hour ago,
+        so the hour old one is lan's pick, yet lan is fresher than iot.
+        """
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        mac = "02:00:00:00:00:01"
+
+        def bound(addr, server, seen):
+            return {"mac-address": mac, "address": addr, "active-address": addr, "server": server, "status": "bound", "last-seen": seen}
+
+        lan_fresh, lan_old, iot = bound("10.0.10.5", "lan", "10s"), bound("10.0.10.6", "lan", "1h"), bound("10.0.20.5", "iot", "5m")
+        rows = [iot, lan_fresh, lan_old] if flip else [lan_fresh, lan_old, iot]
+        assert _one_lease_per_mac(rows) == [lan_old]
+
+    def test_host_on_two_vlans_shows_the_lease_it_renewed_last(self):
+        """The accepted cost: one MAC bound on two VLANs follows the renewals, both addresses are its own."""
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        mac = "02:00:00:00:00:01"
+
+        def leases(v10, v20):
+            return [
+                {"mac-address": mac, "address": "10.0.10.2", "active-address": "10.0.10.2", "server": "v10", "status": "bound", "last-seen": v10},
+                {"mac-address": mac, "address": "10.0.20.2", "active-address": "10.0.20.2", "server": "v20", "status": "bound", "last-seen": v20},
+            ]
+
+        assert _one_lease_per_mac(leases("30s", "4m"))[0]["address"] == "10.0.10.2"
+        assert _one_lease_per_mac(leases("5m", "20s"))[0]["address"] == "10.0.20.2"
+
+    def test_get_dhcp_lease_for_all_servers_lends_no_comment_either(self, hass):
+        """The other way round too: a lease for all servers may sit on the kept lease's own server."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {"lan": {"name": "lan", "interface": "bridge"}}
+        coord.ds["arp"] = {}
+        mac = "02:00:00:00:00:01"
+        kept = {"mac-address": mac, "address": "10.0.0.13", "active-address": "10.0.0.13", "server": "lan", "status": "bound"}
+        other = {"mac-address": mac, "address": "10.0.0.12", "status": "waiting", "last-seen": "1m", "comment": "Laptop"}
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(other), dict(kept)] if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+
+        assert coord.ds["dhcp"][mac]["comment"] == ""
+
     def test_get_dhcp_lease_for_all_servers_lends_no_comment(self, hass):
         """A kept lease for all servers cannot tell a lease on a named server apart from a device behind a repeater."""
         coord = _make_coordinator(hass)

@@ -489,6 +489,12 @@ def _one_lease_per_mac(rows: list | None) -> list | None:
     now. The best lease is picked on each server first, where bound leases
     keep the router's order, then across servers, where the more recently
     seen one wins. A failed query stays a failed query.
+
+    The cost of the last step: a host that really holds a bound lease on two
+    VLANs under one MAC shows the address it renewed last, so it alternates
+    between its two addresses. Both are its own. Holding on to the previous
+    choice instead would keep a device that moved back to a network on the
+    other network's address until that lease expires, which is #40 again.
     """
     if rows is None:
         return None
@@ -497,8 +503,15 @@ def _one_lease_per_mac(rows: list | None) -> list | None:
         by_mac.setdefault(row.get("mac-address"), {}).setdefault(row.get("server"), []).append(row)
     kept = []
     for servers in by_mac.values():
-        per_server = [_best_row(leases, bound_by_age=False) for leases in servers.values()]
-        kept.append(_best_row(per_server, bound_by_age=True))
+        best, best_rank = None, None
+        for leases in servers.values():
+            row = _best_row(leases, bound_by_age=False)
+            # A server is as fresh as its freshest lease of the same standing,
+            # not only the row that won there by the router's order.
+            rank = max(_lease_rank(lease, bound_by_age=True) for lease in leases if _lease_rank(lease)[:4] == _lease_rank(row)[:4])
+            if best_rank is None or rank >= best_rank:
+                best, best_rank = row, rank
+        kept.append(best)
     return kept
 
 
