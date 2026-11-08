@@ -738,6 +738,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             self.debug = True
 
         self._stale_counters: dict[str, dict] = {}
+        # Leases of a MAC that already has one in the DHCP store, kept only for
+        # the lease count: the store holds one lease per device.
+        self._dhcp_other_leases: list[dict] = []
 
         self.nat_removed = {}
         self.mangle_removed = {}
@@ -3419,9 +3422,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_dhcp(self) -> None:
         """Get DHCP data from Mikrotik"""
+        rows = self.api.query("/ip/dhcp-server/lease")
+        kept = _one_lease_per_mac(rows)
+        if rows is not None:
+            kept_ids = {id(row) for row in kept}
+            self._dhcp_other_leases = [row for row in rows if id(row) not in kept_ids and row.get("mac-address")]
         self.ds["dhcp"] = parse_api(
             data=self.ds["dhcp"],
-            source=_one_lease_per_mac(self.api.query("/ip/dhcp-server/lease")),
+            source=kept,
             key="mac-address",
             vals=[
                 {"name": "mac-address"},
@@ -3505,6 +3513,25 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     "status": entry.get("status", "unknown"),
                     "server": entry.get("server", "unknown"),
                     "interface": entry.get("interface", "unknown"),
+                }
+            )
+        # A device with leases on more than one server is one entry in the
+        # store, but every lease counts and is listed.
+        for row in self._dhcp_other_leases:
+            total += 1
+            status = str(row.get("status", "unknown") or "unknown")
+            if status == "bound":
+                bound += 1
+            address = row.get("active-address") or row.get("address") or "unknown"
+            server = str(row.get("server", "unknown") or "unknown")
+            leases.append(
+                {
+                    "mac": row["mac-address"],
+                    "address": address if is_valid_ip(address) else "unknown",
+                    "host_name": str(row.get("host-name", "unknown") or "unknown"),
+                    "status": status,
+                    "server": server,
+                    "interface": self.ds["dhcp-server"].get(server, {}).get("interface", "unknown"),
                 }
             )
         self.ds["dhcp_leases"] = {

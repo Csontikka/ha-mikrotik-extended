@@ -3435,6 +3435,36 @@ class TestNetworkGetters:
 
         assert coord.ds["dhcp"]["02:00:00:00:00:01"]["address"] == "10.0.20.5"
 
+    def test_get_dhcp_counts_every_lease_of_a_device_on_two_servers(self, hass):
+        """The store holds one lease per device, the lease sensor counts and lists both."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {
+            "dhcp-main": {"name": "dhcp-main", "interface": "vlan10"},
+            "dhcp-iot": {"name": "dhcp-iot", "interface": "vlan20"},
+        }
+        coord.ds["arp"] = {}
+        reply = {"rows": self._two_server_leases("current_first")}
+        coord.api.query.side_effect = lambda path, *a, **k: ([dict(r) for r in reply["rows"]] if reply["rows"] is not None else None) if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+        summary = coord.ds["dhcp_leases"]
+        assert (summary["total"], summary["bound"]) == (2, 1)
+        assert sorted((lease["server"], lease["address"], lease["status"], lease["interface"]) for lease in summary["leases"]) == [
+            ("dhcp-iot", "192.168.20.214", "waiting", "vlan20"),
+            ("dhcp-main", "192.168.10.253", "bound", "vlan10"),
+        ]
+
+        # A failed read says nothing about the leases, both stay counted.
+        reply["rows"] = None
+        coord.get_dhcp()
+        assert coord.ds["dhcp_leases"]["total"] == 2
+
+        # The old lease deleted on the router leaves the count at once: it was
+        # never an entry of its own in the store.
+        reply["rows"] = self._two_server_leases("current_first")[:1]
+        coord.get_dhcp()
+        assert coord.ds["dhcp_leases"]["total"] == 1
+
     def test_one_lease_per_mac_keeps_a_failed_query_failed(self):
         """None is a failed read and must reach the parser as one, not as an empty table."""
         from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
