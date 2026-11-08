@@ -3479,8 +3479,11 @@ class TestNetworkGetters:
             ({"status": "waiting", "last-seen": "1h"}, {"status": "bound", "active-address": "10.0.9.9", "disabled": "true"}),
             # The API library hands the flag over as a bool, checked on the CHR.
             ({"status": "waiting", "last-seen": "1h"}, {"status": "bound", "active-address": "10.0.9.9", "disabled": True}),
+            # Busy says nothing about the device holding the address: it ranks
+            # with waiting, so the more recent lease wins.
+            ({"status": "waiting", "last-seen": "2m"}, {"status": "busy", "last-seen": "3h"}),
         ],
-        ids=["more_recent", "never_seen", "offered", "disabled_bound", "disabled_bound_as_bool"],
+        ids=["more_recent", "never_seen", "offered", "disabled_bound", "disabled_bound_as_bool", "busy_is_no_better"],
     )
     def test_one_lease_per_mac_ranks_the_rows(self, winner, loser, flip):
         """With no plain bound lease, the order the router lists them in does not decide."""
@@ -3524,6 +3527,98 @@ class TestNetworkGetters:
         assert coord.ds["dhcp"]["02:00:00:00:00:01"]["comment"] == "Kitchen speaker"
         iot = next(lease for lease in coord.ds["dhcp_leases"]["leases"] if lease["server"] == "dhcp-iot")
         assert iot["interface"] == "vlan20"
+
+    def test_one_lease_per_mac_full_tie_keeps_the_later_row(self):
+        """Nothing to tell two leases apart: the router's order decides, as it always did."""
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        first = {"mac-address": "02:00:00:00:00:01", "address": "10.0.1.1", "status": "waiting", "last-seen": "1h"}
+        second = {"mac-address": "02:00:00:00:00:01", "address": "10.0.2.2", "status": "waiting", "last-seen": "1h"}
+        assert _one_lease_per_mac([first, second]) == [second]
+
+    def test_bound_leases_behind_a_repeater_do_not_follow_every_renewal(self, hass):
+        """Several devices behind a repeater share one MAC, each with a bound lease.
+
+        Their last-seen moves with every renewal; if it decided, the address of
+        the one host for that MAC would jump between them from poll to poll.
+        """
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {"lan": {"name": "lan", "interface": "bridge"}}
+        coord.ds["arp"] = {}
+        mac = "02:00:00:00:00:01"
+
+        def leases(seen):
+            return [{"mac-address": mac, "address": f"10.0.0.{n}", "active-address": f"10.0.0.{n}", "server": "lan", "status": "bound", "last-seen": age} for n, age in zip((11, 12, 13), seen, strict=True)]
+
+        reply = {"rows": leases(("10s", "2m", "5m"))}
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(r) for r in reply["rows"]] if path == "/ip/dhcp-server/lease" else []
+        coord.get_dhcp()
+        assert coord.ds["dhcp"][mac]["address"] == "10.0.0.13"
+        reply["rows"] = leases(("5m", "10s", "2m"))
+        coord.get_dhcp()
+        assert coord.ds["dhcp"][mac]["address"] == "10.0.0.13"
+        assert coord.ds["dhcp_leases"]["total"] == 3
+
+    def test_get_dhcp_comment_comes_only_from_a_lease_on_another_server(self, hass):
+        """Leases on the same server under one MAC are different devices; their names are not borrowed.
+
+        A disabled lease lends nothing either, a comment of the kept lease is
+        never replaced, and a comment cleared on the router is gone on the next
+        read.
+        """
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {
+            "lan": {"name": "lan", "interface": "bridge"},
+            "iot": {"name": "iot", "interface": "vlan20"},
+        }
+        coord.ds["arp"] = {}
+        mac = "02:00:00:00:00:01"
+        kept = {"mac-address": mac, "address": "10.0.0.13", "active-address": "10.0.0.13", "server": "lan", "status": "bound"}
+        same_server = {"mac-address": mac, "address": "10.0.0.12", "server": "lan", "status": "waiting", "last-seen": "1m", "comment": "Laptop"}
+        disabled_other = {"mac-address": mac, "address": "10.0.20.5", "server": "iot", "status": "waiting", "disabled": True, "comment": "Old name"}
+        reply = {"rows": [same_server, disabled_other, kept]}
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(r) for r in reply["rows"]] if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+        assert coord.ds["dhcp"][mac]["comment"] == ""
+
+        other = {**disabled_other, "disabled": False, "comment": "Phone"}
+        reply["rows"] = [same_server, other, kept]
+        coord.get_dhcp()
+        assert coord.ds["dhcp"][mac]["comment"] == "Phone"
+
+        reply["rows"] = [same_server, other, {**kept, "comment": "Mine"}]
+        coord.get_dhcp()
+        assert coord.ds["dhcp"][mac]["comment"] == "Mine"
+
+        reply["rows"] = [same_server, {**other, "comment": ""}, kept]
+        coord.get_dhcp()
+        assert coord.ds["dhcp"][mac]["comment"] == ""
+
+    def test_get_dhcp_lease_for_all_servers_does_not_read_the_servers(self, hass):
+        """A lease for all servers has no server field; it must not cost a server read every poll."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {"dhcp-main": {"name": "dhcp-main", "interface": "vlan10"}}
+        coord.ds["arp"] = {}
+        old, current = self._two_server_leases("old_first")
+        del old["server"]
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(old), dict(current)] if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+
+        paths = [c.args[0] for c in coord.api.query.call_args_list]
+        assert "/ip/dhcp-server" not in paths
+        assert coord.ds["dhcp_leases"]["total"] == 2
+
+    @pytest.mark.parametrize(
+        ("raw", "seconds"),
+        [("3m12s", 192), ("5w2d", 3196800), ("1h", 3600), ("500ms", 0), ("1s200ms", 1), ("never", 0), ("", 0)],
+    )
+    def test_parse_duration_seconds_reads_milliseconds_as_their_own_unit(self, raw, seconds):
+        """'500ms' is half a second, not 500 minutes."""
+        from custom_components.mikrotik_extended.coordinator import _parse_duration_seconds
+
+        assert _parse_duration_seconds(raw) == seconds
 
     def test_one_lease_per_mac_keeps_a_failed_query_failed(self):
         """None is a failed read and must reach the parser as one, not as an empty table."""

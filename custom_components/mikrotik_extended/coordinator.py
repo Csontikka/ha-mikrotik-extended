@@ -228,21 +228,15 @@ def _split_queue_fields(entry: dict, vals: dict) -> None:
 
 
 def _parse_duration_seconds(s: str) -> int:
-    """Parse a MikroTik duration string like '3m45s' into total seconds."""
+    """Parse a MikroTik duration string like '3m45s' into total seconds.
+
+    Milliseconds are read as their own unit and left out of the seconds, so
+    "500ms" is not taken for 500 minutes.
+    """
     if not s or s.lower() in ("never", ""):
         return 0
-    total = 0
-    for pattern, multiplier in [
-        (r"(\d+)w", 604800),
-        (r"(\d+)d", 86400),
-        (r"(\d+)h", 3600),
-        (r"(\d+)m", 60),
-        (r"(\d+)s", 1),
-    ]:
-        m = re.search(pattern, s)
-        if m:
-            total += int(m.group(1)) * multiplier
-    return total
+    multipliers = {"w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1, "ms": 0}
+    return sum(int(number) * multipliers[unit] for number, unit in re.findall(r"(\d+)(ms|w|d|h|m|s)", s))
 
 
 def is_valid_ip(address):
@@ -438,19 +432,32 @@ def _lte_number(value):
     return int(number) if number.is_integer() else number
 
 
+# How far along a lease is. Anything else, busy and testing among them, says
+# no more about the device holding the address than waiting does.
+_LEASE_STATUS_ORDER = {"bound": 2, "offered": 1}
+
+
 def _lease_rank(row: dict) -> tuple:
     """How sure a lease row is to be the address its device holds now.
 
     In order: an enabled lease, a bound one, one with an active address, one
-    in any state but waiting, and the one seen most recently. RouterOS gives
-    last-seen as the time since, so a smaller value is more recent; a lease
-    never seen ranks below every other.
+    further along than waiting, and, only among leases that are not bound,
+    the one seen most recently. Bound leases of one MAC, devices behind a
+    repeater for example, tie, so the router's order keeps the choice stable
+    instead of following every renewal. RouterOS gives last-seen as the time
+    since, so a smaller value is more recent; a lease never seen ranks below
+    every other. The disabled flag comes as a bool from the API library and
+    as text elsewhere, both are read.
     """
     enabled = str(row.get("disabled", "false")).lower() not in ("true", "yes")
     status = row.get("status")
+    bound = status == "bound"
     last_seen = str(row.get("last-seen", "") or "")
-    age = float("inf") if last_seen in ("", "never") else _parse_duration_seconds(last_seen)
-    return (enabled, status == "bound", bool(row.get("active-address")), status not in (None, "", "waiting"), -age)
+    if bound:
+        age = 0.0
+    else:
+        age = float("inf") if last_seen in ("", "never") else _parse_duration_seconds(last_seen)
+    return (enabled, bound, bool(row.get("active-address")), _LEASE_STATUS_ORDER.get(status, 0), -age)
 
 
 def _one_lease_per_mac(rows: list | None) -> list | None:
@@ -3475,12 +3482,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         # The other leases of a device name their own server, which may not
         # have been read yet, and may carry the comment the user gave it.
-        if not dhcpserver_query and any(row.get("server") not in self.ds["dhcp-server"] for row in self._dhcp_other_leases):
+        # A lease for all servers names none, so it does not ask for a read.
+        if not dhcpserver_query and any(row.get("server") and row["server"] not in self.ds["dhcp-server"] for row in self._dhcp_other_leases):
             self.get_dhcp_server()
         for row in self._dhcp_other_leases:
             entry = self.ds["dhcp"].get(row["mac-address"])
             comment = str(row.get("comment", "") or "")
-            if entry is not None and not entry["comment"] and comment and _lease_rank(row)[0]:
+            # Only a lease on another server is the same device on another
+            # network. Leases on the same server under one MAC are different
+            # devices behind a repeater, and one of their names would be wrong.
+            if entry is not None and not entry["comment"] and comment and _lease_rank(row)[0] and row.get("server", "unknown") != entry["server"]:
                 entry["comment"] = comment
 
         self._build_dhcp_lease_summary()
