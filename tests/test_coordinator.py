@@ -3477,8 +3477,10 @@ class TestNetworkGetters:
             ({"status": "offered"}, {"status": "waiting", "last-seen": "1s"}),
             # A disabled lease loses even when the router calls it bound.
             ({"status": "waiting", "last-seen": "1h"}, {"status": "bound", "active-address": "10.0.9.9", "disabled": "true"}),
+            # The API library hands the flag over as a bool, checked on the CHR.
+            ({"status": "waiting", "last-seen": "1h"}, {"status": "bound", "active-address": "10.0.9.9", "disabled": True}),
         ],
-        ids=["more_recent", "never_seen", "offered", "disabled_bound"],
+        ids=["more_recent", "never_seen", "offered", "disabled_bound", "disabled_bound_as_bool"],
     )
     def test_one_lease_per_mac_ranks_the_rows(self, winner, loser, flip):
         """With no plain bound lease, the order the router lists them in does not decide."""
