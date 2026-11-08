@@ -2676,6 +2676,14 @@ class TestGetWireguardPeers:
         assert coord.ds["wireguard_peers"]["p2"]["connected"] is False  # 5m = 300s > 180
         assert coord.ds["wireguard_peers"]["p3"]["name"] == "longpubk"  # first 8 chars
 
+    def test_handshake_under_a_second_ago_is_connected(self, hass):
+        """RouterOS gives a fresh handshake in milliseconds; it is a handshake, not none."""
+        coord = _make_coordinator(hass)
+        peers = {"p1": {".id": "*p1", "public-key": "pubkey1", "interface": "wg0", "peer-name": "a", "last-handshake": "800ms", "enabled": True}}
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", return_value=peers):
+            coord.get_wireguard_peers()
+        assert coord.ds["wireguard_peers"]["p1"]["connected"] is True
+
 
 # ---------------------------------------------------------------------------
 # get_device_mode / get_packages / get_containers / get_kidcontrol / get_ppp
@@ -3595,6 +3603,34 @@ class TestNetworkGetters:
         coord.get_dhcp()
         assert coord.ds["dhcp"][mac]["comment"] == ""
 
+    @pytest.mark.parametrize("flip", [False, True])
+    def test_device_back_on_a_network_while_its_other_lease_is_still_bound(self, flip):
+        """A laptop moved to another network and back; both leases stay bound until they expire.
+
+        Across servers the lease seen more recently is the network the device
+        is on now, whatever order the router lists them in.
+        """
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        mac = "02:00:00:00:00:01"
+        lan = {"mac-address": mac, "address": "10.0.10.5", "active-address": "10.0.10.5", "server": "lan", "status": "bound", "last-seen": "20s"}
+        iot = {"mac-address": mac, "address": "10.0.20.5", "active-address": "10.0.20.5", "server": "iot", "status": "bound", "last-seen": "2h"}
+        assert _one_lease_per_mac([iot, lan] if flip else [lan, iot]) == [lan]
+
+    def test_get_dhcp_lease_for_all_servers_lends_no_comment(self, hass):
+        """A kept lease for all servers cannot tell a lease on a named server apart from a device behind a repeater."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {"lan": {"name": "lan", "interface": "bridge"}}
+        coord.ds["arp"] = {}
+        mac = "02:00:00:00:00:01"
+        kept = {"mac-address": mac, "address": "10.0.0.13", "active-address": "10.0.0.13", "status": "bound"}
+        other = {"mac-address": mac, "address": "10.0.0.12", "server": "lan", "status": "waiting", "last-seen": "1m", "comment": "Laptop"}
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(other), dict(kept)] if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+
+        assert coord.ds["dhcp"][mac]["comment"] == ""
+
     def test_get_dhcp_lease_for_all_servers_does_not_read_the_servers(self, hass):
         """A lease for all servers has no server field; it must not cost a server read every poll."""
         coord = _make_coordinator(hass)
@@ -3612,10 +3648,10 @@ class TestNetworkGetters:
 
     @pytest.mark.parametrize(
         ("raw", "seconds"),
-        [("3m12s", 192), ("5w2d", 3196800), ("1h", 3600), ("500ms", 0), ("1s200ms", 1), ("never", 0), ("", 0)],
+        [("3m12s", 192), ("5w2d", 3196800), ("1h", 3600), ("500ms", 1), ("1s200ms", 2), ("1000ms", 1), ("never", 0), ("", 0)],
     )
     def test_parse_duration_seconds_reads_milliseconds_as_their_own_unit(self, raw, seconds):
-        """'500ms' is half a second, not 500 minutes."""
+        """'500ms' is half a second, not 500 minutes, rounded up so only never reads as 0."""
         from custom_components.mikrotik_extended.coordinator import _parse_duration_seconds
 
         assert _parse_duration_seconds(raw) == seconds

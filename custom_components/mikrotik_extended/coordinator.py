@@ -230,13 +230,21 @@ def _split_queue_fields(entry: dict, vals: dict) -> None:
 def _parse_duration_seconds(s: str) -> int:
     """Parse a MikroTik duration string like '3m45s' into total seconds.
 
-    Milliseconds are read as their own unit and left out of the seconds, so
-    "500ms" is not taken for 500 minutes.
+    Milliseconds are read as their own unit, so "500ms" is not taken for 500
+    minutes, and rounded up to a whole second: a handshake 800 ms ago is a
+    handshake, and 0 stays reserved for never.
     """
     if not s or s.lower() in ("never", ""):
         return 0
-    multipliers = {"w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1, "ms": 0}
-    return sum(int(number) * multipliers[unit] for number, unit in re.findall(r"(\d+)(ms|w|d|h|m|s)", s))
+    multipliers = {"w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1}
+    total = 0
+    millis = 0
+    for number, unit in re.findall(r"(\d+)(ms|w|d|h|m|s)", s):
+        if unit == "ms":
+            millis += int(number)
+        else:
+            total += int(number) * multipliers[unit]
+    return total + -(-millis // 1000)
 
 
 def is_valid_ip(address):
@@ -437,27 +445,39 @@ def _lte_number(value):
 _LEASE_STATUS_ORDER = {"bound": 2, "offered": 1}
 
 
-def _lease_rank(row: dict) -> tuple:
+def _lease_rank(row: dict, bound_by_age: bool = False) -> tuple:
     """How sure a lease row is to be the address its device holds now.
 
     In order: an enabled lease, a bound one, one with an active address, one
-    further along than waiting, and, only among leases that are not bound,
-    the one seen most recently. Bound leases of one MAC, devices behind a
-    repeater for example, tie, so the router's order keeps the choice stable
-    instead of following every renewal. RouterOS gives last-seen as the time
-    since, so a smaller value is more recent; a lease never seen ranks below
-    every other. The disabled flag comes as a bool from the API library and
-    as text elsewhere, both are read.
+    further along than waiting, and the one seen most recently. RouterOS
+    gives last-seen as the time since, so a smaller value is more recent; a
+    lease never seen ranks below every other. The disabled flag comes as a
+    bool from the API library and as text elsewhere, both are read.
+
+    Bound leases are told apart by last-seen only with bound_by_age, which
+    _one_lease_per_mac uses across servers: there the more recent lease is
+    the network the device is on now. On one server several bound leases
+    under one MAC are different devices behind a repeater, and following
+    their renewals would make the address jump.
     """
     enabled = str(row.get("disabled", "false")).lower() not in ("true", "yes")
     status = row.get("status")
     bound = status == "bound"
     last_seen = str(row.get("last-seen", "") or "")
-    if bound:
+    if bound and not bound_by_age:
         age = 0.0
     else:
         age = float("inf") if last_seen in ("", "never") else _parse_duration_seconds(last_seen)
     return (enabled, bound, bool(row.get("active-address")), _LEASE_STATUS_ORDER.get(status, 0), -age)
+
+
+def _best_row(rows: list, bound_by_age: bool) -> dict:
+    """The best ranked row; on a full tie the later one, as the router lists them."""
+    best = rows[0]
+    for row in rows[1:]:
+        if _lease_rank(row, bound_by_age) >= _lease_rank(best, bound_by_age):
+            best = row
+    return best
 
 
 def _one_lease_per_mac(rows: list | None) -> list | None:
@@ -466,18 +486,20 @@ def _one_lease_per_mac(rows: list | None) -> list | None:
     The DHCP store is keyed by MAC, so with leases for the same device on
     two servers the later row used to overwrite the earlier one, and an old
     lease waiting on another network could hide the one the device holds
-    now. The rows are ranked by _lease_rank; on a full tie the later row wins
-    as before. A failed query stays a failed query.
+    now. The best lease is picked on each server first, where bound leases
+    keep the router's order, then across servers, where the more recently
+    seen one wins. A failed query stays a failed query.
     """
     if rows is None:
         return None
-    chosen: dict = {}
+    by_mac: dict = {}
     for row in rows:
-        mac = row.get("mac-address")
-        if mac in chosen and _lease_rank(row) < _lease_rank(chosen[mac]):
-            continue
-        chosen[mac] = row
-    return list(chosen.values())
+        by_mac.setdefault(row.get("mac-address"), {}).setdefault(row.get("server"), []).append(row)
+    kept = []
+    for servers in by_mac.values():
+        per_server = [_best_row(leases, bound_by_age=False) for leases in servers.values()]
+        kept.append(_best_row(per_server, bound_by_age=True))
+    return kept
 
 
 POE_READINGS = ("poe-out-voltage", "poe-out-current", "poe-out-power")
@@ -3491,7 +3513,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             # Only a lease on another server is the same device on another
             # network. Leases on the same server under one MAC are different
             # devices behind a repeater, and one of their names would be wrong.
-            if entry is not None and not entry["comment"] and comment and _lease_rank(row)[0] and row.get("server", "unknown") != entry["server"]:
+            if entry is not None and not entry["comment"] and comment and _lease_rank(row)[0] and row.get("server") and entry["server"] != "unknown" and row["server"] != entry["server"]:
                 entry["comment"] = comment
 
         self._build_dhcp_lease_summary()
