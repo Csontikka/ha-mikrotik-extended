@@ -3382,6 +3382,66 @@ class TestNetworkGetters:
         assert poll(3) == (0, [])
         assert coord.ds["dhcp_leases"]["leases"] == []
 
+    @staticmethod
+    def _two_server_leases(order):
+        """The same device on two servers: an old lease waiting, the current one bound (issue 40)."""
+        old = {"mac-address": "02:00:00:00:00:01", "address": "192.168.20.214", "server": "dhcp-iot", "status": "waiting", "disabled": "false"}
+        current = {
+            "mac-address": "02:00:00:00:00:01",
+            "address": "192.168.10.253",
+            "active-address": "192.168.10.253",
+            "active-mac-address": "02:00:00:00:00:01",
+            "server": "dhcp-main",
+            "status": "bound",
+            "disabled": "false",
+        }
+        return [old, current] if order == "old_first" else [current, old]
+
+    @pytest.mark.parametrize("order", ["old_first", "current_first"])
+    def test_get_dhcp_prefers_the_bound_lease_of_a_device_on_two_servers(self, hass, order):
+        """Whichever row the router lists last, the bound lease is the address the device has."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {
+            "dhcp-main": {"name": "dhcp-main", "interface": "vlan10"},
+            "dhcp-iot": {"name": "dhcp-iot", "interface": "vlan20"},
+        }
+        coord.ds["arp"] = {}
+        rows = self._two_server_leases(order)
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(r) for r in rows] if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+
+        lease = coord.ds["dhcp"]["02:00:00:00:00:01"]
+        assert lease["address"] == "192.168.10.253"
+        assert lease["status"] == "bound"
+        assert lease["server"] == "dhcp-main"
+        assert lease["interface"] == "vlan10"
+
+    def test_get_dhcp_without_a_bound_lease_keeps_the_later_row(self, hass):
+        """With no lease bound nothing tells the leases apart, so the old rule stands."""
+        coord = _make_coordinator(hass)
+        coord.ds["dhcp-server"] = {
+            "a": {"name": "a", "interface": "vlan10"},
+            "b": {"name": "b", "interface": "vlan20"},
+        }
+        coord.ds["arp"] = {}
+        rows = [
+            {"mac-address": "02:00:00:00:00:01", "address": "10.0.10.5", "server": "a", "status": "waiting", "disabled": "false"},
+            {"mac-address": "02:00:00:00:00:01", "address": "10.0.20.5", "server": "b", "status": "waiting", "disabled": "false"},
+        ]
+        coord.api.query.side_effect = lambda path, *a, **k: [dict(r) for r in rows] if path == "/ip/dhcp-server/lease" else []
+
+        coord.get_dhcp()
+
+        assert coord.ds["dhcp"]["02:00:00:00:00:01"]["address"] == "10.0.20.5"
+
+    def test_one_lease_per_mac_keeps_a_failed_query_failed(self):
+        """None is a failed read and must reach the parser as one, not as an empty table."""
+        from custom_components.mikrotik_extended.coordinator import _one_lease_per_mac
+
+        assert _one_lease_per_mac(None) is None
+        assert _one_lease_per_mac([]) == []
+
     @pytest.mark.parametrize(
         ("method", "store", "path", "row"),
         [
@@ -3798,6 +3858,42 @@ class TestAsyncProcessHost:
         # still find it (issue 25)
         assert "KK:LL:MM:NN:OO:PP" in coord.ds["host"]
         assert coord.ds["resource"]["clients_wireless"] >= 1
+
+    async def test_wireless_host_gets_the_address_of_its_bound_lease(self, hass):
+        """The case of issue 40 end to end: a wireless client with an old lease on another network.
+
+        The registration table names the radio, the address comes from the
+        lease the device holds now, whatever order the router lists them in.
+        """
+        mac = "02:00:00:00:00:01"
+        for order in ("old_first", "current_first"):
+            coord = _make_coordinator(hass)
+            coord.support_wireless = True
+            coord.ds["dhcp-server"] = {
+                "dhcp-main": {"name": "dhcp-main", "interface": "vlan10"},
+                "dhcp-iot": {"name": "dhcp-iot", "interface": "vlan20"},
+            }
+            coord.ds["arp"] = {}
+            rows = TestNetworkGetters._two_server_leases(order)
+            coord.api.query.side_effect = lambda path, *a, rows=rows, **k: [dict(r) for r in rows] if path == "/ip/dhcp-server/lease" else []
+            coord.get_dhcp()
+
+            coord.ds["capsman_hosts"] = {}
+            coord.ds["wireless_hosts"] = {
+                mac: {"mac-address": mac, "interface": "cap-wifi1", "ap": False, "signal-strength": "-66", "tx-ccq": "", "tx-rate": 1, "rx-rate": 1},
+            }
+            coord.ds["dns"] = {}
+            coord.ds["host_hass"] = {}
+            coord.ds["hostspot_host"] = {}
+            coord.ds["resource"] = {}
+            coord.async_mac_lookup.lookup = AsyncMock(return_value="")
+
+            await coord.async_process_host()
+
+            host = coord.ds["host"][mac]
+            assert host["address"] == "192.168.10.253", order
+            assert host["interface"] == "cap-wifi1", order
+            assert host["source"] == "wireless", order
 
     async def test_host_hostname_resolved_from_dns(self, hass):
         coord = _make_coordinator(hass)

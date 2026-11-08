@@ -438,6 +438,26 @@ def _lte_number(value):
     return int(number) if number.is_integer() else number
 
 
+def _one_lease_per_mac(rows: list | None) -> list | None:
+    """Keep one lease row per MAC address, the bound one when there is one.
+
+    The DHCP store is keyed by MAC, so with leases for the same device on
+    two servers the later row used to overwrite the earlier one, and an old
+    lease waiting on another network could hide the one the device holds
+    now. A bound lease is the address the device has; when none is bound the
+    later row wins as before. A failed query stays a failed query.
+    """
+    if rows is None:
+        return None
+    chosen: dict = {}
+    for row in rows:
+        mac = row.get("mac-address")
+        if mac in chosen and chosen[mac].get("status") == "bound" and row.get("status") != "bound":
+            continue
+        chosen[mac] = row
+    return list(chosen.values())
+
+
 POE_READINGS = ("poe-out-voltage", "poe-out-current", "poe-out-power")
 
 
@@ -3401,7 +3421,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Get DHCP data from Mikrotik"""
         self.ds["dhcp"] = parse_api(
             data=self.ds["dhcp"],
-            source=self.api.query("/ip/dhcp-server/lease"),
+            source=_one_lease_per_mac(self.api.query("/ip/dhcp-server/lease")),
             key="mac-address",
             vals=[
                 {"name": "mac-address"},
