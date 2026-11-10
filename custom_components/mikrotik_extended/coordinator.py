@@ -2513,12 +2513,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "layer7-protocol", "default": "any"},
                 {"name": "connection-state", "default": "any"},
                 {"name": "tcp-flags", "default": "any"},
+                # RouterOS may leave "disabled" out of the reply for a rule
+                # that is enabled, so a missing value means not disabled.
                 {
                     "name": "enabled",
                     "source": "disabled",
                     "type": "bool",
                     "reverse": True,
-                    "default": True,
+                    "default": False,
                 },
             ],
             val_proc=[
@@ -2614,8 +2616,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 {"name": "dst-port", "default": "any"},
                 {"name": "tcp-flags", "default": "any"},
                 # The raw menu leaves "disabled" out of the reply for a rule
-                # that is enabled, unlike the filter menu, which always sends
-                # it. A missing value therefore means not disabled.
+                # that is enabled. A missing value therefore means not disabled.
                 {
                     "name": "enabled",
                     "source": "disabled",

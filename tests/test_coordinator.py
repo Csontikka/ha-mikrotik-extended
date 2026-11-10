@@ -1991,6 +1991,21 @@ class TestFirewallRules:
 
         assert coord.ds["filter"]["f1"]["uniq-id"] == "z #1"
 
+    def test_filter_rule_without_a_disabled_flag_is_enabled(self, hass):
+        """RouterOS can leave "disabled" out of the reply for an enabled rule."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [
+            {".id": "*1", "chain": "forward", "action": "drop", "comment": "flag left out"},
+            {".id": "*2", "chain": "forward", "action": "drop", "comment": "flag false", "disabled": False},
+            {".id": "*3", "chain": "forward", "action": "drop", "comment": "flag true", "disabled": True},
+        ]
+
+        coord.get_filter()
+
+        assert coord.ds["filter"]["*1"]["enabled"] is True
+        assert coord.ds["filter"]["*2"]["enabled"] is True
+        assert coord.ds["filter"]["*3"]["enabled"] is False
+
 
 # ---------------------------------------------------------------------------
 # get_raw
