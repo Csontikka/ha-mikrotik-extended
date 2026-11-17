@@ -15,6 +15,7 @@ Monitor and control your Mikrotik device from Home Assistant.
  * Enable/disable Simple Queue switches
  * Enable/disable Mangle switches
  * Enable/disable Filter switches
+ * Enable/disable IPv6 firewall rule switches (filter, raw, NAT, mangle)
  * Monitor and control PPP users
  * Kid Control
  * Client Traffic RX/TX WAN/LAN monitoring
