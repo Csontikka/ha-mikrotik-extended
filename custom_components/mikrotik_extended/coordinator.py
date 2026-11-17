@@ -2802,11 +2802,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         A router without IPv6 support has no such menu: the read then comes
         back as failed, and the store stays as it is, empty.
         """
+        rows = self.api.query(path)
+        if rows is None:
+            # Nothing was read, so nothing is derived again either: the
+            # reference of a rule is rebuilt from fields only a read refreshes.
+            return
         vals, val_proc = _ipv6_rule_spec(extras)
         stale = self._get_stale_counters(store)
         self.ds[store] = parse_api(
             data=self.ds[store],
-            source=self.api.query(path),
+            source=rows,
             key=".id",
             vals=vals,
             val_proc=val_proc,
