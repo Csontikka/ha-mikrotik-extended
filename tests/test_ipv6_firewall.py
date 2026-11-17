@@ -18,6 +18,8 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
+from homeassistant.util import slugify
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.mikrotik_extended.config_flow import _SENSOR_PRESETS
@@ -199,13 +201,12 @@ class TestRuleReference:
         rule = _fetch(hass).ds["ipv6_filter"]["*5"]
         assert rule["uniq-id"] == "drop telnet"
         assert rule["name"] == "drop,tcp:23"
-        assert "2001:db8:1::/64" in rule["legacy-uniq-id"]
-        assert rule["legacy-uniq-id"].startswith("forward,drop,tcp,")
+        assert rule["legacy-uniq-id"] == "forward,drop,protocol=tcp,src-address=2001:db8:1::/64,dst-port=23"
 
     def test_uncommented_rule_is_keyed_by_its_contents(self, hass):
         rule = _fetch(hass).ds["ipv6_filter"]["*6"]
         assert rule["uniq-id"] == rule["legacy-uniq-id"]
-        assert rule["uniq-id"].startswith("input,accept,icmpv6,")
+        assert rule["uniq-id"] == "input,accept,protocol=icmpv6"
 
     def test_editing_a_commented_rule_keeps_its_reference(self, hass):
         coord = _fetch(hass)
@@ -235,6 +236,65 @@ class TestRuleReference:
         }
         ids = {rule["uniq-id"] for rule in _fetch(hass, menus).ds["ipv6_filter"].values()}
         assert ids == {"guests #1", "guests #2"}
+
+    @pytest.mark.parametrize(
+        ("menu", "field", "one", "other"),
+        [
+            ("filter", "icmp-options", "128:0-255", "129:0-255"),
+            ("filter", "hop-limit", "equal:255", "equal:64"),
+            ("filter", "connection-mark", "guests", "staff"),
+            ("filter", "src-address-type", "local", "!local"),
+            ("filter", "ipsec-policy", "in,ipsec", "in,none"),
+            ("filter", "reject-with", "icmp-no-route", "icmp-admin-prohibited"),
+            ("filter", "limit", "10,5:packet", "20,5:packet"),
+            ("filter", "log-prefix", "a", "b"),
+            ("raw", "src-mac-address", "02:00:5E:00:41:01", "02:00:5E:00:41:02"),
+            ("mangle", "new-mss", "clamp-to-pmtu", 1360),
+            ("mangle", "new-hop-limit", "set:64", "set:32"),
+            ("mangle", "new-dscp", 10, 12),
+            ("mangle", "passthrough", True, False),
+        ],
+    )
+    def test_uncommented_rules_differing_in_one_field_stay_apart(self, hass, menu, field, one, other):
+        """Each of these alone tells two rules apart, without a positional suffix."""
+        base = {"chain": "forward", "action": "accept", "protocol": "tcp"}
+        rows = [{".id": "*1", **base, field: one}, {".id": "*2", **base, field: other}]
+        coord = _fetch(hass, {f"/ipv6/firewall/{menu}": rows})
+        ids = [rule["uniq-id"] for rule in coord.ds[f"ipv6_{menu}"].values()]
+        assert len(set(ids)) == 2
+        assert not any("#" in uid for uid in ids)
+        assert coord.ipv6_firewall_removed == set()
+
+    def test_counters_and_router_flags_are_not_part_of_the_reference(self, hass):
+        row = {".id": "*1", "chain": "input", "action": "drop", "protocol": "udp", "bytes": 0, "packets": 0, "invalid": False, "dynamic": False}
+        coord = _fetch(hass, {"/ipv6/firewall/filter": [row]})
+        before = coord.ds["ipv6_filter"]["*1"]["uniq-id"]
+        _fetch(hass, {"/ipv6/firewall/filter": [{**row, "bytes": 123456, "packets": 789, "invalid": True, "disabled": True}]}, coord)
+        assert coord.ds["ipv6_filter"]["*1"]["uniq-id"] == before == "input,drop,protocol=udp"
+
+    def test_a_comment_added_later_takes_over_and_keeps_the_signature(self, hass):
+        row = {".id": "*1", "chain": "input", "action": "drop", "protocol": "udp"}
+        coord = _fetch(hass, {"/ipv6/firewall/filter": [row]})
+        signature = coord.ds["ipv6_filter"]["*1"]["uniq-id"]
+        _fetch(hass, {"/ipv6/firewall/filter": [{**row, "comment": "block udp"}]}, coord)
+        rule = coord.ds["ipv6_filter"]["*1"]
+        assert rule["uniq-id"] == "block udp"
+        assert rule["legacy-uniq-id"] == signature
+
+    def test_a_comment_removed_falls_back_to_the_contents(self, hass):
+        row = {".id": "*1", "chain": "input", "action": "drop", "protocol": "udp"}
+        coord = _fetch(hass, {"/ipv6/firewall/filter": [{**row, "comment": "block udp"}]})
+        _fetch(hass, {"/ipv6/firewall/filter": [row]}, coord)
+        rule = coord.ds["ipv6_filter"]["*1"]
+        assert rule["comment"] == ""
+        assert rule["uniq-id"] == rule["legacy-uniq-id"] == "input,drop,protocol=udp"
+
+    def test_the_reference_is_stable_over_many_reads(self, hass):
+        coord = _fetch(hass)
+        first = {store: {uid: (rule["uniq-id"], rule["legacy-uniq-id"]) for uid, rule in coord.ds[store].items()} for store in STORES}
+        for _ in range(4):
+            _fetch(hass, coordinator=coord)
+        assert {store: {uid: (rule["uniq-id"], rule["legacy-uniq-id"]) for uid, rule in coord.ds[store].items()} for store in STORES} == first
 
     def test_raw_rules_differing_only_in_address_list_or_flags_stay_apart(self, hass):
         base = {"chain": "prerouting", "action": "add-src-to-address-list", "protocol": "tcp"}
@@ -310,6 +370,24 @@ class TestRulesThatComeAndGo:
         for _ in range(4):
             _fetch(hass, {path: None for path in MENUS}, coord)
         assert all(coord.ds[store] == {} for store in STORES)
+        assert coord.api.query.call_count == 16
+        assert coord._stale_counters.get("ipv6_filter", {}) == {}
+
+    def test_one_menu_failing_does_not_stop_the_others(self, hass):
+        coord = _fetch(hass, {**MENUS, "/ipv6/firewall/raw": None})
+        assert coord.ds["ipv6_raw"] == {}
+        assert set(coord.ds["ipv6_filter"]) == {"*5", "*6", "*8"}
+        assert set(coord.ds["ipv6_nat"]) == {"*1", "*2"}
+        assert set(coord.ds["ipv6_mangle"]) == {"*1", "*2"}
+
+    def test_a_rule_turned_into_a_jump_leaves_like_a_deleted_one(self, hass):
+        coord = _fetch(hass)
+        as_jump = {**MENUS, "/ipv6/firewall/filter": [{**FILTER[0], "action": "jump", "jump-target": "guests"}, *FILTER[1:]]}
+        for _ in range(2):
+            _fetch(hass, as_jump, coord)
+        assert coord.ds["ipv6_filter"]["*5"]["action"] == "drop", "the kept row is not refreshed from a rule that is skipped"
+        _fetch(hass, as_jump, coord)
+        assert "*5" not in coord.ds["ipv6_filter"]
 
     def test_a_deleted_rule_leaves_after_three_reads(self, hass):
         coord = _fetch(hass)
@@ -446,6 +524,8 @@ def _switch(hass, store, uid, data=None):
     coordinator.async_refresh = AsyncMock()
     coordinator._get_stale_counters = MagicMock(return_value={})
     coordinator.data = data or {**{name: _fetch(hass).ds[name] for name in STORES}, "access": {"write"}}
+    coordinator.data.setdefault("resource", {"board-name": "CHR", "platform": "MikroTik"})
+    coordinator.data.setdefault("routerboard", {"serial-number": "SN1"})
     switch = MikrotikFilterSwitch(coordinator, IPV6_DESCRIPTIONS[store], uid=uid)
     switch.hass = hass
     return switch
@@ -471,6 +551,72 @@ class TestSwitches:
         """The description key is the store name: the migration builds ids from it."""
         assert set(STORES) <= set(MikrotikCoordinator._COMMENT_KEYED_RULES)
         assert set(STORES) <= set(MikrotikCoordinator._TEXT_FIELDS)
+
+    @pytest.mark.parametrize("store", ["ipv6_filter", "filter"])
+    def test_a_commented_copy_does_not_take_the_entity_of_the_rule_it_copies(self, hass, store):
+        """An uncommented rule and a commented copy of it share their contents.
+
+        The copy appears while Home Assistant is down. Its content signature is
+        the reference the original is registered under, and the migration must
+        not read that as the copy's own earlier id.
+        """
+        registry = er.async_get(hass)
+        coord = _make_coordinator(hass)
+        entry_id = coord.config_entry.entry_id
+        signature = "forward,drop,protocol=tcp,dst-port=23"
+        original = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-{store}-{slugify(signature)}", config_entry=coord.config_entry)
+        coord.ds[store] = {
+            "*1": {".id": "*1", "uniq-id": signature, "legacy-uniq-id": signature, "comment": ""},
+            "*2": {".id": "*2", "uniq-id": "web", "legacy-uniq-id": signature, "comment": "web"},
+        }
+
+        coord._migrate_rule_unique_ids()
+
+        assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-{store}-{slugify(signature)}"
+        assert registry.async_get_entity_id("switch", DOMAIN, f"{entry_id}-{store}-web") is None
+
+    @pytest.mark.parametrize("store", ["ipv6_filter", "filter"])
+    def test_a_comment_given_while_home_assistant_was_down_keeps_the_entity(self, hass, store):
+        """The one rule got a comment: the entity under its contents moves to the comment."""
+        registry = er.async_get(hass)
+        coord = _make_coordinator(hass)
+        entry_id = coord.config_entry.entry_id
+        signature = "forward,drop,protocol=tcp,dst-port=23"
+        original = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-{store}-{slugify(signature)}", config_entry=coord.config_entry)
+        coord.ds[store] = {"*1": {".id": "*1", "uniq-id": "web", "legacy-uniq-id": signature, "comment": "web"}}
+
+        coord._migrate_rule_unique_ids()
+
+        assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-{store}-web"
+
+    def test_a_dead_row_does_not_hold_back_the_move_to_the_comment(self, hass):
+        """A row on the pruning grace is gone from the router; its reference is free."""
+        registry = er.async_get(hass)
+        coord = _make_coordinator(hass)
+        entry_id = coord.config_entry.entry_id
+        signature = "forward,drop,protocol=tcp,dst-port=23"
+        original = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-ipv6_filter-{slugify(signature)}", config_entry=coord.config_entry)
+        coord.ds["ipv6_filter"] = {
+            "*1": {".id": "*1", "uniq-id": signature, "legacy-uniq-id": signature, "comment": ""},
+            "*9": {".id": "*9", "uniq-id": "web", "legacy-uniq-id": signature, "comment": "web"},
+        }
+        coord._get_stale_counters("ipv6_filter")["*1"] = 1
+
+        coord._migrate_rule_unique_ids()
+
+        assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-ipv6_filter-web"
+
+    def test_each_menu_has_a_device_of_its_own(self, hass):
+        """Apart from each other and from the IPv4 Filter, Raw, NAT and Mangle devices."""
+        connections = {store: next(iter(_switch(hass, store, uid).device_info["connections"])) for store, uid in (("ipv6_filter", "*5"), ("ipv6_raw", "*1"), ("ipv6_nat", "*1"), ("ipv6_mangle", "*1"))}
+        assert connections == {
+            "ipv6_filter": (DOMAIN, "entry1-IPv6 Filter"),
+            "ipv6_raw": (DOMAIN, "entry1-IPv6 Raw"),
+            "ipv6_nat": (DOMAIN, "entry1-IPv6 NAT"),
+            "ipv6_mangle": (DOMAIN, "entry1-IPv6 Mangle"),
+        }
+        ipv4 = {f"entry1-{d.ha_connection_value}" for d in SENSOR_TYPES if d.key in ("filter", "raw", "nat", "mangle")}
+        assert ipv4.isdisjoint(value for _, value in connections.values())
 
     def test_every_attribute_of_a_description_is_read(self, hass):
         coord = _fetch(hass)
@@ -554,5 +700,16 @@ class TestSwitches:
             await switch.async_turn_off()
         switch.coordinator.set_value.assert_not_called()
 
-    def test_the_nat_target_address_is_redacted_in_diagnostics(self):
-        assert "to-address" in TO_REDACT
+    def test_addresses_of_a_rule_are_masked_in_diagnostics(self, hass):
+        """In the fields, and inside the reference built from them."""
+        from homeassistant.components.diagnostics import async_redact_data
+
+        from custom_components.mikrotik_extended.log_redaction import LogRedactor
+
+        rows = [{".id": "*1", "chain": "dstnat", "action": "dst-nat", "src-address": "2001:db8:aaaa:bbbb::/64", "src-mac-address": "02:00:5E:00:41:01", "to-address": "2001:db8:cccc:dddd::10/128"}]
+        rule = _fetch(hass, {"/ipv6/firewall/nat": rows}).ds["ipv6_nat"]["*1"]
+        assert "aaaa:bbbb" in rule["uniq-id"]
+
+        dumped = json.dumps(LogRedactor(b"salt").redact_data(async_redact_data(rule, TO_REDACT)))
+        for secret in ("aaaa:bbbb", "cccc:dddd", "5E:00:41", "5e:00:41"):
+            assert secret not in dumped, secret

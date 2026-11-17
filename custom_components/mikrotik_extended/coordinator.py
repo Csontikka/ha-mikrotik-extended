@@ -208,7 +208,7 @@ def _disambiguate_uniq_ids(store: dict, stale_uids=()) -> list[str]:
 
 # The IPv6 firewall menus, each in a store of its own: the RouterOS list ids
 # start again in every menu, so "*1" can exist in all four. Per store: the
-# menu, and the fields that tell its rules apart beyond the shared matchers.
+# menu, and the action parameters shown as attributes next to the matchers.
 _IPV6_FIREWALL_MENUS = {
     "ipv6_filter": ("/ipv6/firewall/filter", ("address-list",)),
     "ipv6_raw": ("/ipv6/firewall/raw", ("address-list",)),
@@ -219,7 +219,8 @@ _IPV6_FIREWALL_MENUS = {
     ),
 }
 
-# What a rule matches on. A matcher the rule does not set reads as "any".
+# The matchers kept on a rule and shown as attributes. One the rule does not
+# set reads as "any".
 _IPV6_RULE_MATCHERS = (
     "protocol",
     "src-address",
@@ -235,6 +236,88 @@ _IPV6_RULE_MATCHERS = (
     "connection-state",
     "tcp-flags",
 )
+
+# Everything that defines an IPv6 rule, in a fixed order: what it matches on,
+# then what its action is given. The signature of a rule is built from the
+# ones it sets. It is the reference of a rule without a comment, so a field
+# may be added at the end, which leaves every existing signature as it is,
+# but never moved or removed. Counters and flags the router maintains
+# (bytes, packets, invalid, dynamic) and the comment are deliberately absent.
+_IPV6_SIGNATURE_FIELDS = (
+    "protocol",
+    "src-address",
+    "src-address-list",
+    "src-address-type",
+    "src-port",
+    "src-mac-address",
+    "dst-address",
+    "dst-address-list",
+    "dst-address-type",
+    "dst-port",
+    "port",
+    "in-interface",
+    "in-interface-list",
+    "in-bridge-port",
+    "in-bridge-port-list",
+    "out-interface",
+    "out-interface-list",
+    "out-bridge-port",
+    "out-bridge-port-list",
+    "connection-state",
+    "connection-nat-state",
+    "connection-mark",
+    "connection-type",
+    "connection-bytes",
+    "connection-limit",
+    "connection-rate",
+    "packet-mark",
+    "routing-mark",
+    "packet-size",
+    "tcp-flags",
+    "tcp-mss",
+    "icmp-options",
+    "hop-limit",
+    "headers",
+    "dscp",
+    "priority",
+    "ingress-priority",
+    "ipsec-policy",
+    "limit",
+    "dst-limit",
+    "nth",
+    "random",
+    "per-connection-classifier",
+    "time",
+    "tls-host",
+    "content",
+    "log-prefix",
+    "reject-with",
+    "address-list",
+    "address-list-timeout",
+    "to-address",
+    "to-ports",
+    "new-packet-mark",
+    "new-connection-mark",
+    "new-routing-mark",
+    "new-dscp",
+    "new-priority",
+    "new-mss",
+    "new-hop-limit",
+    "passthrough",
+)
+
+
+def _ipv6_rule_signature(row: dict) -> str:
+    """The contents of one IPv6 firewall rule as a string.
+
+    The reference of a rule without a comment, and what confirms that a
+    re-created rule is the same one. Only the fields the rule sets take part,
+    so two rules are told apart by any of them, and a rule keeps its
+    signature when the list above grows.
+    """
+    parts = [str(row.get("chain", "")), str(row.get("action", ""))]
+    parts += [f"{name}={row[name]}" for name in _IPV6_SIGNATURE_FIELDS if name in row]
+    return ",".join(parts)
 
 
 def _ipv6_rule_spec(extras: tuple) -> tuple[list, list]:
@@ -257,11 +340,6 @@ def _ipv6_rule_spec(extras: tuple) -> tuple[list, list]:
             "default": False,
         },
     ]
-    # The rule contents as one string: the reference of a rule without a
-    # comment, and the signature that confirms a re-created rule is the same.
-    signature = [{"name": "uniq-id"}, {"action": "combine"}, {"key": "chain"}, {"text": ","}, {"key": "action"}]
-    for name in (*_IPV6_RULE_MATCHERS, *extras):
-        signature += [{"text": ","}, {"key": name}]
     label = [
         {"name": "name"},
         {"action": "combine"},
@@ -271,7 +349,7 @@ def _ipv6_rule_spec(extras: tuple) -> tuple[list, list]:
         {"text": ":"},
         {"key": "dst-port"},
     ]
-    return vals, [signature, label]
+    return vals, [label]
 
 
 def _split_queue_fields(entry: dict, vals: dict) -> None:
@@ -928,6 +1006,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         registry = er.async_get(self.hass)
         entry_id = self.config_entry.entry_id
         for key in self._COMMENT_KEYED_RULES:
+            stale = self._get_stale_counters(key)
+            # The references rules on the router hold right now. An entity
+            # registered under one of them belongs to that rule and is never
+            # handed to another: a commented copy of an uncommented rule has
+            # the same contents, and would otherwise take over its entity.
+            in_use = {slugify(str(vals.get("uniq-id", "")).lower()) for uid, vals in self.ds.get(key, {}).items() if uid not in stale}
             for vals in self.ds.get(key, {}).values():
                 current = str(vals.get("uniq-id", ""))
                 if not current:
@@ -940,7 +1024,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 # before it was decoded.
                 for legacy in (vals.get("legacy-uniq-id"), vals.get(f"comment{RAW_SUFFIX}")):
                     legacy = str(legacy or "")
-                    if not legacy or legacy == current:
+                    if not legacy or legacy == current or slugify(legacy.lower()) in in_use:
                         continue
                     old_uid = f"{entry_id}-{key}-{slugify(legacy.lower())}"
                     entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
@@ -2843,6 +2927,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             stale_counters=stale,
         )
 
+        # The reference starts out as the rule contents on every read, as it
+        # does for the IPv4 rules; the comment then takes over where there is
+        # one. Rows the read did not bring are left alone.
+        for row in rows:
+            rule = self.ds[store].get(row.get(".id"))
+            if rule is not None and row.get(".id") not in stale:
+                rule["uniq-id"] = _ipv6_rule_signature(row)
         for rule in self.ds[store].values():
             rule["comment"] = str(rule["comment"])
         self._decode_store(store)
