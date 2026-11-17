@@ -79,6 +79,8 @@ CONF_SENSOR_FILTER = "sensor_filter"
 DEFAULT_SENSOR_FILTER = True
 CONF_SENSOR_RAW = "sensor_raw"
 DEFAULT_SENSOR_RAW = False
+CONF_SENSOR_IPV6_FIREWALL = "sensor_ipv6_firewall"
+DEFAULT_SENSOR_IPV6_FIREWALL = False
 CONF_SENSOR_ROUTES = "sensor_routes"
 DEFAULT_SENSOR_ROUTES = False
 CONF_SENSOR_WIREGUARD = "sensor_wireguard"
@@ -118,6 +120,7 @@ TO_REDACT = {
     "serial-number",
     "from-addresses",
     "to-addresses",
+    "to-address",
     "src-address",
     "dst-address",
     "username",

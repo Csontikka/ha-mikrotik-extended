@@ -48,6 +48,7 @@ from .const import (
     CONF_SENSOR_ENVIRONMENT,
     CONF_SENSOR_FILTER,
     CONF_SENSOR_INTERFACES,
+    CONF_SENSOR_IPV6_FIREWALL,
     CONF_SENSOR_KIDCONTROL,
     CONF_SENSOR_LTE,
     CONF_SENSOR_MANGLE,
@@ -72,6 +73,7 @@ from .const import (
     DEFAULT_SENSOR_ENVIRONMENT,
     DEFAULT_SENSOR_FILTER,
     DEFAULT_SENSOR_INTERFACES,
+    DEFAULT_SENSOR_IPV6_FIREWALL,
     DEFAULT_SENSOR_KIDCONTROL,
     DEFAULT_SENSOR_LTE,
     DEFAULT_SENSOR_MANGLE,
@@ -202,6 +204,74 @@ def _disambiguate_uniq_ids(store: dict, stale_uids=()) -> list[str]:
             for index, uid in enumerate(uids, start=1):
                 store[uid]["uniq-id"] = f"{base} #{index}"
     return collided
+
+
+# The IPv6 firewall menus, each in a store of its own: the RouterOS list ids
+# start again in every menu, so "*1" can exist in all four. Per store: the
+# menu, and the fields that tell its rules apart beyond the shared matchers.
+_IPV6_FIREWALL_MENUS = {
+    "ipv6_filter": ("/ipv6/firewall/filter", ("address-list",)),
+    "ipv6_raw": ("/ipv6/firewall/raw", ("address-list",)),
+    "ipv6_nat": ("/ipv6/firewall/nat", ("to-address", "to-ports")),
+    "ipv6_mangle": (
+        "/ipv6/firewall/mangle",
+        ("address-list", "new-packet-mark", "new-connection-mark", "new-routing-mark"),
+    ),
+}
+
+# What a rule matches on. A matcher the rule does not set reads as "any".
+_IPV6_RULE_MATCHERS = (
+    "protocol",
+    "src-address",
+    "src-address-list",
+    "src-port",
+    "dst-address",
+    "dst-address-list",
+    "dst-port",
+    "in-interface",
+    "in-interface-list",
+    "out-interface",
+    "out-interface-list",
+    "connection-state",
+    "tcp-flags",
+)
+
+
+def _ipv6_rule_spec(extras: tuple) -> tuple[list, list]:
+    """The parse_api field list and derived keys for one IPv6 firewall menu."""
+    vals = [
+        {"name": ".id"},
+        {"name": "chain"},
+        {"name": "action"},
+        {"name": "comment"},
+        *({"name": name, "default": "any"} for name in _IPV6_RULE_MATCHERS),
+        *({"name": name} for name in extras),
+        {"name": "passthrough", "type": "bool", "default": False},
+        # RouterOS leaves "disabled" out of the reply for a rule that is
+        # enabled, so a missing value means not disabled.
+        {
+            "name": "enabled",
+            "source": "disabled",
+            "type": "bool",
+            "reverse": True,
+            "default": False,
+        },
+    ]
+    # The rule contents as one string: the reference of a rule without a
+    # comment, and the signature that confirms a re-created rule is the same.
+    signature = [{"name": "uniq-id"}, {"action": "combine"}, {"key": "chain"}, {"text": ","}, {"key": "action"}]
+    for name in (*_IPV6_RULE_MATCHERS, *extras):
+        signature += [{"text": ","}, {"key": name}]
+    label = [
+        {"name": "name"},
+        {"action": "combine"},
+        {"key": "action"},
+        {"text": ","},
+        {"key": "protocol"},
+        {"text": ":"},
+        {"key": "dst-port"},
+    ]
+    return vals, [signature, label]
 
 
 def _split_queue_fields(entry: dict, vals: dict) -> None:
@@ -740,6 +810,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "routing_rules": {},
             "filter": {},
             "raw": {},
+            "ipv6_filter": {},
+            "ipv6_raw": {},
+            "ipv6_nat": {},
+            "ipv6_mangle": {},
             "lte": {},
             "route": {},
             "active_wan": {},
@@ -804,6 +878,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.routing_rules_removed = {}
         self.filter_removed = {}
         self.raw_removed = {}
+        self.ipv6_firewall_removed: set[tuple[str, str]] = set()
         self._routes_restored = False
         self._routes_read = False
         self._routes_replaced: set[str] = set()
@@ -836,7 +911,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._rule_uids_migrated = False
 
     # Entity keys whose reference moved from the rule contents to the comment.
-    _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "raw", "queue")
+    _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "raw", "queue", *_IPV6_FIREWALL_MENUS)
 
     def _migrate_rule_unique_ids(self) -> None:
         """Point entities created under the content based scheme at the new id.
@@ -1004,6 +1079,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def option_sensor_raw(self):
         """Config entry option to create firewall Raw rule switches."""
         return self.config_entry.options.get(CONF_SENSOR_RAW, DEFAULT_SENSOR_RAW)
+
+    # ---------------------------
+    #   option_sensor_ipv6_firewall
+    # ---------------------------
+    @property
+    def option_sensor_ipv6_firewall(self):
+        """Config entry option to create IPv6 firewall rule switches."""
+        return self.config_entry.options.get(CONF_SENSOR_IPV6_FIREWALL, DEFAULT_SENSOR_IPV6_FIREWALL)
 
     # ---------------------------
     #   option_sensor_routes
@@ -1367,6 +1450,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected() and self.option_sensor_raw:
             await self.hass.async_add_executor_job(self.get_raw)
 
+        if self.api.connected() and self.option_sensor_ipv6_firewall:
+            await self.hass.async_add_executor_job(self.get_ipv6_firewall)
+
         if self.api.connected() and self.option_sensor_routes:
             await self.hass.async_add_executor_job(self.get_route)
             if not self._routes_restored:
@@ -1447,6 +1533,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         "mangle": ("comment",),
         "filter": ("comment",),
         "raw": ("comment",),
+        "ipv6_filter": ("comment",),
+        "ipv6_raw": ("comment",),
+        "ipv6_nat": ("comment",),
+        "ipv6_mangle": ("comment",),
         "route": ("comment",),
         "routing_rules": ("comment",),
         "host": ("host-name",),
@@ -2696,6 +2786,51 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     "Mikrotik %s duplicate Raw rule '%s', a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
                     self.host,
                     tmp_name,
+                )
+
+    # ---------------------------
+    #   get_ipv6_firewall
+    # ---------------------------
+    def get_ipv6_firewall(self) -> None:
+        """Get the IPv6 firewall rules of every menu from Mikrotik"""
+        for store, (path, extras) in _IPV6_FIREWALL_MENUS.items():
+            self._get_ipv6_rules(store, path, extras)
+
+    def _get_ipv6_rules(self, store: str, path: str, extras: tuple) -> None:
+        """Read one IPv6 firewall menu into its store.
+
+        A router without IPv6 support has no such menu: the read then comes
+        back as failed, and the store stays as it is, empty.
+        """
+        vals, val_proc = _ipv6_rule_spec(extras)
+        stale = self._get_stale_counters(store)
+        self.ds[store] = parse_api(
+            data=self.ds[store],
+            source=self.api.query(path),
+            key=".id",
+            vals=vals,
+            val_proc=val_proc,
+            skip=[
+                {"name": "dynamic", "value": True},
+                {"name": "action", "value": "jump"},
+            ],
+            prune_stale=True,
+            stale_counters=stale,
+        )
+
+        for rule in self.ds[store].values():
+            rule["comment"] = str(rule["comment"])
+        self._decode_store(store)
+        _prefer_comment_uniq_id(self.ds[store], stale)
+
+        for base in _disambiguate_uniq_ids(self.ds[store], stale):
+            if (store, base) not in self.ipv6_firewall_removed:
+                self.ipv6_firewall_removed.add((store, base))
+                _LOGGER.info(
+                    "Mikrotik %s duplicate rule '%s' in %s, a suffix was added to keep both entities. Add unique comments to the rules to remove this warning.",
+                    self.host,
+                    base,
+                    path,
                 )
 
     # ---------------------------
