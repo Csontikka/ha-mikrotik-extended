@@ -1991,6 +1991,31 @@ class TestFirewallRules:
 
         assert coord.ds["filter"]["f1"]["uniq-id"] == "z #1"
 
+    @pytest.mark.parametrize(
+        ("getter", "store", "row"),
+        [
+            ("get_nat", "nat", {"chain": "dstnat", "action": "dst-nat", "protocol": "tcp", "dst-port": "443", "to-addresses": "10.0.0.5"}),
+            ("get_mangle", "mangle", {"chain": "prerouting", "action": "mark-packet", "protocol": "udp"}),
+            ("get_routing_rules", "routing_rules", {"action": "lookup", "src-address": "10.0.0.0/24"}),
+            ("get_filter", "filter", {"chain": "forward", "action": "drop", "protocol": "tcp", "dst-port": "23"}),
+            ("get_raw", "raw", {"chain": "prerouting", "action": "drop", "protocol": "udp", "dst-port": "53"}),
+        ],
+    )
+    def test_a_failed_read_keeps_the_content_signature_of_a_rule(self, hass, getter, store, row):
+        """The signature is what confirms a re-created rule; the comment alone must not replace it."""
+        coord = _make_coordinator(hass)
+        coord.api.query.return_value = [{".id": "*1", "comment": "my rule", **row}]
+        getattr(coord, getter)()
+        rule = dict(coord.ds[store]["*1"])
+        assert rule["uniq-id"] == "my rule"
+        assert rule["legacy-uniq-id"] != "my rule"
+
+        coord.api.query.return_value = None
+        getattr(coord, getter)()
+        getattr(coord, getter)()
+
+        assert coord.ds[store]["*1"] == rule
+
     def test_filter_rule_without_a_disabled_flag_is_enabled(self, hass):
         """RouterOS can leave "disabled" out of the reply for an enabled rule."""
         coord = _make_coordinator(hass)

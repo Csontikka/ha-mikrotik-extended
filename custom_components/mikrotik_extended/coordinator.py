@@ -2158,9 +2158,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_nat(self) -> None:
         """Get NAT data from Mikrotik"""
+        rows = self.api.query("/ip/firewall/nat")
+        if rows is None:
+            # A failed read leaves the rules as they are; see _get_ipv6_rules.
+            return
         self.ds["nat"] = parse_api(
             data=self.ds["nat"],
-            source=self.api.query("/ip/firewall/nat"),
+            source=rows,
             key=".id",
             vals=[
                 {"name": ".id"},
@@ -2233,9 +2237,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_mangle(self) -> None:
         """Get Mangle data from Mikrotik"""
+        rows = self.api.query("/ip/firewall/mangle")
+        if rows is None:
+            # A failed read leaves the rules as they are; see _get_ipv6_rules.
+            return
         self.ds["mangle"] = parse_api(
             data=self.ds["mangle"],
-            source=self.api.query("/ip/firewall/mangle"),
+            source=rows,
             key=".id",
             vals=[
                 {"name": ".id"},
@@ -2319,9 +2327,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def get_routing_rules(self) -> None:
         """Get Routing Rules data from Mikrotik"""
         _LOGGER.debug("Mikrotik %s fetching routing rules", self.host)
+        rows = self.api.query("/routing/rule")
+        if rows is None:
+            # A failed read leaves the rules as they are; see _get_ipv6_rules.
+            return
         self.ds["routing_rules"] = parse_api(
             data=self.ds["routing_rules"],
-            source=self.api.query("/routing/rule"),
+            source=rows,
             key=".id",
             vals=[
                 {"name": ".id"},
@@ -2579,9 +2591,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_filter(self) -> None:
         """Get Filter data from Mikrotik"""
+        rows = self.api.query("/ip/firewall/filter")
+        if rows is None:
+            # A failed read leaves the rules as they are; see _get_ipv6_rules.
+            return
         self.ds["filter"] = parse_api(
             data=self.ds["filter"],
-            source=self.api.query("/ip/firewall/filter"),
+            source=rows,
             key=".id",
             vals=[
                 {"name": ".id"},
@@ -2683,9 +2699,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # ---------------------------
     def get_raw(self) -> None:
         """Get firewall Raw data from Mikrotik"""
+        rows = self.api.query("/ip/firewall/raw")
+        if rows is None:
+            # A failed read leaves the rules as they are; see _get_ipv6_rules.
+            return
         self.ds["raw"] = parse_api(
             data=self.ds["raw"],
-            source=self.api.query("/ip/firewall/raw"),
+            source=rows,
             key=".id",
             vals=[
                 {"name": ".id"},
