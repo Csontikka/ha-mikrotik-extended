@@ -265,6 +265,33 @@ class TestRuleReference:
         assert not any("#" in uid for uid in ids)
         assert coord.ipv6_firewall_removed == set()
 
+    @pytest.mark.parametrize(
+        ("field", "plain", "negated"),
+        [
+            ("in-interface-list", "LAN", "!LAN"),
+            ("src-address", "fe80::/10", "!fe80::/10"),
+            ("dst-port", "22,80-90", "!22,80-90"),
+            ("tcp-flags", "syn,ack", "syn,!ack"),
+            ("dst-address-type", "local", "!local"),
+        ],
+    )
+    def test_a_rule_and_its_negated_twin_get_an_entity_each(self, hass, field, plain, negated):
+        """The entity id is a slug of the reference, and a slug drops the "!"."""
+        base = {"chain": "forward", "action": "drop"}
+        rows = [{".id": "*1", **base, field: plain}, {".id": "*2", **base, field: negated}]
+        coord = _fetch(hass, {"/ipv6/firewall/filter": rows})
+        slugs = [slugify(rule["uniq-id"].lower()) for rule in coord.ds["ipv6_filter"].values()]
+        assert len(set(slugs)) == 2, slugs
+        assert "not" in slugs[1]
+        assert coord.ipv6_firewall_removed == set()
+
+    def test_turning_logging_on_keeps_the_reference(self, hass):
+        row = {".id": "*1", "chain": "input", "action": "drop", "protocol": "udp", "log": False}
+        coord = _fetch(hass, {"/ipv6/firewall/filter": [row]})
+        before = coord.ds["ipv6_filter"]["*1"]["uniq-id"]
+        _fetch(hass, {"/ipv6/firewall/filter": [{**row, "log": True}]}, coord)
+        assert coord.ds["ipv6_filter"]["*1"]["uniq-id"] == before
+
     def test_counters_and_router_flags_are_not_part_of_the_reference(self, hass):
         row = {".id": "*1", "chain": "input", "action": "drop", "protocol": "udp", "bytes": 0, "packets": 0, "invalid": False, "dynamic": False}
         coord = _fetch(hass, {"/ipv6/firewall/filter": [row]})
@@ -588,6 +615,54 @@ class TestSwitches:
         coord._migrate_rule_unique_ids()
 
         assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-{store}-web"
+
+    @pytest.mark.parametrize("store", ["ipv6_filter", "filter"])
+    def test_two_commented_rules_with_the_same_contents_leave_the_old_entity_alone(self, hass, store):
+        """Which of the two the entity under their shared contents belonged to cannot be told."""
+        registry = er.async_get(hass)
+        coord = _make_coordinator(hass)
+        entry_id = coord.config_entry.entry_id
+        signature = "forward,drop,protocol=tcp,dst-port=23"
+        original = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-{store}-{slugify(signature)}", config_entry=coord.config_entry)
+        coord.ds[store] = {
+            "*2": {".id": "*2", "uniq-id": "copy", "legacy-uniq-id": signature, "comment": "copy"},
+            "*1": {".id": "*1", "uniq-id": "original", "legacy-uniq-id": signature, "comment": "original"},
+        }
+
+        coord._migrate_rule_unique_ids()
+
+        assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-{store}-{slugify(signature)}"
+
+    def test_uncommented_twins_still_move_their_old_entity_to_the_first(self, hass):
+        """Unchanged for the IPv4 rules: identical rules without a comment are told apart by position."""
+        registry = er.async_get(hass)
+        coord = _make_coordinator(hass)
+        entry_id = coord.config_entry.entry_id
+        signature = "forward,drop,tcp"
+        original = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-filter-{slugify(signature)}", config_entry=coord.config_entry)
+        coord.ds["filter"] = {
+            "*1": {".id": "*1", "uniq-id": f"{signature} #1", "legacy-uniq-id": signature, "comment": ""},
+            "*2": {".id": "*2", "uniq-id": f"{signature} #2", "legacy-uniq-id": signature, "comment": ""},
+        }
+
+        coord._migrate_rule_unique_ids()
+
+        assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-filter-{slugify(signature + ' #1')}"
+
+    def test_a_queue_named_like_the_comment_of_another_does_not_block_the_move(self, hass):
+        """A queue's earlier reference was its name; another queue's comment may read the same."""
+        registry = er.async_get(hass)
+        coord = _make_coordinator(hass)
+        entry_id = coord.config_entry.entry_id
+        original = registry.async_get_or_create("switch", DOMAIN, f"{entry_id}-queue-web", config_entry=coord.config_entry)
+        coord.ds["queue"] = {
+            "*1": {".id": "*1", "name": "web", "uniq-id": "x", "legacy-uniq-id": "web", "comment": "x"},
+            "*2": {".id": "*2", "name": "other", "uniq-id": "web", "legacy-uniq-id": "other", "comment": "web"},
+        }
+
+        coord._migrate_rule_unique_ids()
+
+        assert registry.async_get(original.entity_id).unique_id == f"{entry_id}-queue-x"
 
     def test_a_dead_row_does_not_hold_back_the_move_to_the_comment(self, hass):
         """A row on the pruning grace is gone from the router; its reference is free."""

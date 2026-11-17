@@ -239,10 +239,12 @@ _IPV6_RULE_MATCHERS = (
 
 # Everything that defines an IPv6 rule, in a fixed order: what it matches on,
 # then what its action is given. The signature of a rule is built from the
-# ones it sets. It is the reference of a rule without a comment, so a field
-# may be added at the end, which leaves every existing signature as it is,
-# but never moved or removed. Counters and flags the router maintains
-# (bytes, packets, invalid, dynamic) and the comment are deliberately absent.
+# ones it sets. It is the reference of a rule without a comment, so the
+# list is not free to change: a field added later gives a new reference, and
+# so a new entity, to every uncommented rule that sets it, and removing one
+# does the same. Deliberately absent are the comment, the counters and flags
+# the router maintains (bytes, packets, invalid, dynamic), and "log", so that
+# turning logging on for a rule keeps its entity.
 _IPV6_SIGNATURE_FIELDS = (
     "protocol",
     "src-address",
@@ -304,6 +306,10 @@ _IPV6_SIGNATURE_FIELDS = (
     "new-mss",
     "new-hop-limit",
     "passthrough",
+    "route-dst",
+    "sniff-target",
+    "sniff-target-port",
+    "sniff-id",
 )
 
 
@@ -312,11 +318,15 @@ def _ipv6_rule_signature(row: dict) -> str:
 
     The reference of a rule without a comment, and what confirms that a
     re-created rule is the same one. Only the fields the rule sets take part,
-    so two rules are told apart by any of them, and a rule keeps its
-    signature when the list above grows.
+    so two rules are told apart by any of them.
+
+    RouterOS writes a negated match as "!" in front of the value. The entity
+    id is a slug of this string, and a slug drops the "!": a rule and its
+    negated twin would end up under one id, and one of them without a switch.
+    So the negation is spelled out.
     """
     parts = [str(row.get("chain", "")), str(row.get("action", ""))]
-    parts += [f"{name}={row[name]}" for name in _IPV6_SIGNATURE_FIELDS if name in row]
+    parts += [f"{name}={str(row[name]).replace('!', 'not-')}" for name in _IPV6_SIGNATURE_FIELDS if name in row]
     return ",".join(parts)
 
 
@@ -1007,11 +1017,20 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         entry_id = self.config_entry.entry_id
         for key in self._COMMENT_KEYED_RULES:
             stale = self._get_stale_counters(key)
-            # The references rules on the router hold right now. An entity
-            # registered under one of them belongs to that rule and is never
-            # handed to another: a commented copy of an uncommented rule has
-            # the same contents, and would otherwise take over its entity.
-            in_use = {slugify(str(vals.get("uniq-id", "")).lower()) for uid, vals in self.ds.get(key, {}).items() if uid not in stale}
+            live = [vals for uid, vals in self.ds.get(key, {}).items() if uid not in stale]
+            # The content references that rules on the router hold right now,
+            # which are the rules without a comment. An entity registered
+            # under one of them belongs to that rule and is never handed to
+            # another: a commented copy of an uncommented rule has the same
+            # contents, and would otherwise take over its entity.
+            in_use = {slugify(str(vals.get("uniq-id", "")).lower()) for vals in live if vals.get("uniq-id") == vals.get("legacy-uniq-id")}
+            # Contents shared by rules with different comments: which of them
+            # the entity registered under those contents belonged to cannot
+            # be told, so it is moved to neither.
+            comments_by_contents: dict[str, set[str]] = {}
+            for vals in live:
+                comments_by_contents.setdefault(str(vals.get("legacy-uniq-id", "")), set()).add(str(vals.get("comment", "")))
+            ambiguous = {contents for contents, comments in comments_by_contents.items() if len(comments) > 1}
             for vals in self.ds.get(key, {}).values():
                 current = str(vals.get("uniq-id", ""))
                 if not current:
@@ -1025,6 +1044,8 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 for legacy in (vals.get("legacy-uniq-id"), vals.get(f"comment{RAW_SUFFIX}")):
                     legacy = str(legacy or "")
                     if not legacy or legacy == current or slugify(legacy.lower()) in in_use:
+                        continue
+                    if legacy in ambiguous and legacy == str(vals.get("legacy-uniq-id", "")):
                         continue
                     old_uid = f"{entry_id}-{key}-{slugify(legacy.lower())}"
                     entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
