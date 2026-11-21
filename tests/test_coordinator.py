@@ -352,7 +352,7 @@ class TestRepairIssues:
             await coordinator._async_update_data()
 
         mock_create.assert_called_once()
-        assert mock_create.call_args[0][2] == "wrong_credentials"
+        assert mock_create.call_args[0][2] == f"wrong_credentials_{coordinator.config_entry.entry_id}"
 
     async def test_ssl_error_creates_repair_issue(self, hass):
         """async_create_issue called with ssl_error for ssl_handshake_failure."""
@@ -369,7 +369,7 @@ class TestRepairIssues:
             await coordinator._async_update_data()
 
         mock_create.assert_called_once()
-        assert mock_create.call_args[0][2] == "ssl_error"
+        assert mock_create.call_args[0][2] == f"ssl_error_{coordinator.config_entry.entry_id}"
 
     async def test_ssl_verify_failure_creates_repair_issue(self, hass):
         """async_create_issue called with ssl_error for ssl_verify_failure."""
@@ -385,7 +385,7 @@ class TestRepairIssues:
         with self._patch_severity_and_issues(mock_create, MagicMock()), pytest.raises(UpdateFailed):
             await coordinator._async_update_data()
 
-        assert mock_create.call_args[0][2] == "ssl_error"
+        assert mock_create.call_args[0][2] == f"ssl_error_{coordinator.config_entry.entry_id}"
 
     async def test_repair_helpers_are_importable(self):
         """Regression: the repair helpers must resolve, otherwise no issue is ever raised.
@@ -416,8 +416,9 @@ class TestRepairIssues:
             await coordinator._async_update_data()
 
         deleted_issue_ids = [c[0][2] for c in mock_delete.call_args_list]
-        assert "wrong_credentials" in deleted_issue_ids
-        assert "ssl_error" in deleted_issue_ids
+        entry_id = coordinator.config_entry.entry_id
+        assert f"wrong_credentials_{entry_id}" in deleted_issue_ids
+        assert f"ssl_error_{entry_id}" in deleted_issue_ids
 
     async def test_wrong_login_triggers_reauth(self, hass):
         """ConfigEntryAuthFailed raised on wrong_login, which triggers reauth automatically."""
@@ -803,7 +804,7 @@ class TestGetAccess:
         assert result is coordinator.ds
         # The user is told why there is no data instead of being left guessing.
         reported = [c.args[2] for c in create_issue.call_args_list]
-        assert "insufficient_permissions" in reported
+        assert f"insufficient_permissions_{coordinator.config_entry.entry_id}" in reported
 
     def test_user_not_in_local_list_does_not_raise(self, hass):
         """A remotely authenticated user is not in /user, and must not crash.
@@ -959,6 +960,35 @@ class TestGetAccess:
 
         assert coord.ds["access"] == {}
 
+    def test_test_policy_required_only_with_host_tracking(self, hass):
+        """test is needed to ping tracked hosts, so it is only asked for then."""
+        tmp_user = {"admin": {"name": "admin", "group": "restricted"}}
+        tmp_group = {"restricted": {"name": "restricted", "policy": "read,write,policy,reboot,api"}}
+
+        coord = _make_coordinator(hass)
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", side_effect=[tmp_user, tmp_group]):
+            coord.get_access()
+        assert coord.ds["access_missing"] == []
+
+        coord = _make_coordinator(hass, options={CONF_TRACK_HOSTS: True})
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", side_effect=[tmp_user, tmp_group]):
+            coord.get_access()
+        assert coord.ds["access_missing"] == ["test"]
+
+    def test_legacy_issues_deleted_once(self, hass):
+        coord = _make_coordinator(hass)
+        with patch("custom_components.mikrotik_extended.coordinator.async_delete_issue") as mock_delete:
+            coord._delete_legacy_issues()
+            coord._delete_legacy_issues()
+        assert sorted(c.args[2] for c in mock_delete.call_args_list) == ["insufficient_permissions", "ssl_error", "wrong_credentials"]
+
+    def test_issue_ids_differ_per_entry(self, hass):
+        """Two routers must not share one repair issue."""
+        first = _make_coordinator(hass)
+        second = _make_coordinator(hass)
+        assert first.config_entry.entry_id != second.config_entry.entry_id
+        assert first._issue_id("insufficient_permissions") != second._issue_id("insufficient_permissions")
+
     def test_access_already_reported(self, hass):
         coord = _make_coordinator(hass)
         coord.accessrights_reported = True
@@ -974,8 +1004,9 @@ class TestGetAccess:
         assert coord.accessrights_reported is True
         # group lookup succeeded → ds["access"] reflects the resolved policy
         assert coord.ds["access"] == ["read"]
-        # required rights minus the one granted ("read") → all four are missing
-        assert coord.ds["access_missing"] == ["write", "policy", "reboot", "test"]
+        # required rights minus the one granted ("read"); test is only needed
+        # for host tracking, which is off by default
+        assert coord.ds["access_missing"] == ["write", "policy", "reboot"]
 
 
 # ---------------------------------------------------------------------------
@@ -3012,7 +3043,9 @@ class TestSystemGetters:
             return_value=rb,
         ):
             coord.get_system_routerboard()
-        assert "current-firmware" not in coord.ds["routerboard"]
+        # /system/routerboard is a plain read, a read-only account keeps the versions
+        assert coord.ds["routerboard"]["current-firmware"] == "7.0"
+        assert coord.ds["routerboard"]["upgrade-firmware"] == "7.1"
 
     def test_get_system_routerboard_hw_full_access(self, hass):
         coord = _make_coordinator(hass)
@@ -3032,7 +3065,19 @@ class TestSystemGetters:
             coord.get_system_routerboard()
         assert coord.ds["routerboard"]["current-firmware"] == "7.0"
 
-    def test_get_system_health_denied(self, hass):
+    def test_get_system_health_read_only(self, hass):
+        """/system/health is a plain read: a read-only account gets the sensors."""
+        coord = _make_coordinator(hass)
+        coord.ds["access"] = ["read", "api"]
+        coord.major_fw_version = 7
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"cpu-temperature": {"value": "45"}},
+        ):
+            coord.get_system_health()
+        assert coord.ds["health"]["cpu-temperature"] == "45"
+
+    def test_get_system_health_unknown_version(self, hass):
         coord = _make_coordinator(hass)
         coord.ds["access"] = ["read"]
         coord.get_system_health()
@@ -3117,12 +3162,55 @@ class TestSystemGetters:
 
 
 class TestFirmwareUpdate:
-    def test_denied_no_access(self, hass):
+    def test_read_only_reads_version_without_check(self, hass):
+        """A read-only account reads the version but never runs check-for-updates.
+
+        RouterOS refuses check-for-updates without write and policy, while
+        printing /system/package/update needs only read. The version must
+        still be parsed: it decides the v7 paths (WireGuard, wifi, health).
+        """
         coord = _make_coordinator(hass)
-        coord.ds["access"] = ["read"]
-        coord.get_firmware_update()
-        # early return → nothing set
-        assert "available" not in coord.ds["fw-update"]
+        coord.ds["access"] = ["read", "api"]
+        coord.execute = MagicMock()
+        fw = {
+            "status": "System is already up to date",
+            "channel": "stable",
+            "installed-version": "7.25.1",
+            "latest-version": "7.25.1",
+        }
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value=fw,
+        ):
+            coord.get_firmware_update()
+        coord.execute.assert_not_called()
+        assert coord.ds["fw-update"]["available"] is False
+        assert coord.major_fw_version == 7
+        assert coord.minor_fw_version == 25
+
+    def test_write_and_policy_run_check_without_reboot(self, hass):
+        """check-for-updates needs write and policy; reboot is not required."""
+        coord = _make_coordinator(hass)
+        coord.ds["access"] = ["read", "write", "policy"]
+        coord.execute = MagicMock()
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"installed-version": "7.25.1"},
+        ):
+            coord.get_firmware_update()
+        coord.execute.assert_called_once_with("/system/package/update", "check-for-updates", None, None, {"duration": 10})
+
+    def test_write_without_policy_skips_check(self, hass):
+        coord = _make_coordinator(hass)
+        coord.ds["access"] = ["read", "write", "reboot", "test"]
+        coord.execute = MagicMock()
+        with patch(
+            "custom_components.mikrotik_extended.coordinator.parse_api",
+            return_value={"installed-version": "7.25.1"},
+        ):
+            coord.get_firmware_update()
+        coord.execute.assert_not_called()
+        assert coord.major_fw_version == 7
 
     def test_version_parsed_and_available(self, hass):
         coord = _make_coordinator(hass)
@@ -5016,9 +5104,16 @@ class TestAsyncUpdateDataSupportPaths:
         ):
             await coordinator._async_update_data()
 
-        # An async_create_issue call with issue_id "insufficient_permissions" should have happened
+        # The issue is raised under this entry's own id, so a second router
+        # cannot overwrite or delete it.
         created_ids = [c[0][2] for c in mock_create.call_args_list]
-        assert "insufficient_permissions" in created_ids
+        assert f"insufficient_permissions_{coordinator.config_entry.entry_id}" in created_ids
+        assert "insufficient_permissions" not in created_ids
+        # Issues raised under the old shared ids are cleaned up once.
+        deleted_ids = [c[0][2] for c in mock_delete.call_args_list]
+        assert "insufficient_permissions" in deleted_ids
+        assert "wrong_credentials" in deleted_ids
+        assert "ssl_error" in deleted_ids
 
     async def test_final_wrong_login_raises_config_entry_auth_failed(self, hass):
         """Cover lines 798-799: final if block raising ConfigEntryAuthFailed on wrong_login."""

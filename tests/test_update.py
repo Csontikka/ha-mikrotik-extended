@@ -77,6 +77,7 @@ def _make_coordinator(hass, data):
     coord.data = data
     coord.host = "192.168.88.1"
     coord.execute = MagicMock()
+    coord.ds = {"access": ["read", "write", "policy", "reboot", "test", "api"]}
     return coord
 
 
@@ -270,3 +271,32 @@ async def test_router_board_fw_update_properties_and_install(hass):
     # Matching versions → is_on False
     coord.data["routerboard"] = {"current-firmware": "7.10", "upgrade-firmware": "7.10"}
     assert entity.is_on is False
+
+
+async def test_update_install_offered_only_with_install_rights(hass):
+    """A read-only account sees versions but is not offered an install it cannot run."""
+    from homeassistant.components.update import UpdateEntityFeature
+
+    os_desc = _make_description(func="MikrotikRouterOSUpdate", data_attribute="available")
+    rb_desc = _make_description(func="MikrotikRouterBoardFWUpdate", data_path="routerboard", data_attribute="enabled")
+    coord = _make_coordinator(
+        hass,
+        {
+            "firmware": {"available": False, "installed-version": "7.25.1", "latest-version": "7.25.1"},
+            "routerboard": {"current-firmware": "7.25.1", "upgrade-firmware": "7.25.1"},
+        },
+    )
+    os_entity = MikrotikRouterOSUpdate(coord, os_desc)
+    rb_entity = MikrotikRouterBoardFWUpdate(coord, rb_desc)
+
+    assert os_entity.supported_features & UpdateEntityFeature.INSTALL
+    assert os_entity.supported_features & UpdateEntityFeature.BACKUP
+    assert rb_entity.supported_features & UpdateEntityFeature.INSTALL
+
+    coord.ds["access"] = ["read", "api"]
+    assert not os_entity.supported_features & UpdateEntityFeature.INSTALL
+    assert not os_entity.supported_features & UpdateEntityFeature.BACKUP
+    assert os_entity.supported_features & UpdateEntityFeature.RELEASE_NOTES
+    assert not rb_entity.supported_features & UpdateEntityFeature.INSTALL
+    assert os_entity.installed_version == "7.25.1"
+    assert rb_entity.installed_version == "7.25.1"

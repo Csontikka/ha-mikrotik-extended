@@ -990,6 +990,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         self.async_mac_lookup = AsyncMacLookup()
         self.accessrights_reported = False
+        self._legacy_issues_deleted = False
 
         self.last_hwinfo_update = datetime(1970, 1, 1)
         # When the traffic counters were last read, so the rate can be based on
@@ -1434,7 +1435,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     async_create_issue(
                         self.hass,
                         DOMAIN,
-                        "wrong_credentials",
+                        self._issue_id("wrong_credentials"),
                         is_fixable=False,
                         severity=IssueSeverity.ERROR,
                         translation_key="wrong_credentials",
@@ -1444,7 +1445,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     async_create_issue(
                         self.hass,
                         DOMAIN,
-                        "ssl_error",
+                        self._issue_id("ssl_error"),
                         is_fixable=False,
                         severity=IssueSeverity.ERROR,
                         translation_key="ssl_error",
@@ -1456,14 +1457,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
             if self.api.connected():
                 self.last_hwinfo_update = datetime.now().replace(microsecond=0)
-                async_delete_issue(self.hass, DOMAIN, "wrong_credentials")
-                async_delete_issue(self.hass, DOMAIN, "ssl_error")
+                async_delete_issue(self.hass, DOMAIN, self._issue_id("wrong_credentials"))
+                async_delete_issue(self.hass, DOMAIN, self._issue_id("ssl_error"))
+                self._delete_legacy_issues()
                 missing = self.ds.get("access_missing", [])
                 if missing:
                     async_create_issue(
                         self.hass,
                         DOMAIN,
-                        "insufficient_permissions",
+                        self._issue_id("insufficient_permissions"),
                         is_fixable=False,
                         severity=IssueSeverity.WARNING,
                         translation_key="insufficient_permissions",
@@ -1474,7 +1476,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                         },
                     )
                 else:
-                    async_delete_issue(self.hass, DOMAIN, "insufficient_permissions")
+                    async_delete_issue(self.hass, DOMAIN, self._issue_id("insufficient_permissions"))
 
         if self.api.connected():
             await self.hass.async_add_executor_job(self.get_system_health)
@@ -1867,6 +1869,26 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             return ""
         return groups.pop()
 
+    # Repair issues that used to share one id across every config entry. With
+    # two routers, one entry's update deleted or overwrote the other's issue.
+    _LEGACY_ISSUE_IDS = ("wrong_credentials", "ssl_error", "insufficient_permissions")
+
+    def _issue_id(self, key: str) -> str:
+        """Return the repair issue id of this config entry for ``key``."""
+        return f"{key}_{self.config_entry.entry_id}"
+
+    def _delete_legacy_issues(self) -> None:
+        """Drop issues raised under the old id shared by all config entries."""
+        if self._legacy_issues_deleted:
+            return
+        self._legacy_issues_deleted = True
+        for issue_id in self._LEGACY_ISSUE_IDS:
+            async_delete_issue(self.hass, DOMAIN, issue_id)
+
+    def _has_access(self, *policies: str) -> bool:
+        """Return True when the account holds every one of ``policies``."""
+        return all(policy in self.ds["access"] for policy in policies)
+
     # ---------------------------
     #   get_access
     # ---------------------------
@@ -1915,7 +1937,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 username,
             )
 
-        required = ("write", "policy", "reboot", "test")
+        # write: switches, selects and buttons; write + policy: the firmware
+        # update check; reboot: reboot/shutdown and installing updates; test:
+        # pinging tracked hosts, so only when host tracking is enabled.
+        required = ["write", "policy", "reboot"]
+        if self.option_track_network_hosts:
+            required.append("test")
         missing = [p for p in required if p not in self.ds["access"]]
         self.ds["access_missing"] = missing
 
@@ -3391,18 +3418,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 ],
             )
 
-            if "write" not in self.ds["access"] or "policy" not in self.ds["access"] or "reboot" not in self.ds["access"]:
-                self.ds["routerboard"].pop("current-firmware")
-                self.ds["routerboard"].pop("upgrade-firmware")
-
     # ---------------------------
     #   get_system_health
     # ---------------------------
     def get_system_health(self) -> None:
-        """Get routerboard data from Mikrotik"""
-        if "write" not in self.ds["access"] or "policy" not in self.ds["access"] or "reboot" not in self.ds["access"]:
-            return
+        """Get system health data from Mikrotik
 
+        /system/health is a plain read, the read policy is enough for it.
+        """
         if 0 < self.major_fw_version >= 7:
             self.ds["health7"] = parse_api(
                 data=self.ds["health7"],
@@ -3464,11 +3487,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     #   get_firmware_update
     # ---------------------------
     def get_firmware_update(self) -> None:
-        """Check for firmware update on Mikrotik"""
-        if "write" not in self.ds["access"] or "policy" not in self.ds["access"] or "reboot" not in self.ds["access"]:
-            return
+        """Check for firmware update on Mikrotik
 
-        self.execute("/system/package/update", "check-for-updates", None, None, {"duration": 10})
+        Reading /system/package/update needs only the read policy, and it is
+        also where the RouterOS version comes from, which decides what else
+        the router is asked (v7 wifi, WireGuard, containers, health). Only the
+        check-for-updates command needs more: RouterOS refuses it unless the
+        account has both write and policy. Without them the last result the
+        router holds is shown instead of a fresh one.
+        """
+        if self._has_access("write", "policy"):
+            self.execute("/system/package/update", "check-for-updates", None, None, {"duration": 10})
         self.ds["fw-update"] = parse_api(
             data=self.ds["fw-update"],
             source=self.api.query("/system/package/update"),
