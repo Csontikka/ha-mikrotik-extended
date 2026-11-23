@@ -841,7 +841,7 @@ async def test_remove_entry_takes_its_repair_issues_along(hass, connected):
 
     entry = _make_entry(hass)
     other = _make_entry(hass)
-    keys = ("wrong_credentials", "ssl_error", "insufficient_permissions", "encoding_entity_ids")
+    keys = ("wrong_credentials", "ssl_error", "insufficient_permissions", "encoding_entity_ids", "duplicate_rules")
     for key in keys:
         for owner in (entry, other):
             ir.async_create_issue(hass, DOMAIN, f"{key}_{owner.entry_id}", is_fixable=False, severity=ir.IssueSeverity.WARNING, translation_key="insufficient_permissions")

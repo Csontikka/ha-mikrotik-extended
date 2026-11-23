@@ -430,7 +430,7 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     """Clean up router-side resources and repair issues when the integration is removed."""
     # The repair issues of this entry would otherwise stay listed until
     # Home Assistant restarts, pointing at a router that is no longer set up.
-    for key in (*MikrotikCoordinator._LEGACY_ISSUE_IDS, MikrotikCoordinator.ENCODING_ISSUE_ID):
+    for key in (*MikrotikCoordinator._LEGACY_ISSUE_IDS, MikrotikCoordinator.ENCODING_ISSUE_ID, MikrotikCoordinator.DUPLICATE_RULES_ISSUE_ID):
         ir.async_delete_issue(hass, DOMAIN, f"{key}_{config_entry.entry_id}")
 
     api = MikrotikAPI(

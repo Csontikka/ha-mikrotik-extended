@@ -1201,6 +1201,46 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Get or create the numbers given to the identical rules of a store."""
         return self._rule_numbers.setdefault(key, {})
 
+    DUPLICATE_RULES_ISSUE_ID = "duplicate_rules"
+
+    # The menu each rule store is read from, as the user finds it on the router.
+    _RULE_MENUS = {
+        "nat": "/ip/firewall/nat",
+        "mangle": "/ip/firewall/mangle",
+        "routing_rules": "/routing/rule",
+        "filter": "/ip/firewall/filter",
+        "raw": "/ip/firewall/raw",
+        "queue": "/queue/simple",
+        **{store: menu for store, (menu, _extras) in _IPV6_FIREWALL_MENUS.items()},
+    }
+
+    def _check_duplicate_rules(self) -> None:
+        """Tell the user while rules exist that only a number keeps apart.
+
+        The number holds while Home Assistant runs. A restart numbers the
+        rules again in the order the router lists them, and nothing can be
+        done about that from here: the rules are identical. Distinct comments
+        can, and that is the user's to do.
+        """
+        menus = []
+        for store, menu in self._RULE_MENUS.items():
+            stale = self._get_stale_counters(store)
+            if any(uid not in stale for held in self._rule_numbers.get(store, {}).values() for uid in held):
+                menus.append(menu)
+        issue_id = self._issue_id(self.DUPLICATE_RULES_ISSUE_ID)
+        if not menus:
+            async_delete_issue(self.hass, DOMAIN, issue_id)
+            return
+        async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=IssueSeverity.WARNING,
+            translation_key="duplicate_rules",
+            translation_placeholders={"host": self.host, "menus": ", ".join(menus)},
+        )
+
     def _get_stale_counters(self, key: str) -> dict:
         """Get or create stale counter dict for a data path."""
         if key not in self._stale_counters:
@@ -1771,6 +1811,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._check_encoding_entity_ids()
         self._migrate_rule_unique_ids()
         self._follow_rule_references()
+        self._check_duplicate_rules()
         self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
         return self.ds
