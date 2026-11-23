@@ -10,7 +10,7 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -104,13 +104,28 @@ class MikrotikSwitch(MikrotikEntity, SwitchEntity, RestoreEntity):
         """Required abstract method."""
         pass
 
+    def _refuse_when_gone(self, target: str) -> None:
+        """Send nothing for a row the router no longer has.
+
+        The RouterOS id the entity last saw may by now belong to another
+        rule, peer or member, and a write would change that one.
+        """
+        if self._row_is_gone():
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="write_failed",
+                translation_placeholders={"host": self.coordinator.host, "target": target},
+            )
+
     async def _write(self, path, param, value, mod_param, mod_value) -> None:
         """Change one value on the router; a refusal is an error the user sees."""
+        self._refuse_when_gone(self._target(path))
         if not await self.hass.async_add_executor_job(self.coordinator.set_value, path, param, value, mod_param, mod_value):
             raise_write_failed(self.coordinator, self._target(path))
 
     async def _run(self, path, command, param, value) -> None:
         """Run one command on the router; a refusal is an error the user sees."""
+        self._refuse_when_gone(self._target(path, command))
         if not await self.hass.async_add_executor_job(self.coordinator.execute, path, command, param, value):
             raise_write_failed(self.coordinator, self._target(path, command))
 
@@ -377,49 +392,9 @@ class MikrotikInterfaceListMemberSwitch(MikrotikFilterSwitch):
     Toggled like a Filter rule, by its RouterOS id. The entity is bound to
     one list and interface pair. Once that member is gone from the router
     the id the entity last saw may belong to another member, so the switch
-    goes unavailable and writes nothing.
+    goes unavailable, writes nothing and is then removed, like every entity
+    whose row has left the router.
     """
-
-    def _member_is_live(self) -> bool:
-        path = self.entity_description.data_path
-        if self._uid not in (self.coordinator.data.get(path) or {}):
-            return False
-        get_counters = getattr(self.coordinator, "_get_stale_counters", None)
-        return self._uid not in (get_counters(path) if get_counters else {})
-
-    @property
-    def available(self) -> bool:
-        """Return True while the member is on the router."""
-        return super().available and self._member_is_live()
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        # A member moved to another list is out of the store in the same
-        # read. The base class then leaves the entity as it was, which would
-        # keep showing its last on or off; write the state so it reads
-        # unavailable.
-        if self._uid not in (self.coordinator.data.get(self.entity_description.data_path) or {}):
-            self.async_write_ha_state()
-            return
-        super()._handle_coordinator_update()
-
-    def _refuse_when_gone(self) -> None:
-        if not self._member_is_live():
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="write_failed",
-                translation_placeholders={"host": self.coordinator.host, "target": self.name},
-            )
-
-    async def async_turn_on(self) -> None:
-        """Turn on the switch."""
-        self._refuse_when_gone()
-        await super().async_turn_on()
-
-    async def async_turn_off(self) -> None:
-        """Turn off the switch."""
-        self._refuse_when_gone()
-        await super().async_turn_off()
 
 
 # ---------------------------

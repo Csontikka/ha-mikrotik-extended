@@ -66,6 +66,16 @@ _LOGGER = getLogger(__name__)
 # different peer.
 REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "raw", "queue", "ipv6_filter", "ipv6_raw", "ipv6_nat", "ipv6_mangle"})
 
+# Stores where an entity stands for one row of a router menu, and where a row
+# that has left the menu is gone for good: the firewall and routing rules,
+# the simple queues, the netwatch probes, the WireGuard peers and the
+# interface list members. An entity there is unavailable from the first read
+# without its row, and removed once the row has left the store. Stores with
+# removal rules of their own (interfaces, hosts, routes, the LTE modem) and
+# stores whose rows come and go in normal operation (addresses, containers
+# during an upgrade, script variables) are deliberately not listed.
+ROW_BOUND_DATA_PATHS = REBIND_DATA_PATHS | {"netwatch", "wireguard_peers", "interface_list_member"}
+
 _FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Raw", "Routing Rules", "IPv6 Filter", "IPv6 Raw", "IPv6 NAT", "IPv6 Mangle"}
 _IFACE_TYPE_CATEGORY = {
     "ether": "port",
@@ -252,10 +262,19 @@ def _cleanup_orphans(hass, platform, config_entry) -> None:
 
     device_registry = dr.async_get(hass)
     for device_entry in dr.async_entries_for_config_entry(device_registry, config_entry.entry_id):
-        device_entities = er.async_entries_for_device(entity_registry, device_entry.id, include_disabled_entities=True)
-        if not device_entities:
-            _LOGGER.debug("Removing empty device %s", device_entry.name)
-            device_registry.async_remove_device(device_entry.id)
+        _remove_device_without_entities(hass, device_entry.id)
+
+
+def _remove_device_without_entities(hass, device_id) -> None:
+    """Remove a device that no entity, enabled or disabled, belongs to any more."""
+    device_registry = dr.async_get(hass)
+    device_entry = device_registry.async_get(device_id) if device_id else None
+    if device_entry is None:
+        return
+    if er.async_entries_for_device(er.async_get(hass), device_id, include_disabled_entities=True):
+        return
+    _LOGGER.debug("Removing empty device %s", device_entry.name)
+    device_registry.async_remove_device(device_id)
 
 
 async def async_add_entities(hass: HomeAssistant, config_entry: ConfigEntry, dispatcher: dict[str, Callable]):
@@ -418,12 +437,62 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
                 if new_uid is not None:
                     self._uid = new_uid
                 elif self._uid not in path_data:
+                    if self.entity_description.data_path in ROW_BOUND_DATA_PATHS:
+                        self._async_remove_gone()
                     return
             self._data = path_data[self._uid]
         else:
             self._data = path_data
         self._attr_name = self.custom_name
         super()._handle_coordinator_update()
+
+    def _row_is_gone(self) -> bool:
+        """True from the first read that did not bring this entity's row.
+
+        Only in the stores where a missing row means the object was removed
+        on the router. The row may still be in the store, kept for a few
+        reads in case the read was incomplete, but the RouterOS id it holds
+        can by then belong to something else, so it is no longer shown as a
+        state and never written to.
+        """
+        path = self.entity_description.data_path
+        if not self._uid or path not in ROW_BOUND_DATA_PATHS:
+            return False
+        path_data = (self.coordinator.data or {}).get(path)
+        if path_data is None:
+            return False
+        if self._uid not in path_data:
+            return True
+        get_counters = getattr(self.coordinator, "_get_stale_counters", None)
+        return self._uid in (get_counters(path) if get_counters else {})
+
+    @property
+    def available(self) -> bool:
+        """Return True while the router can be read and still has the row."""
+        return super().available and not self._row_is_gone()
+
+    @callback
+    def _async_remove_gone(self) -> None:
+        """Take the entity out of Home Assistant: its row has left the router for good.
+
+        The registry entry goes with it, as it would at the next reload, and
+        so does the device once nothing belongs to it. Home Assistant removes
+        the entity object itself when its registry entry is removed, which
+        also clears the platform's record of it, so the same object coming
+        back on the router is added as a new entity.
+        """
+        self.async_write_ha_state()
+        if self.platform is None:
+            # Never added to Home Assistant, so there is nothing to take out.
+            return
+        registry = er.async_get(self.hass)
+        entry = registry.async_get(self.entity_id)
+        if entry is None:
+            self.hass.async_create_task(self.async_remove())
+            return
+        _LOGGER.debug("Removing %s, it is gone from the router", self.entity_id)
+        registry.async_remove(self.entity_id)
+        _remove_device_without_entities(self.hass, entry.device_id)
 
     def _replacement_uid(self, path_data, stale) -> str | None:
         """Find the live store key of a re-created record by its uniq-id."""

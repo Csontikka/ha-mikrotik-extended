@@ -17,6 +17,7 @@ import voluptuous_serialize
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import slugify
@@ -764,8 +765,13 @@ class TestSwitches:
         switch.coordinator._get_stale_counters = coord._get_stale_counters
         switch._handle_coordinator_update()
 
-        await switch.async_turn_off()
-        assert switch.coordinator.set_value.call_args.args[2] == "*5"
+        assert switch._uid == "*5"
+        # Its own rule is gone, so it does not write to the id it last saw either.
+        assert switch.available is False
+        with pytest.raises(HomeAssistantError) as error:
+            await switch.async_turn_off()
+        assert error.value.translation_key == "write_failed"
+        switch.coordinator.set_value.assert_not_called()
 
     async def test_without_write_access_nothing_is_sent(self, hass):
         coord = _fetch(hass)
