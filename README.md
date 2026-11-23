@@ -55,6 +55,7 @@ domain, `mikrotik_extended`, so nothing conflicts.
 | **Firewall and routing** | | |
 | NAT, mangle, filter and routing rules as switches | ❌ | ✅ |
 | IPv6 firewall rules as switches | ❌ | ✅ |
+| Interface list members as switches | ❌ | ✅ |
 | Simple queues | ❌ | ✅ |
 | **Network** | | |
 | Device tracking by ARP | ✅ | ✅ |
@@ -122,6 +123,17 @@ Monitor and control individual rules — each gets a switch entity:
 The IPv6 rules sit behind one option, **IPv6 firewall switches**, off by default. With it on, every rule of the four `/ipv6/firewall` menus gets a switch, on a device per menu (*IPv6 Filter*, *IPv6 Raw*, *IPv6 NAT*, *IPv6 Mangle*). A rule that shares its comment with an IPv4 rule, or with a rule in another IPv6 menu, is a separate entity. As with the IPv4 rules, a switch is named after the rule's comment, `jump` rules and the dynamic rules the router adds by itself get none, and editing a commented rule on the router keeps its entity. Unlike the IPv4 NAT switches, which exist for `dst-nat` rules, every IPv6 NAT rule gets one. The option costs four extra reads per poll; a router without IPv6 support simply has no such rules. An entry set up with the **Full** preset before this option existed keeps it off until the preset is chosen again.
 
 More information: [MikroTik Firewall documentation](https://help.mikrotik.com/docs/display/ROS/Firewall)
+
+### Interface lists
+
+With the option **Interface list member switches** on, every member of an interface list (`/interface list member`) gets a switch that enables or disables that member on the router. A firewall rule that matches on a list, for example the interfaces that may forward to the LAN, can then be opened and closed for one interface from an automation, without touching the rule.
+
+- A switch is named after its list and interface, for example *LAN ether5*, and shows the list, the interface and the comment as attributes. All of them live on one device, *Interface Lists*.
+- A member is known by its list and interface, so one that is removed and added again on the router keeps its entity, and so does one whose comment changes. Renaming the interface or the list on the router gives the member a new entity.
+- The members the router adds by itself (dynamic ones) get no switch.
+- Members are not added or removed from Home Assistant, only switched.
+
+The option is off by default, and on in the **Full** preset.
 
 ### LTE / 5G modem
 
@@ -399,7 +411,7 @@ What people set this integration up for, and which part of it does the job:
 - **Presence from the router.** Every host the router sees in its ARP, DHCP and wireless registration tables becomes a device tracker, so the phones on your WiFi drive home/away automations without an app on the phone. The *Host tracking timeout* and *Device tracker interval* options tune how quickly a device is marked away.
 - **Know when the internet fails over.** With route sensors on, the *Active WAN* sensor names the interface the default route leaves through, and the per-route binary sensors show which default routes are up. A change on that sensor is the trigger for a notification, or for pausing backups while on the LTE line.
 - **Watch a link that matters.** Netwatch probes on the router become binary sensors with round trip time and loss as attributes; a probe going down can restart a PoE-fed access point with the PoE power cycle button, or switch a WireGuard peer on.
-- **Switch things on the router from Home Assistant.** Firewall rules (filter, NAT, mangle, raw, and the IPv6 firewall), Kid Control, WireGuard peers, interfaces, containers, PoE output, scripts and the configuration backup are entities or actions, so a schedule or a dashboard button can toggle them. A change the router does not make fails the call, so an automation sees it.
+- **Switch things on the router from Home Assistant.** Firewall rules (filter, NAT, mangle, raw, and the IPv6 firewall), interface list members, Kid Control, WireGuard peers, interfaces, containers, PoE output, scripts and the configuration backup are entities or actions, so a schedule or a dashboard button can toggle them. A change the router does not make fails the call, so an automation sees it.
 - **Capacity and health.** Traffic per interface and per client, CPU, memory, temperature, port error counters, firmware update availability, and the LTE / 5G modem signal on routers with a modem.
 
 The [Automation Examples](#automation-examples) below show two of these in full.
@@ -477,6 +489,7 @@ automation:
 | PoE out power, voltage, current (per port, where the hardware measures) | ✓ | ? | With interfaces |
 | Firewall rules (NAT, mangle, filter, raw) | ✓ | ✓ | Yes |
 | IPv6 firewall rules (filter, raw, NAT, mangle) | ✓ | ? | Yes |
+| Interface list members | ✓ | ? | Yes |
 | Routing rules | ✓ | ✓ | Yes |
 | Route sensors (static and default routes) | ✓ | ? | Yes |
 | LTE / 5G modem sensors | ✓ | ? | Yes |
@@ -581,7 +594,7 @@ These options can be changed after setup via **Settings -> Devices & Services ->
 | Interface entities | enabled | Per-interface entities: port switches, port trackers, traffic sensors and IP address sensors. Disable to monitor only the core device, useful on large switches. Disabling also skips the per-port link queries, which is where most of the polling load on a large switch comes from. Note that disabling removes those entities and their per-port devices from Home Assistant, so a renamed port or an assigned area is not restored when you switch back. |
 | Port error counters | disabled | Up to four sensors per interface: RX errors, TX errors, RX drops, TX drops, for the counters that interface reports. A counter that keeps climbing on one port points at a bad cable or a failing port. They come from the interface list the integration reads anyway, so they cost no extra query. |
 | Port switches | enabled | The switch on every interface that disables it on the router. Turn it off to keep an interface, the uplink for example, from being disabled by accident. The other entities of the interface stay, the PoE selector included, which can still cut the power of a PoE-fed device. Presets never change this option. An interface whose only entity was this switch loses its device as well. |
-| Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, raw, the IPv6 firewall, scripts, WireGuard, containers, etc. |
+| Sensor toggles | see presets | Per-category switches for NAT, mangle, filter, raw, the IPv6 firewall, interface list members, scripts, WireGuard, containers, etc. |
 
 > **Note:** The **Configure** button opens the options flow (scan interval, presets, sensor toggles). The **Reconfigure** option (three-dot menu) is for changing connection settings only (host, port, credentials, SSL).
 
@@ -594,7 +607,7 @@ Available during initial setup and via the **Configure** button at any time:
 | **Core only** | Nothing per-interface or per-rule, only the core device with its system, health, cloud and firmware update entities. The per-port link queries stop as well, which lowers the load on the router. |
 | **Minimal** | Port tracker only |
 | **Recommended** | Port tracker, NAT, mangle, filter, scripts, netwatch |
-| **Full** | Everything: port traffic, client traffic, port error counters, queues, routing rules, raw rules, IPv6 firewall rules, route sensors, LTE / 5G modem sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
+| **Full** | Everything: port traffic, client traffic, port error counters, queues, routing rules, raw rules, IPv6 firewall rules, interface list members, route sensors, LTE / 5G modem sensors, WireGuard, PPP, Kid Control, containers, environment, host tracking |
 | **Custom** | Manually select each sensor category |
 
 Switching presets takes effect after saving:
