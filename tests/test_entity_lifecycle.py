@@ -308,19 +308,64 @@ class TestGoneFromTheRouter:
         await _entity(hass, again).async_turn_off()
         assert router.writes() == [(FILTER, ".id", "*7", "disabled", True)]
 
-    async def test_a_peer_added_again_with_its_key_gets_its_entities_back(self, hass):
-        """A WireGuard peer is not followed to a new id, its key is not unique across interfaces."""
+    async def test_a_peer_added_again_with_its_key_keeps_its_entities(self, hass):
+        """A WireGuard peer is not followed to a new id at once, its key is not unique across interfaces.
+
+        Once the old row has left, the new one is the only row the unique id
+        can mean, and it is given the same registry entries: what the user
+        named them stays.
+        """
         path, rows, domains = STORES["wireguard_peers"]
         router = await start(hass, {path: list(rows)}, platforms=domains)
-        before = router.entities("switch")
+        before = {domain: router.registry_ids(domain) for domain in domains}
+        phone = next(entity_id for entity_id in before["switch"] if _entity(hass, entity_id)._uid == "*1")
+        router.registry.async_update_entity(phone, name="My phone")
 
         router.menus[path] = [{**rows[0], ".id": "*8"}, rows[1]]
-        await router.poll(3)
-        assert len(router.entities("switch")) == 1
+        await router.poll()
+        assert router.state(phone) == "unavailable"
+        await router.poll(2)
+        assert {domain: router.registry_ids(domain) for domain in domains} == before
         await router.poll()
 
-        assert router.entities("switch") == before
-        assert all(router.state(entity_id) == "on" for entity_id in before.values())
+        assert {domain: router.registry_ids(domain) for domain in domains} == before
+        assert router.registry.async_get(phone).name == "My phone"
+        assert router.state(phone) == "on"
+        assert _entity(hass, phone)._uid == "*8"
+        await _entity(hass, phone).async_turn_off()
+        assert router.writes() == [(path, ".id", "*8", "disabled", True)]
+
+    async def test_a_rule_recreated_with_other_contents_keeps_its_entity(self, hass):
+        """Same comment, another port: not followed while the old row may still be there, then taken over."""
+        router, telnet, _ = await _filter_router(hass)
+        before = router.registry_ids()
+        router.registry.async_update_entity(telnet, name="My telnet", icon="mdi:shield")
+
+        router.menus[FILTER] = [LAN, {**TELNET, ".id": "*9", "dst-port": "2323"}]
+        await router.poll()
+        assert router.state(telnet) == "unavailable"
+        assert _entity(hass, telnet)._uid == "*1"
+        with pytest.raises(HomeAssistantError):
+            await _entity(hass, telnet).async_turn_off()
+        await router.poll(3)
+
+        assert router.registry_ids() == before
+        entry = router.registry.async_get(telnet)
+        assert (entry.name, entry.icon) == ("My telnet", "mdi:shield")
+        assert router.state(telnet) == "on"
+        await _entity(hass, telnet).async_turn_off()
+        assert router.writes() == [(FILTER, ".id", "*9", "disabled", True)]
+
+    async def test_a_kept_registry_entry_goes_when_the_other_row_leaves_too(self, hass):
+        router, telnet, _ = await _filter_router(hass)
+        router.menus[FILTER] = [LAN, {**TELNET, ".id": "*9", "dst-port": "2323"}]
+        await router.poll(3)
+        assert router.registry.async_get(telnet) is not None
+
+        router.menus[FILTER] = [LAN]
+        await router.poll(4)
+
+        assert router.registry.async_get(telnet) is None
 
 
 class TestRegistryAndDevice:

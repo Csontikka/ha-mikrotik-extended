@@ -92,6 +92,10 @@ class Router:
         prefix = f"{ENTRY_ID}-"
         return {entry.unique_id.removeprefix(prefix): entry.entity_id for entry in er.async_entries_for_config_entry(self.registry, ENTRY_ID) if entry.domain == domain}
 
+    def registry_ids(self, domain: str = "switch") -> dict[str, str]:
+        """Entity id to the id of its registry entry, which is new whenever an entity is registered again."""
+        return {entry.entity_id: entry.id for entry in er.async_entries_for_config_entry(self.registry, ENTRY_ID) if entry.domain == domain}
+
     def state(self, entity_id: str) -> str | None:
         state = self.hass.states.get(entity_id)
         return state.state if state else None
@@ -118,6 +122,10 @@ async def start(hass, menus: dict, platforms=("switch",), options: dict | None =
 async def restart(router: Router) -> Router:
     """Home Assistant restarts: the registries stay, the integration begins again."""
     await router.hass.config_entries.async_unload_platforms(router.entry, router.platforms)
+    # What the platforms registered to be undone on unload, their listener
+    # for new rows among it. Left connected, the old listener would see no
+    # entities on its unloaded platform and remove every registry entry.
+    await router.entry._async_process_on_unload(router.hass)
     await router.hass.async_block_till_done()
     return await _boot(router.hass, router.entry, router.menus, router.platforms)
 
