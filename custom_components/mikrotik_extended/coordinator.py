@@ -1059,9 +1059,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # The unique ids of the switches the registry held when this run
         # began; see _note_registered_switches.
         self._registered_switches: frozenset[str] | None = None
-        # The reference every rule was last seen under, per store and row; see
+        # The reference and the contents every rule was last seen with, per
+        # store and row; see
         # _follow_rule_references.
-        self._rule_references: dict[str, dict[str, str]] = {}
+        self._rule_references: dict[str, dict[str, tuple[str, str]]] = {}
 
     # Entity keys whose reference moved from the rule contents to the comment.
     _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "raw", "queue", *_IPV6_FIREWALL_MENUS)
@@ -1129,79 +1130,151 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         The reference is the comment where there is one and the rule contents
         otherwise, so it changes when a comment is added, removed or edited,
-        when a queue is renamed, and when identical rules gain or lose their
-        number. The row is still the same row, under the same RouterOS id,
-        and the entity object stays bound to it; only the unique id the
-        registry holds would no longer match, and a second entity would be
-        registered for the rule while the first stayed until the next start.
-        So the registry entry is moved to the new unique id, and entity id,
-        name and area stay as they are.
+        and when identical rules gain or lose their number. The row is still
+        the same row, under the same RouterOS id, and the entity object stays
+        bound to it; only the unique id the registry holds would no longer
+        match, and a second entity would be registered for the rule while the
+        first stayed until the next start. So the registry entry is moved to
+        the new unique id, and entity id, name and area stay as they are.
+
+        The RouterOS id alone is not taken as proof. A configuration that is
+        reset and loaded again hands out the same ids to other rules, and
+        following those would put every entity on a rule it was never made
+        for. The contents have to be the same as before. Where they are not,
+        the row holds another rule now, and its entity is let go of; see
+        _release_rule_entity.
 
         A move waits while the new unique id belongs to another entry, for
         example to the entity of a deleted rule that is still on its pruning
         grace, and is tried again on every cycle. An entry that the entity of
-        another row is registered under is never moved.
+        another row is registered under is never touched.
         """
         registry = er.async_get(self.hass)
         for key in self._COMMENT_KEYED_RULES:
             stale = self._get_stale_counters(key)
             known = self._rule_references.get(key, {})
-            now: dict[str, str] = {}
+            now: dict[str, tuple[str, str]] = {}
             pending: dict[str, tuple[str, str]] = {}
             for uid, vals in self.ds.get(key, {}).items():
-                reference = str(vals.get("uniq-id", ""))
+                seen = (str(vals.get("uniq-id", "")), str(vals.get("legacy-uniq-id", "")))
                 # A row on the pruning grace is not refreshed, so there is
                 # nothing to follow; what is known of it is kept in case the
                 # next read brings it back.
                 if uid in stale:
-                    now[uid] = known.get(uid, reference)
+                    now[uid] = known.get(uid, seen)
                     continue
-                now[uid] = reference
-                if uid in known and slugify(known[uid].lower()) != slugify(reference.lower()):
-                    pending[uid] = (known[uid], reference)
+                now[uid] = seen
+                if uid not in known:
+                    continue
+                old_uid, new_uid = self._rule_unique_id(key, known[uid][0]), self._rule_unique_id(key, seen[0])
+                if old_uid == new_uid:
+                    continue
+                if not self._rule_entity_is_of_row(registry, key, uid, old_uid, known):
+                    continue
+                if known[uid][1] != seen[1]:
+                    self._release_rule_entity(registry, key, uid, old_uid)
+                    continue
+                pending[uid] = (old_uid, new_uid)
 
-            # One move can free the unique id another one waits for.
-            moved = True
-            while pending and moved:
-                moved = False
-                for uid, (old, new) in list(pending.items()):
-                    outcome = self._move_rule_entity(registry, key, uid, old, new, known)
-                    if outcome is None:
-                        continue
-                    del pending[uid]
-                    moved = moved or outcome
-            for uid, (old, _new) in pending.items():
-                now[uid] = old
+            waiting = self._move_rule_entities(registry, pending)
+            for uid in waiting:
+                now[uid] = known[uid]
             self._rule_references[key] = now
 
-    def _move_rule_entity(self, registry, key: str, uid: str, old: str, new: str, known: dict) -> bool | None:
-        """Move the entry registered for ``old`` to ``new``.
+    # What a registry entry is called while it steps aside for another one.
+    # It cannot be the unique id of a rule: the last part of those is a slug,
+    # and a slug holds no hyphen.
+    _PARKED = "-moving"
 
-        True when it was moved, False when there is nothing to move, None
-        when the new unique id is taken for now.
-        """
-        entry_id = self.config_entry.entry_id
-        old_uid = f"{entry_id}-{key}-{slugify(old.lower())}"
-        new_uid = f"{entry_id}-{key}-{slugify(new.lower())}"
-        entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
+    def _rule_unique_id(self, key: str, reference: str) -> str:
+        """The unique id of the switch of a rule with this reference."""
+        return f"{self.config_entry.entry_id}-{key}-{slugify(reference.lower())}"
+
+    def _rule_entity_is_of_row(self, registry, key: str, uid: str, unique_id: str, known: dict) -> bool:
+        """True when the entry registered under ``unique_id`` is the entity of this row."""
+        entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, unique_id)
         if entity_id is None:
             return False
         bound = self._entity_row(entity_id)
-        if bound is not None and bound != uid:
-            # Registered for another row: two references can read alike as
-            # a unique id, and only one of the rows got the entity.
-            return False
-        if bound is None:
-            # A disabled entity has no object to ask. When another row went
-            # by the same unique id, whose entry this is cannot be told.
-            wanted = slugify(old.lower())
-            if any(other != uid and slugify(reference.lower()) == wanted for other, reference in known.items()):
-                return False
-        if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid) is not None:
-            return None
-        registry.async_update_entity(entity_id, new_unique_id=new_uid)
-        _LOGGER.debug("Mikrotik %s moved %s along with its rule, which is now '%s'", self.host, entity_id, new)
-        return True
+        if bound is not None:
+            # Two references can read alike as a unique id, and then only
+            # one of the rows got the entity.
+            return bound == uid
+        # A disabled entity has no object to ask. When another row went by
+        # the same unique id, whose entry this is cannot be told.
+        return not any(other != uid and self._rule_unique_id(key, reference) == unique_id for other, (reference, _contents) in known.items())
+
+    def _release_rule_entity(self, registry, key: str, uid: str, unique_id: str) -> None:
+        """Take the entity registered under ``unique_id`` off a row that holds another rule now.
+
+        When the rule it was made for is on the router under another id, as
+        every rule is after a configuration was loaded again, only the entity
+        object goes: the registry entry stays, and the platform hands it to
+        that row in the same cycle, with its entity id, name and area.
+
+        Otherwise the row is a rule without a comment that was edited, a
+        queue without a comment that was renamed, or a rule that took the
+        place of a removed one. That has always counted as a new rule with a
+        new entity, and the old entity goes with its registry entry, instead
+        of staying next to the new one until the next start. An entity the
+        user disabled is left alone, as everywhere else.
+        """
+        entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, unique_id)
+        if registry.async_get(entity_id).disabled:
+            return
+        stale = self._get_stale_counters(key)
+        for other, vals in self.ds.get(key, {}).items():
+            if other == uid or other in stale or self._rule_unique_id(key, str(vals.get("uniq-id", ""))) != unique_id:
+                continue
+            for platform in ep.async_get_platforms(self.hass, DOMAIN):
+                entity = platform.entities.get(entity_id)
+                if entity is not None:
+                    # Done before the platform looks at the rows, which is
+                    # next in this cycle.
+                    self.hass.async_create_task(entity.async_remove(), eager_start=True)
+            return
+        _LOGGER.debug("Mikrotik %s removes %s, its row holds another rule now", self.host, entity_id)
+        registry.async_remove(entity_id)
+
+    def _move_rule_entities(self, registry, pending: dict[str, tuple[str, str]]) -> list[str]:
+        """Move registry entries from their old unique id to the new one; return the rows still waiting."""
+        while pending:
+            moved = False
+            for uid, (old_uid, new_uid) in list(pending.items()):
+                if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid) is not None:
+                    continue
+                entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
+                registry.async_update_entity(entity_id, new_unique_id=new_uid)
+                _LOGGER.debug("Mikrotik %s moved %s along with its rule to %s", self.host, entity_id, new_uid)
+                del pending[uid]
+                moved = True
+            if moved:
+                continue
+            # One move frees the unique id the next one waits for, so the
+            # loop above settles every chain. What it cannot settle is rules
+            # that trade references, each waiting for the other. One of them
+            # steps aside, and the rest, and then itself, find their id free.
+            uid = self._first_in_a_ring(pending)
+            if uid is None:
+                break
+            old_uid, new_uid = pending[uid]
+            registry.async_update_entity(registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid), new_unique_id=f"{old_uid}{self._PARKED}")
+            pending[uid] = (f"{old_uid}{self._PARKED}", new_uid)
+        return list(pending)
+
+    @staticmethod
+    def _first_in_a_ring(pending: dict[str, tuple[str, str]]) -> str | None:
+        """A row whose move waits for a row that, in the end, waits for it."""
+        holder = {old_uid: uid for uid, (old_uid, _new_uid) in pending.items()}
+        for first in pending:
+            uid, visited = first, {first}
+            while (uid := holder.get(pending[uid][1])) is not None:
+                if uid == first:
+                    return first
+                if uid in visited:
+                    break
+                visited.add(uid)
+        return None
 
     def _entity_row(self, entity_id: str) -> str | None:
         """The store key the entity behind ``entity_id`` is bound to, None when it is not loaded."""
