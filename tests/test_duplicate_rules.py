@@ -13,6 +13,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.const import EVENT_HOMEASSISTANT_FINAL_WRITE
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers import issue_registry as ir
 
@@ -25,6 +26,8 @@ COMPONENT = os.path.join(os.path.dirname(__file__), "..", "custom_components", "
 MENUS = {"filter": "/ip/firewall/filter", "ipv6_filter": "/ipv6/firewall/filter"}
 RULE = {"chain": "forward", "action": "drop", "protocol": "tcp", "dst-port": "23", "disabled": False}
 ISSUE = f"duplicate_rules_{ENTRY_ID}"
+# The reference of RULE in the IPv4 filter store.
+SAME = "forward,drop,tcp,any,any,any:any,any:any-any,any:any,any:23"
 
 both_stores = pytest.mark.parametrize("store", sorted(MENUS))
 
@@ -435,7 +438,19 @@ class TestWhatIsSaved:
         assert f"{DOMAIN}.rule_numbers.{ENTRY_ID}" not in hass_storage
 
     @pytest.mark.parametrize(
-        "saved", [None, "text", [1, 2], {"filter": "text"}, {"filter": {"x": "text"}}, {"filter": {"x": {"*1": "one"}}}, {"filter": {"x": {"*1": 0}}}, {"filter": {"x": {"*1": True}}}, {"nonsense": {"x": {"*1": 1}}}]
+        "saved",
+        [
+            None,
+            "text",
+            [1, 2],
+            {"filter": "text"},
+            {"filter": {"x": "text"}},
+            {"filter": {"x": {"*1": "one"}}},
+            {"filter": {"x": {"*1": 0}}},
+            {"filter": {"x": {"*1": True}}},
+            {"nonsense": {"x": {"*1": 1}}},
+            {"filter": {SAME: {"*1": 1, "*2": 1}}},
+        ],
     )
     async def test_a_file_that_makes_no_sense_is_ignored(self, hass, hass_storage, saved):
         hass_storage[f"{DOMAIN}.rule_numbers.{ENTRY_ID}"] = {"version": 1, "minor_version": 1, "key": f"{DOMAIN}.rule_numbers.{ENTRY_ID}", "data": saved}
@@ -464,6 +479,26 @@ class TestWhatIsSaved:
         router = await restart(router)
 
         assert [router.coordinator.ds["filter"][uid]["uniq-id"][-2:] for uid in ("*2", "*3")] == ["#1", "#2"]
+
+    async def test_a_save_that_is_still_waiting_does_not_bring_the_file_back(self, hass, hass_storage):
+        """Unloading writes it out, so nothing is left to be written after the entry was removed."""
+        from custom_components.mikrotik_extended import async_remove_entry, async_unload_entry
+
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        key = f"{DOMAIN}.rule_numbers.{ENTRY_ID}"
+        assert key not in hass_storage
+        router.entry.runtime_data.data_coordinator.api.close = MagicMock()
+
+        assert await async_unload_entry(hass, router.entry)
+        assert hass_storage[key]["data"]["filter"]
+        api = MagicMock()
+        api.connect.return_value = False
+        with patch("custom_components.mikrotik_extended.MikrotikAPI", return_value=api):
+            await async_remove_entry(hass, router.entry)
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+        await hass.async_block_till_done()
+
+        assert key not in hass_storage
 
     async def test_removing_the_entry_removes_the_file(self, hass, hass_storage):
         from custom_components.mikrotik_extended import async_remove_entry

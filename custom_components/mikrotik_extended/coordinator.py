@@ -1049,6 +1049,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._rule_numbers: dict[str, dict] = {}
         self._rule_numbers_saved: dict[str, dict] = {}
         self._rule_numbers_loaded = False
+        self._rule_numbers_unwritten = False
         self._rule_numbers_file = self.rule_numbers_store(hass, config_entry.entry_id)
         # The reference and the contents every rule was last seen with, per
         # store and row; see
@@ -1221,12 +1222,12 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """
         if self._rule_numbers_loaded:
             return
-        self._rule_numbers_loaded = True
         try:
             saved = await self._rule_numbers_file.async_load()
         except Exception as error:  # a damaged file must not stop the integration
             _LOGGER.warning("Mikrotik %s could not read the numbers of identical rules, numbering them anew: %s", self.host, error)
-            return
+            saved = None
+        self._rule_numbers_loaded = True
         if not isinstance(saved, dict):
             return
         for key in self._RULE_MENUS:
@@ -1235,7 +1236,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 continue
             numbers = {}
             for base, held in groups.items():
-                if isinstance(held, dict) and all(isinstance(uid, str) and isinstance(number, int) and not isinstance(number, bool) and number > 0 for uid, number in held.items()):
+                if (
+                    isinstance(held, dict)
+                    and all(isinstance(uid, str) and isinstance(number, int) and not isinstance(number, bool) and number > 0 for uid, number in held.items())
+                    and len(set(held.values())) == len(held)
+                ):
                     numbers[str(base)] = dict(held)
             if numbers:
                 self._rule_numbers[key] = numbers
@@ -1247,7 +1252,18 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if snapshot == self._rule_numbers_saved:
             return
         self._rule_numbers_saved = snapshot
+        self._rule_numbers_unwritten = True
         self._rule_numbers_file.async_delay_save(lambda: snapshot, 5)
+
+    async def async_write_rule_numbers(self) -> None:
+        """Write the numbers out now, for an entry that is being unloaded.
+
+        A save that is still waiting would otherwise be written after the
+        entry is gone, and bring back the file its removal had just deleted.
+        """
+        if self._rule_numbers_unwritten:
+            self._rule_numbers_unwritten = False
+            await self._rule_numbers_file.async_save(self._rule_numbers_saved)
 
     def _number_identical_rules(self, key: str) -> list[str]:
         """Number the rules of a store that share a reference; return those references."""

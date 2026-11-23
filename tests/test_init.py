@@ -139,6 +139,7 @@ async def test_unload_entry(hass):
     mock_coord.async_config_entry_first_refresh = AsyncMock()
     mock_coord.data = {}
     mock_coord.api = MagicMock()
+    mock_coord.async_write_rule_numbers = AsyncMock()
 
     mock_tracker = MagicMock()
     mock_tracker.async_config_entry_first_refresh = AsyncMock()
@@ -159,6 +160,7 @@ async def test_unload_entry(hass):
 
         unload_result = await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()
+        mock_coord.async_write_rule_numbers.assert_awaited_once()
 
     assert unload_result is True
 
