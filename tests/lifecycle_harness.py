@@ -65,11 +65,12 @@ READ = (
 class Router:
     """The integration set up against a router made of lists."""
 
-    def __init__(self, hass, entry, coordinator, menus) -> None:
+    def __init__(self, hass, entry, coordinator, menus, platforms) -> None:
         self.hass = hass
         self.entry = entry
         self.coordinator = coordinator
         self.menus = menus
+        self.platforms = platforms
         self.registry = er.async_get(hass)
         self.devices = dr.async_get(hass)
 
@@ -110,6 +111,18 @@ async def start(hass, menus: dict, platforms=("switch",), options: dict | None =
     assert await async_setup_component(hass, DOMAIN, {})
     entry = MockConfigEntry(domain=DOMAIN, data=ENTRY_DATA, options={**OPTIONS, **(options or {})}, unique_id="192.168.88.1", entry_id=ENTRY_ID)
     entry.add_to_hass(hass)
+    entry.mock_state(hass, ConfigEntryState.LOADED)
+    return await _boot(hass, entry, menus, list(platforms))
+
+
+async def restart(router: Router) -> Router:
+    """Home Assistant restarts: the registries stay, the integration begins again."""
+    await router.hass.config_entries.async_unload_platforms(router.entry, router.platforms)
+    await router.hass.async_block_till_done()
+    return await _boot(router.hass, router.entry, router.menus, router.platforms)
+
+
+async def _boot(hass, entry, menus: dict, platforms: list) -> Router:
     with patch("custom_components.mikrotik_extended.coordinator.MikrotikAPI") as mock_api:
         mock_api.return_value = MagicMock()
         coordinator = MikrotikCoordinator(hass, entry)
@@ -137,7 +150,6 @@ async def start(hass, menus: dict, platforms=("switch",), options: dict | None =
     await coordinator.async_refresh()
     coordinator.register_core_device()
     entry.runtime_data = SimpleNamespace(data_coordinator=coordinator, tracker_coordinator=MagicMock(async_request_refresh=AsyncMock()))
-    entry.mock_state(hass, ConfigEntryState.LOADED)
-    await hass.config_entries.async_forward_entry_setups(entry, list(platforms))
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
     await hass.async_block_till_done()
-    return Router(hass, entry, coordinator, menus)
+    return Router(hass, entry, coordinator, menus, platforms)
