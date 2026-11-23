@@ -726,3 +726,11 @@ async def test_options_flow_traffic_stays_off_no_removal(hass):
     result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_SENSOR_CLIENT_TRAFFIC: False})
     assert result["type"] == FlowResultType.CREATE_ENTRY
     coordinator.remove_kid_control_monitoring_profile.assert_not_called()
+
+
+def test_the_flow_declares_no_connection_class():
+    """Home Assistant stopped reading it in 2021.6 and warns about it from 2026.11."""
+    from custom_components.mikrotik_extended import config_flow
+
+    assert "CONNECTION_CLASS" not in vars(config_flow.MikrotikControllerConfigFlow)
+    assert not hasattr(config_flow, "CONN_CLASS_LOCAL_POLL")
