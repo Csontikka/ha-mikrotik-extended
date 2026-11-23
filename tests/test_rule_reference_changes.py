@@ -13,8 +13,10 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.mikrotik_extended.const import DOMAIN
+from custom_components.mikrotik_extended.entity import REBIND_DATA_PATHS
 
 from .lifecycle_harness import ENTRY_ID, start
+from .test_entity_lifecycle import STORES
 
 MENUS = {"filter": "/ip/firewall/filter", "ipv6_filter": "/ipv6/firewall/filter"}
 BARE = {".id": "*1", "chain": "input", "action": "drop", "protocol": "tcp", "dst-port": "23", "disabled": False}
@@ -439,3 +441,61 @@ class TestWhatIsRemembered:
         assert router.registry.async_get(foreign.entity_id).unique_id == "other-filter-no_telnet"
         assert router.entity_id("switch", "filter", "no_telnet") is not None
         assert ENTRY_ID in router.registry.async_get(router.entity_id("switch", "filter", "no_telnet")).unique_id
+
+
+class TestEveryRuleStore:
+    """What counts as the contents of a rule differs per menu; the comment must be no part of it anywhere."""
+
+    @pytest.mark.parametrize("store", sorted(REBIND_DATA_PATHS))
+    async def test_the_comment_can_change_come_and_go(self, hass, store):
+        path, rows, _ = STORES[store]
+        router = await start(hass, {path: list(rows)})
+        before = router.registry_ids()
+        assert len(before) == 2
+        (rule,) = [entity_id for entity_id in before if _entity(hass, entity_id)._uid == "*1"]
+        area_id = _customise(hass, router, rule)
+
+        for comment in ("renamed", None, "back again"):
+            first = {name: value for name, value in rows[0].items() if name != "comment"}
+            if comment:
+                first["comment"] = comment
+            router.menus[path] = [first, rows[1]]
+            await router.poll(2)
+
+            assert router.registry_ids() == before, comment
+            assert _entity(hass, rule)._uid == "*1"
+            assert _entity(hass, rule).unique_id == router.registry.async_get(rule).unique_id
+            _assert_customised(router, rule, area_id)
+        assert router.entity_id("switch", store, "back_again") == rule
+
+
+class TestTradedAndEditedAtOnce:
+    @both_stores
+    async def test_one_rule_takes_the_comment_of_a_rule_that_is_edited_too(self, hass, store):
+        """The first keeps its entity under the new comment; the second, changed all over, is a new rule."""
+        first = {**BARE, "comment": "telnet"}
+        second = {**OTHER, "comment": "lan"}
+        router, path, (one, two) = await _router(hass, store, first, second)
+
+        router.menus[path] = [{**first, "comment": "lan"}, {**second, "comment": "telnet", "chain": "output"}]
+        await router.poll(3)
+
+        bound = {entity._uid: entity.entity_id for platform in entity_platform.async_get_platforms(hass, DOMAIN) for entity in platform.entities.values()}
+        assert len(bound) == 2
+        assert bound["*1"] == one
+        assert router.entities()[f"{store}-lan"] == one
+        assert router.registry.async_get(two) is None or bound["*2"] == two
+        assert set(router.entities()) == {f"{store}-lan", f"{store}-telnet"}
+
+    async def test_a_ring_next_to_comments_that_read_alike_leaves_the_cycle_running(self, hass):
+        rows = [{**BARE, "comment": "one"}, {**OTHER, "comment": "two"}, {".id": "*3", "chain": "output", "action": "accept", "comment": "three", "disabled": False}]
+        router = await start(hass, {MENUS["filter"]: rows})
+
+        for _ in range(2):
+            router.menus[MENUS["filter"]] = [{**rows[0], "comment": "two"}, {**rows[1], "comment": "one"}, {**rows[2], "comment": "Two!"}]
+            await router.poll(2)
+            assert router.coordinator.last_update_success
+            router.menus[MENUS["filter"]] = rows
+            await router.poll(2)
+            assert router.coordinator.last_update_success
+        assert len({entity._uid for platform in entity_platform.async_get_platforms(hass, DOMAIN) for entity in platform.entities.values()}) == 3
