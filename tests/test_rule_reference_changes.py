@@ -108,6 +108,22 @@ class TestTheCommentChanges:
         assert router.entities() == {f"{store}-no_telnet": rule, f"{store}-allow_lan": other}
 
     @both_stores
+    async def test_a_rule_without_a_comment_is_edited(self, hass, store):
+        """Its reference is its contents, so an edit changes it like a new comment would."""
+        router, path, (rule, other) = await _router(hass, store, BARE, OTHER)
+        area_id = _customise(hass, router, rule)
+        before = router.entities()
+
+        router.menus[path] = [{**BARE, "dst-port": "2323"}, OTHER]
+        await router.poll(2)
+
+        after = router.entities()
+        assert sorted(after.values()) == sorted(before.values())
+        assert set(after) != set(before)
+        _assert_customised(router, rule, area_id)
+        assert router.state(rule) == "on"
+
+    @both_stores
     async def test_a_comment_that_only_changes_case_or_punctuation_moves_nothing(self, hass, store):
         """The unique id is a slug of the reference, and that stays the same."""
         router, path, (rule, other) = await _router(hass, store, {**BARE, "comment": "drop telnet"}, OTHER)
