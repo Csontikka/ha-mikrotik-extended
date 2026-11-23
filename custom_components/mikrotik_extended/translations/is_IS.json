@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Reglur á {host} sem ekki er hægt að greina í sundur",
-      "description": "Beinirinn **{host}** er með reglur í **{menus}** sem eru eins eða hafa sömu athugasemd. Home Assistant getur aðeins greint rofa þeirra í sundur með númeri sem fylgir röðinni sem reglurnar sáust fyrst í.\n\nNúmerið helst á meðan Home Assistant er í gangi. Eftir endurræsingu, eða þegar einni reglunni er eytt eða henni bætt við aftur, getur rofi stjórnað annarri reglu en áður.\n\nGefðu hverri þessara reglna sína eigin athugasemd á beininum. Þá halda rofarnir sig við sínar reglur og þessi skilaboð hverfa."
+      "description": "Beinirinn **{host}** er með reglur í **{menus}** sem eru eins eða hafa sömu athugasemd. Home Assistant getur aðeins greint rofa þeirra í sundur með númeri sem fylgir röðinni sem reglurnar sáust fyrst í.\n\nNúmerið helst hjá reglunni sinni, líka þegar Home Assistant er endurræst. Rofi getur aðeins endað á annarri reglu ef reglurnar eru búnar til aftur á beininum, til dæmis eftir endurstillingu stillinga eða endurheimt úr öryggisafriti, eða ef vistuðu númerin glatast.\n\nGefðu hverri þessara reglna sína eigin athugasemd á beininum. Þá halda rofarnir sig við sínar reglur og þessi skilaboð hverfa."
     },
     "encoding_entity_ids": {
       "title": "Auðkenni eininga innihalda enn ólæsilegan texta ({host})",

@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Megkülönböztethetetlen szabályok: {host}",
-      "description": "A(z) **{host}** routeren a(z) **{menus}** menüben olyan szabályok vannak, amelyek teljesen egyformák, vagy ugyanaz a megjegyzésük. A Home Assistant a kapcsolóikat csak egy sorszámmal tudja megkülönböztetni, amely azt a sorrendet követi, ahogy a szabályokat először látta.\n\nA sorszám megmarad, amíg a Home Assistant fut. Újraindítás után, vagy ha valamelyik szabályt törlik vagy újra létrehozzák, egy kapcsoló más szabályt vezérelhet, mint korábban.\n\nAdj a routeren mindegyik ilyen szabálynak saját megjegyzést. A kapcsolók ezután a saját szabályuknál maradnak, és ez az üzenet eltűnik."
+      "description": "A(z) **{host}** routeren a(z) **{menus}** menüben olyan szabályok vannak, amelyek teljesen egyformák, vagy ugyanaz a megjegyzésük. A Home Assistant a kapcsolóikat csak egy sorszámmal tudja megkülönböztetni, amely azt a sorrendet követi, ahogy a szabályokat először látta.\n\nA sorszám a szabályánál marad, a Home Assistant újraindítása után is. Egy kapcsoló csak akkor kerülhet másik szabályra, ha a szabályokat a routeren újra létrehozzák, például a konfiguráció visszaállítása vagy egy mentés visszatöltése után, vagy ha az elmentett sorszámok elvesznek.\n\nAdj a routeren mindegyik ilyen szabálynak saját megjegyzést. A kapcsolók ezután a saját szabályuknál maradnak, és ez az üzenet eltűnik."
     },
     "encoding_entity_ids": {
       "title": "Az entitásazonosítók olvashatatlan szöveget tartalmaznak ({host})",

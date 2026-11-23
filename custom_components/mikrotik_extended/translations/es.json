@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Reglas en {host} que no se pueden distinguir",
-      "description": "El router **{host}** tiene en **{menus}** reglas que son idénticas o que comparten el mismo comentario. Home Assistant solo puede distinguir sus interruptores con un número, que sigue el orden en que vio las reglas por primera vez.\n\nEl número se mantiene mientras Home Assistant está en marcha. Tras un reinicio, o cuando una de las reglas se elimina o se vuelve a crear, un interruptor puede acabar controlando una regla distinta a la de antes.\n\nPon a cada una de estas reglas un comentario propio en el router. Así los interruptores se quedan con sus reglas y este mensaje desaparece."
+      "description": "El router **{host}** tiene en **{menus}** reglas que son idénticas o que comparten el mismo comentario. Home Assistant solo puede distinguir sus interruptores con un número, que sigue el orden en que vio las reglas por primera vez.\n\nEl número se queda con su regla, también cuando Home Assistant se reinicia. Un interruptor solo puede acabar controlando otra regla si las reglas se vuelven a crear en el router, por ejemplo tras restablecer la configuración o restaurar una copia de seguridad, o si se pierden los números guardados.\n\nPon a cada una de estas reglas un comentario propio en el router. Así los interruptores se quedan con sus reglas y este mensaje desaparece."
     },
     "encoding_entity_ids": {
       "title": "Los ID de entidad aún contienen texto ilegible ({host})",

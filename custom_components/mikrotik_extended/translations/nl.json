@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Regels op {host} die niet van elkaar te onderscheiden zijn",
-      "description": "De router **{host}** heeft in **{menus}** regels die identiek zijn of dezelfde opmerking hebben. Home Assistant kan hun schakelaars alleen uit elkaar houden met een nummer, dat de volgorde volgt waarin de regels voor het eerst zijn gezien.\n\nHet nummer blijft behouden zolang Home Assistant draait. Na een herstart, of wanneer een van de regels is verwijderd of opnieuw is toegevoegd, kan een schakelaar een andere regel bedienen dan voorheen.\n\nGeef elk van deze regels op de router een eigen opmerking. De schakelaars blijven dan bij hun regels en deze melding verdwijnt."
+      "description": "De router **{host}** heeft in **{menus}** regels die identiek zijn of dezelfde opmerking hebben. Home Assistant kan hun schakelaars alleen uit elkaar houden met een nummer, dat de volgorde volgt waarin de regels voor het eerst zijn gezien.\n\nHet nummer blijft bij zijn regel, ook wanneer Home Assistant opnieuw start. Een schakelaar kan alleen een andere regel gaan bedienen wanneer de regels op de router opnieuw worden aangemaakt, bijvoorbeeld na het terugzetten van de configuratie of van een back-up, of wanneer de opgeslagen nummers verloren gaan.\n\nGeef elk van deze regels op de router een eigen opmerking. De schakelaars blijven dan bij hun regels en deze melding verdwijnt."
     },
     "encoding_entity_ids": {
       "title": "Entiteit-ID's bevatten nog steeds onleesbare tekst ({host})",

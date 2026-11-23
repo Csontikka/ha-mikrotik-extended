@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Kārtulas maršrutētājā {host}, kuras nevar atšķirt",
-      "description": "Maršrutētājā **{host}** izvēlnē **{menus}** ir kārtulas, kas ir vienādas vai kurām ir viens un tas pats komentārs. Home Assistant to slēdžus var atšķirt tikai pēc numura, kas atbilst secībai, kādā kārtulas tika ieraudzītas pirmo reizi.\n\nNumurs saglabājas, kamēr Home Assistant darbojas. Pēc pārstartēšanas, vai kad kāda no kārtulām ir noņemta vai pievienota no jauna, slēdzis var vadīt citu kārtulu nekā iepriekš.\n\nPiešķiriet katrai no šīm kārtulām maršrutētājā savu komentāru. Tad slēdži paliek pie savām kārtulām un šis ziņojums pazūd."
+      "description": "Maršrutētājā **{host}** izvēlnē **{menus}** ir kārtulas, kas ir vienādas vai kurām ir viens un tas pats komentārs. Home Assistant to slēdžus var atšķirt tikai pēc numura, kas atbilst secībai, kādā kārtulas tika ieraudzītas pirmo reizi.\n\nNumurs paliek pie savas kārtulas arī tad, kad Home Assistant tiek pārstartēts. Slēdzis var sākt vadīt citu kārtulu tikai tad, ja kārtulas maršrutētājā tiek izveidotas no jauna, piemēram, pēc konfigurācijas atiestatīšanas vai dublējuma atjaunošanas, vai ja saglabātie numuri tiek zaudēti.\n\nPiešķiriet katrai no šīm kārtulām maršrutētājā savu komentāru. Tad slēdži paliek pie savām kārtulām un šis ziņojums pazūd."
     },
     "encoding_entity_ids": {
       "title": "Entītiju ID joprojām satur nesalasāmu tekstu ({host})",

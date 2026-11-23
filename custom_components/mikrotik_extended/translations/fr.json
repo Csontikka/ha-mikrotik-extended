@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Règles sur {host} impossibles à distinguer",
-      "description": "Le routeur **{host}** contient dans **{menus}** des règles identiques ou portant le même commentaire. Home Assistant ne peut distinguer leurs interrupteurs que par un numéro, qui suit l'ordre dans lequel les règles ont été vues pour la première fois.\n\nLe numéro est conservé tant que Home Assistant fonctionne. Après un redémarrage, ou lorsqu'une des règles est supprimée ou recréée, un interrupteur peut se retrouver à commander une autre règle qu'auparavant.\n\nDonnez à chacune de ces règles un commentaire qui lui est propre sur le routeur. Les interrupteurs restent alors attachés à leurs règles et ce message disparaît."
+      "description": "Le routeur **{host}** contient dans **{menus}** des règles identiques ou portant le même commentaire. Home Assistant ne peut distinguer leurs interrupteurs que par un numéro, qui suit l'ordre dans lequel les règles ont été vues pour la première fois.\n\nLe numéro reste attaché à sa règle, même lorsque Home Assistant redémarre. Un interrupteur ne peut se retrouver à commander une autre règle que si les règles sont recréées sur le routeur, par exemple après une réinitialisation de la configuration ou la restauration d'une sauvegarde, ou si les numéros enregistrés sont perdus.\n\nDonnez à chacune de ces règles un commentaire qui lui est propre sur le routeur. Les interrupteurs restent alors attachés à leurs règles et ce message disparaît."
     },
     "encoding_entity_ids": {
       "title": "Les identifiants d'entités contiennent encore du texte illisible ({host})",

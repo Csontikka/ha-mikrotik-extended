@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "{host} üzerinde birbirinden ayırt edilemeyen kurallar",
-      "description": "**{host}** yönlendiricisinde **{menus}** içinde birbirinin aynısı olan veya aynı açıklamayı taşıyan kurallar var. Home Assistant bu kuralların anahtarlarını yalnızca bir numarayla ayırt edebilir; bu numara kuralların ilk görüldüğü sırayı izler.\n\nNumara, Home Assistant çalıştığı sürece korunur. Yeniden başlatmadan sonra veya kurallardan biri silinip yeniden eklendiğinde bir anahtar öncekinden farklı bir kuralı denetleyebilir.\n\nYönlendiricide bu kuralların her birine kendine özgü bir açıklama verin. Anahtarlar o zaman kendi kurallarında kalır ve bu ileti kaybolur."
+      "description": "**{host}** yönlendiricisinde **{menus}** içinde birbirinin aynısı olan veya aynı açıklamayı taşıyan kurallar var. Home Assistant bu kuralların anahtarlarını yalnızca bir numarayla ayırt edebilir; bu numara kuralların ilk görüldüğü sırayı izler.\n\nNumara, Home Assistant yeniden başlatıldığında da kuralında kalır. Bir anahtarın başka bir kuralı denetlemesi yalnızca kurallar yönlendiricide yeniden oluşturulduğunda, örneğin yapılandırma sıfırlandıktan veya bir yedek geri yüklendikten sonra, ya da kaydedilen numaralar kaybolduğunda mümkündür.\n\nYönlendiricide bu kuralların her birine kendine özgü bir açıklama verin. Anahtarlar o zaman kendi kurallarında kalır ve bu ileti kaybolur."
     },
     "encoding_entity_ids": {
       "title": "Varlık kimlikleri hâlâ okunamayan metin içeriyor ({host})",

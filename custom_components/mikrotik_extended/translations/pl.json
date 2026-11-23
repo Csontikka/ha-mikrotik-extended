@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Reguły na {host}, których nie da się odróżnić",
-      "description": "Router **{host}** ma w **{menus}** reguły, które są identyczne albo mają ten sam komentarz. Home Assistant może odróżnić ich przełączniki tylko numerem, który odpowiada kolejności, w jakiej reguły zostały zauważone po raz pierwszy.\n\nNumer pozostaje bez zmian, dopóki Home Assistant działa. Po restarcie, albo gdy jedna z reguł zostanie usunięta lub dodana ponownie, przełącznik może sterować inną regułą niż wcześniej.\n\nNadaj każdej z tych reguł własny komentarz na routerze. Przełączniki pozostaną wtedy przy swoich regułach, a ten komunikat zniknie."
+      "description": "Router **{host}** ma w **{menus}** reguły, które są identyczne albo mają ten sam komentarz. Home Assistant może odróżnić ich przełączniki tylko numerem, który odpowiada kolejności, w jakiej reguły zostały zauważone po raz pierwszy.\n\nNumer pozostaje przy swojej regule, także po ponownym uruchomieniu Home Assistant. Przełącznik może zacząć sterować inną regułą tylko wtedy, gdy reguły zostaną utworzone na routerze od nowa, na przykład po zresetowaniu konfiguracji lub przywróceniu kopii zapasowej, albo gdy zapisane numery zostaną utracone.\n\nNadaj każdej z tych reguł własny komentarz na routerze. Przełączniki pozostaną wtedy przy swoich regułach, a ten komunikat zniknie."
     },
     "encoding_entity_ids": {
       "title": "Identyfikatory encji nadal zawierają nieczytelny tekst ({host})",

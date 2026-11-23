@@ -259,7 +259,7 @@
     },
     "duplicate_rules": {
       "title": "Regeln auf {host}, die sich nicht unterscheiden lassen",
-      "description": "Der Router **{host}** hat in **{menus}** Regeln, die identisch sind oder denselben Kommentar tragen. Home Assistant kann ihre Schalter nur durch eine Nummer auseinanderhalten, die der Reihenfolge folgt, in der die Regeln zuerst gesehen wurden.\n\nDie Nummer bleibt erhalten, solange Home Assistant läuft. Nach einem Neustart, oder wenn eine der Regeln entfernt oder neu angelegt wurde, kann ein Schalter eine andere Regel steuern als zuvor.\n\nGib jeder dieser Regeln auf dem Router einen eigenen Kommentar. Die Schalter bleiben dann bei ihren Regeln, und diese Meldung verschwindet."
+      "description": "Der Router **{host}** hat in **{menus}** Regeln, die identisch sind oder denselben Kommentar tragen. Home Assistant kann ihre Schalter nur durch eine Nummer auseinanderhalten, die der Reihenfolge folgt, in der die Regeln zuerst gesehen wurden.\n\nDie Nummer bleibt bei ihrer Regel, auch wenn Home Assistant neu startet. Ein Schalter kann nur dann eine andere Regel steuern, wenn die Regeln auf dem Router neu angelegt werden, zum Beispiel nach einem Zurücksetzen der Konfiguration oder dem Einspielen einer Sicherung, oder wenn die gespeicherten Nummern verloren gehen.\n\nGib jeder dieser Regeln auf dem Router einen eigenen Kommentar. Die Schalter bleiben dann bei ihren Regeln, und diese Meldung verschwindet."
     },
     "encoding_entity_ids": {
       "title": "Entitäts-IDs enthalten weiterhin unlesbaren Text ({host})",
