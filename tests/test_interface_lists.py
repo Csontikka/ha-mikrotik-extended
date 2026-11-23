@@ -209,8 +209,11 @@ class TestMembersThatComeAndGo:
     def test_a_failed_read_keeps_the_members(self, hass):
         coord = _fetch(hass)
         before = json.dumps(coord.ds[STORE], sort_keys=True)
-        _fetch(hass, None, coord)
+        for _ in range(4):
+            _fetch(hass, None, coord)
         assert json.dumps(coord.ds[STORE], sort_keys=True) == before
+        # Nor does it count towards a member being gone.
+        assert coord._get_stale_counters(STORE) == {}
 
     def test_a_removed_member_leaves_after_three_reads(self, hass):
         coord = _fetch(hass)
