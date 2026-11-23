@@ -130,7 +130,7 @@ With the option **Interface list member switches** on, every member of an interf
 
 - A switch is named after its list and interface, for example *LAN ether5*, and shows the list, the interface and the comment as attributes. All of them live on one device, *Interface Lists*.
 - A member is known by its list and interface, so one that is removed and added again on the router keeps its entity, and so does one whose comment changes. A member moved to another list, or whose interface or list is renamed on the router, is a new member with a new entity.
-- A switch whose member is no longer on the router goes unavailable and changes nothing, and it works again when the same member comes back.
+- A switch whose member is no longer on the router goes unavailable and changes nothing, and it works again when the same member comes back. If Home Assistant is restarted while the member is away, its entity is removed like any other whose object is gone, and the member gets a fresh one when it returns.
 - The members the router adds by itself (dynamic ones) get no switch.
 - Members are not added or removed from Home Assistant, only switched.
 

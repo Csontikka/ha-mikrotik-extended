@@ -21,6 +21,7 @@ import voluptuous_serialize
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME, CONF_VERIFY_SSL
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.util import slugify
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -422,11 +423,13 @@ class TestSwitches:
         """From the first read without it, and still after the entry has left the store."""
         switch, read = self._live_switch(hass)
         assert switch.available is True
-        for _ in range(4):
+        for reads in range(1, 5):
             read(MEMBERS[:2])
             assert switch.available is False
-            with pytest.raises(Exception):  # noqa: B017 - the translated error type is asserted elsewhere
+            assert switch.async_write_ha_state.call_count == reads
+            with pytest.raises(HomeAssistantError) as error:
                 await switch.async_turn_on()
+            assert error.value.translation_key == "write_failed"
         switch.coordinator.set_value.assert_not_called()
 
     async def test_a_switch_does_not_write_to_a_member_moved_to_another_list(self, hass):
@@ -435,6 +438,8 @@ class TestSwitches:
         read([MEMBERS[0], MEMBERS[1], {**MEMBERS[2], "list": "WAN"}])
 
         assert switch.available is False
+        # The state is written, or the entity would go on showing its last on or off.
+        assert switch.async_write_ha_state.call_count == 1
         with pytest.raises(Exception):  # noqa: B017 - the translated error type is asserted elsewhere
             await switch.async_turn_off()
         switch.coordinator.set_value.assert_not_called()

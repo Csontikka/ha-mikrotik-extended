@@ -10,7 +10,7 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -391,6 +391,17 @@ class MikrotikInterfaceListMemberSwitch(MikrotikFilterSwitch):
     def available(self) -> bool:
         """Return True while the member is on the router."""
         return super().available and self._member_is_live()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        # A member moved to another list is out of the store in the same
+        # read. The base class then leaves the entity as it was, which would
+        # keep showing its last on or off; write the state so it reads
+        # unavailable.
+        if self._uid not in (self.coordinator.data.get(self.entity_description.data_path) or {}):
+            self.async_write_ha_state()
+            return
+        super()._handle_coordinator_update()
 
     def _refuse_when_gone(self) -> None:
         if not self._member_is_live():
