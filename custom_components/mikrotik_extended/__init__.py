@@ -14,6 +14,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady,
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 
 _MAC_RE = re.compile(r"^([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$")
 # RouterOS script environment variable names are identifiers. Restricting the
@@ -426,7 +427,12 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 #   async_remove_entry
 # ---------------------------
 async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Clean up router-side resources when the integration is removed."""
+    """Clean up router-side resources and repair issues when the integration is removed."""
+    # The repair issues of this entry would otherwise stay listed until
+    # Home Assistant restarts, pointing at a router that is no longer set up.
+    for key in (*MikrotikCoordinator._LEGACY_ISSUE_IDS, MikrotikCoordinator.ENCODING_ISSUE_ID):
+        ir.async_delete_issue(hass, DOMAIN, f"{key}_{config_entry.entry_id}")
+
     api = MikrotikAPI(
         config_entry.data[CONF_HOST],
         config_entry.data[CONF_USERNAME],
