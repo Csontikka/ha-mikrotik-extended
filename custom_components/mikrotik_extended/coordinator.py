@@ -47,6 +47,7 @@ from .const import (
     CONF_SENSOR_CONTAINERS,
     CONF_SENSOR_ENVIRONMENT,
     CONF_SENSOR_FILTER,
+    CONF_SENSOR_INTERFACE_LISTS,
     CONF_SENSOR_INTERFACES,
     CONF_SENSOR_IPV6_FIREWALL,
     CONF_SENSOR_KIDCONTROL,
@@ -72,6 +73,7 @@ from .const import (
     DEFAULT_SENSOR_CONTAINERS,
     DEFAULT_SENSOR_ENVIRONMENT,
     DEFAULT_SENSOR_FILTER,
+    DEFAULT_SENSOR_INTERFACE_LISTS,
     DEFAULT_SENSOR_INTERFACES,
     DEFAULT_SENSOR_IPV6_FIREWALL,
     DEFAULT_SENSOR_KIDCONTROL,
@@ -902,6 +904,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             "ipv6_raw": {},
             "ipv6_nat": {},
             "ipv6_mangle": {},
+            "interface_list_member": {},
             "lte": {},
             "route": {},
             "active_wan": {},
@@ -967,6 +970,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.filter_removed = {}
         self.raw_removed = {}
         self.ipv6_firewall_removed: set[tuple[str, str]] = set()
+        self.interface_list_clashes: set[str] = set()
         self._routes_restored = False
         self._routes_read = False
         self._routes_replaced: set[str] = set()
@@ -1186,6 +1190,14 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def option_sensor_raw(self):
         """Config entry option to create firewall Raw rule switches."""
         return self.config_entry.options.get(CONF_SENSOR_RAW, DEFAULT_SENSOR_RAW)
+
+    # ---------------------------
+    #   option_sensor_interface_lists
+    # ---------------------------
+    @property
+    def option_sensor_interface_lists(self):
+        """Config entry option to create interface list member switches."""
+        return self.config_entry.options.get(CONF_SENSOR_INTERFACE_LISTS, DEFAULT_SENSOR_INTERFACE_LISTS)
 
     # ---------------------------
     #   option_sensor_ipv6_firewall
@@ -1561,6 +1573,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         if self.api.connected() and self.option_sensor_ipv6_firewall:
             await self.hass.async_add_executor_job(self.get_ipv6_firewall)
 
+        if self.api.connected() and self.option_sensor_interface_lists:
+            await self.hass.async_add_executor_job(self.get_interface_list_members)
+
         if self.api.connected() and self.option_sensor_routes:
             await self.hass.async_add_executor_job(self.get_route)
             if not self._routes_restored:
@@ -1645,6 +1660,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         "ipv6_raw": ("comment",),
         "ipv6_nat": ("comment",),
         "ipv6_mangle": ("comment",),
+        "interface_list_member": ("comment", "list", "interface"),
         "route": ("comment",),
         "routing_rules": ("comment",),
         "host": ("host-name",),
@@ -2996,6 +3012,70 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     self.host,
                     base,
                     path,
+                )
+
+    # ---------------------------
+    #   get_interface_list_members
+    # ---------------------------
+    def get_interface_list_members(self) -> None:
+        """Get the members of the interface lists from Mikrotik.
+
+        A member is one interface in one list, and the router holds each pair
+        at most once, so the pair is what a member is known by. Its RouterOS
+        id changes when the member is removed and added again; the pair does
+        not, and the entity follows it.
+        """
+        store = "interface_list_member"
+        rows = self.api.query("/interface/list/member")
+        if rows is None:
+            return
+        stale = self._get_stale_counters(store)
+        self.ds[store] = parse_api(
+            data=self.ds[store],
+            source=rows,
+            key=".id",
+            vals=[
+                {"name": ".id"},
+                {"name": "list"},
+                {"name": "interface"},
+                {"name": "comment"},
+                {"name": "enabled", "source": "disabled", "type": "bool", "reverse": True, "default": False},
+            ],
+            # Members the router adds by itself cannot be switched.
+            skip=[{"name": "dynamic", "value": True}],
+            prune_stale=True,
+            stale_counters=stale,
+        )
+        for member in self.ds[store].values():
+            member["comment"] = str(member["comment"])
+        self._decode_store(store)
+
+        live = {uid: member for uid, member in self.ds[store].items() if uid not in stale}
+        for member in live.values():
+            member["name"] = f"{member['list']} {member['interface']}"
+            member["uniq-id"] = member["name"]
+            # What confirms that a member found again under a new RouterOS
+            # id is the same one: the exact pair, which no other member has.
+            member["legacy-uniq-id"] = f"{member['list']}/{member['interface']}"
+
+        # The entity id is a slug of the reference, and two pairs can read
+        # the same once the separators are gone: "LAN guest" + "wifi" and
+        # "LAN" + "guest wifi". Those spell out which part is the list, so
+        # each keeps an entity, whichever of them the router lists first.
+        by_slug: dict[str, list[dict]] = {}
+        for member in live.values():
+            by_slug.setdefault(slugify(member["uniq-id"].lower()), []).append(member)
+        for slug, members in by_slug.items():
+            if len(members) < 2:
+                continue
+            for member in members:
+                member["uniq-id"] = f"{member['name']} in list {member['list']}"
+            if slug not in self.interface_list_clashes:
+                self.interface_list_clashes.add(slug)
+                _LOGGER.info(
+                    "Mikrotik %s interface list members %s read alike as an entity id, the list was added to tell them apart.",
+                    self.host,
+                    ", ".join(sorted(member["legacy-uniq-id"] for member in members)),
                 )
 
     # ---------------------------
