@@ -14,6 +14,7 @@ from homeassistant.helpers.entity import EntityCategory
 from .const import (
     CONF_SENSOR_CONTAINERS,
     CONF_SENSOR_FILTER,
+    CONF_SENSOR_INTERFACE_LISTS,
     CONF_SENSOR_IPV6_FIREWALL,
     CONF_SENSOR_KIDCONTROL,
     CONF_SENSOR_MANGLE,
@@ -179,6 +180,8 @@ _ATTRIBUTES_IPV6_RULE = [
     "dst-address-list",
     "dst-port",
 ]
+
+DEVICE_ATTRIBUTES_INTERFACE_LIST_MEMBER = ["list", "interface", "comment"]
 
 DEVICE_ATTRIBUTES_IPV6_FILTER = [*_ATTRIBUTES_IPV6_RULE, "address-list", "comment"]
 DEVICE_ATTRIBUTES_IPV6_RAW = [*_ATTRIBUTES_IPV6_RULE, "address-list", "comment"]
@@ -481,6 +484,27 @@ SENSOR_TYPES: tuple[MikrotikSwitchEntityDescription, ...] = (
         data_attributes_list=DEVICE_ATTRIBUTES_IPV6_MANGLE,
         func="MikrotikFilterSwitch",
         enable_on_option=CONF_SENSOR_IPV6_FIREWALL,
+    ),
+    # A member of an interface list is toggled like a firewall rule, by its
+    # RouterOS id on its own menu, so the Filter switch serves it as well.
+    MikrotikSwitchEntityDescription(
+        key="interface_list_member",
+        name="",
+        icon_enabled="mdi:format-list-checks",
+        icon_disabled="mdi:format-list-bulleted",
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        ha_group="Interface Lists",
+        ha_connection=DOMAIN,
+        ha_connection_value="Interface Lists",
+        data_path="interface_list_member",
+        data_switch_path="/interface/list/member",
+        data_name="name",
+        data_uid="uniq-id",
+        data_reference="uniq-id",
+        data_attributes_list=DEVICE_ATTRIBUTES_INTERFACE_LIST_MEMBER,
+        func="MikrotikFilterSwitch",
+        enable_on_option=CONF_SENSOR_INTERFACE_LISTS,
     ),
     MikrotikSwitchEntityDescription(
         key="ppp_secret",
