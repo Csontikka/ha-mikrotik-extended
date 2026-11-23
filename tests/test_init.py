@@ -834,6 +834,30 @@ async def test_remove_entry_connects_and_removes_kidcontrol(hass):
     mock_api.disconnect.assert_called_once()
 
 
+@pytest.mark.parametrize("connected", [True, False])
+async def test_remove_entry_takes_its_repair_issues_along(hass, connected):
+    """The issues of a removed entry go with it, also when the router cannot be reached."""
+    from homeassistant.helpers import issue_registry as ir
+
+    entry = _make_entry(hass)
+    other = _make_entry(hass)
+    keys = ("wrong_credentials", "ssl_error", "insufficient_permissions", "encoding_entity_ids")
+    for key in keys:
+        for owner in (entry, other):
+            ir.async_create_issue(hass, DOMAIN, f"{key}_{owner.entry_id}", is_fixable=False, severity=ir.IssueSeverity.WARNING, translation_key="insufficient_permissions")
+
+    mock_api = MagicMock()
+    mock_api.connect = MagicMock(return_value=connected)
+    mock_api.query = MagicMock(return_value=[])
+    with patch("custom_components.mikrotik_extended.MikrotikAPI", return_value=mock_api):
+        await async_remove_entry(hass, entry)
+
+    registry = ir.async_get(hass)
+    for key in keys:
+        assert registry.async_get_issue(DOMAIN, f"{key}_{entry.entry_id}") is None
+        assert registry.async_get_issue(DOMAIN, f"{key}_{other.entry_id}") is not None
+
+
 async def test_remove_entry_no_profile_skips_execute(hass):
     """When the ha-monitoring profile isn't present, execute is not called."""
     entry = _make_entry(hass)

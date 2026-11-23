@@ -3188,6 +3188,31 @@ class TestFirmwareUpdate:
         assert coord.major_fw_version == 7
         assert coord.minor_fw_version == 25
 
+    def test_read_only_account_finds_the_legacy_wireless_package_on_v7(self, hass):
+        """The wifi stacks are only looked for on v7, so the version has to be known first.
+
+        With the version left at 0 a read-only account never had its
+        registration table read, and every wifi client was counted as wired.
+        """
+        coord = _make_coordinator(hass)
+        coord.ds["access"] = ["read", "api", "test", "sensitive"]
+        coord.execute = MagicMock()
+        fw = {"status": "System is already up to date", "channel": "stable", "installed-version": "7.25.1", "latest-version": "7.25.1"}
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", return_value=fw):
+            coord.get_firmware_update()
+        assert coord.support_wireless is False
+
+        def menu(path, *args, **kwargs):
+            return [{"name": "wlan1"}] if path == "/interface/wireless" else None
+
+        coord.api.query_where = MagicMock(side_effect=menu)
+        coord.api.query = MagicMock(side_effect=menu)
+        packages = {"wireless": {"name": "wireless", "enabled": True}}
+        with patch("custom_components.mikrotik_extended.coordinator.parse_api", return_value=packages):
+            coord.get_capabilities()
+        assert coord.support_wireless is True
+        assert coord._wifimodules == ["wireless"]
+
     def test_write_and_policy_run_check_without_reboot(self, hass):
         """check-for-updates needs write and policy; reboot is not required."""
         coord = _make_coordinator(hass)
@@ -4600,16 +4625,39 @@ class TestGetIfaceFromEntry:
 class TestKidControl:
     def test_sync_creates_profile_when_traffic_enabled(self, hass):
         coord = _make_coordinator(hass, options={"sensor_client_traffic": True})
+        coord.ds["access"] = ["read", "write", "api"]
         coord.api.query.return_value = []
         coord.api.execute.return_value = True
         coord.sync_kid_control_monitoring_profile()
         coord.api.execute.assert_called()
 
-    def test_sync_warns_when_creation_fails(self, hass):
+    def test_sync_warns_when_creation_fails(self, hass, caplog):
         coord = _make_coordinator(hass, options={"sensor_client_traffic": True})
+        coord.ds["access"] = ["read", "write", "api"]
         coord.api.query.return_value = []
         coord.api.execute.return_value = False
         coord.sync_kid_control_monitoring_profile()
+        assert "Could not create kid-control profile" in caplog.text
+
+    def test_sync_without_write_never_adds_and_says_so_once(self, hass, caplog):
+        """The router refuses the add without write; asking on every update only fills the log."""
+        coord = _make_coordinator(hass, options={"sensor_client_traffic": True})
+        coord.ds["access"] = ["read", "api", "test", "sensitive"]
+        coord.api.query.return_value = []
+        for _ in range(3):
+            coord.sync_kid_control_monitoring_profile()
+        coord.api.execute.assert_not_called()
+        assert caplog.text.count("has no write policy to create it") == 1
+        assert "/ip/kid-control/add name=ha-monitoring" in caplog.text
+
+    def test_sync_without_write_is_silent_when_the_profile_exists(self, hass, caplog):
+        """A profile created by hand, or by another account, is all a read-only account needs."""
+        coord = _make_coordinator(hass, options={"sensor_client_traffic": True})
+        coord.ds["access"] = ["read", "api"]
+        coord.api.query.return_value = [{"name": coord._HA_MONITORING_PROFILE}]
+        coord.sync_kid_control_monitoring_profile()
+        coord.api.execute.assert_not_called()
+        assert "write policy" not in caplog.text
 
     def test_sync_keeps_foreign_profile_when_traffic_disabled(self, hass):
         """Regression: with the option off from the start, an existing profile
