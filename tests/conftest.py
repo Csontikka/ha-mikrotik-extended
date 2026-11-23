@@ -24,3 +24,9 @@ def restore_real_socket():
     import pytest_socket
 
     pytest_socket.enable_socket()
+
+
+@pytest.fixture(autouse=True)
+def storage_in_memory(hass_storage):
+    """Keep what the integration saves through Home Assistant's Store out of the file system."""
+    yield hass_storage

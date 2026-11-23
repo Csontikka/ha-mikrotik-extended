@@ -10,13 +10,14 @@ issue tells the user that distinct comments are the real fix.
 import glob
 import json
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers import issue_registry as ir
 
 from custom_components.mikrotik_extended.const import DOMAIN
-from custom_components.mikrotik_extended.coordinator import _disambiguate_uniq_ids
+from custom_components.mikrotik_extended.coordinator import MikrotikCoordinator, _disambiguate_uniq_ids
 
 from .lifecycle_harness import ENTRY_ID, restart, start
 
@@ -92,15 +93,14 @@ class TestNumbers:
 
         assert _suffixes(store) == {"*1": "same #1", "*3": "same #3", "*9": "same #2", "*A": "same #4"}
 
-    def test_the_last_one_left_goes_by_the_plain_reference_again(self):
-        """Which is what a restart would call it, so nothing changes then."""
+    def test_the_last_one_left_keeps_its_number(self):
         store, numbers = _store("*1", "*2"), {}
         _read(store, numbers)
         del store["*1"]
 
         assert _read(store, numbers) == []
-        assert _suffixes(store) == {"*2": "same"}
-        assert numbers == {}
+        assert _suffixes(store) == {"*2": "same #2"}
+        assert numbers == {"same": {"*2": 2}}
 
     def test_the_last_one_left_keeps_its_number_while_the_other_is_on_the_grace(self):
         """The entity of the missing rule must not find its reference on the one that stayed."""
@@ -184,7 +184,7 @@ class TestNumbers:
 
         del store["*1"], store["*2"]
         _read(store, numbers)
-        assert store["*9"]["uniq-id"] == "same"
+        assert store["*9"]["uniq-id"] == "same #1"
 
     def test_groups_are_numbered_apart(self):
         store = {**_store("*1", "*2"), **_store("*3", "*4", reference="other")}
@@ -195,50 +195,37 @@ class TestNumbers:
         assert _suffixes(store) == {"*1": "same #1", "*2": "same #2", "*3": "other #1", "*4": "other #2"}
 
 
-class TestNumbersAfterAStart:
-    """Nothing is remembered then; the numbers the registry holds entities for are handed out first."""
+class TestNumbersBroughtBack:
+    """What a start finds saved is given to the numbering as its memory."""
 
-    def test_the_registered_numbers_go_first_in_order(self):
-        store, numbers = _store("*2", "*3"), {}
-        _disambiguate_uniq_ids(store, (), numbers, lambda base: {2, 3})
-        assert _suffixes(store) == {"*2": "same #2", "*3": "same #3"}
-
-    def test_a_rule_too_many_gets_the_lowest_number_left(self):
-        store, numbers = _store("*2", "*3", "*4"), {}
-        _disambiguate_uniq_ids(store, (), numbers, lambda base: {2, 3})
-        assert _suffixes(store) == {"*2": "same #2", "*3": "same #3", "*4": "same #1"}
-
-    def test_fewer_rules_than_numbers_take_the_lowest_ones(self):
-        store, numbers = _store("*5", "*6"), {}
-        _disambiguate_uniq_ids(store, (), numbers, lambda base: {1, 2, 4})
-        assert _suffixes(store) == {"*5": "same #1", "*6": "same #2"}
-
-    def test_nothing_registered_numbers_from_one(self):
-        store, numbers = _store("*5", "*6"), {}
-        _disambiguate_uniq_ids(store, (), numbers, lambda base: set())
-        assert _suffixes(store) == {"*5": "same #1", "*6": "same #2"}
-
-    def test_the_registry_is_asked_per_reference(self):
-        store = {**_store("*1", "*2"), **_store("*3", "*4", reference="other")}
-        _disambiguate_uniq_ids(store, (), {}, lambda base: {"same": {3, 4}, "other": {7}}[base])
-        assert _suffixes(store) == {"*1": "same #3", "*2": "same #4", "*3": "other #7", "*4": "other #1"}
-
-    def test_a_group_that_is_remembered_does_not_ask_the_registry(self):
-        store, numbers = _store("*1", "*2", "*3"), {}
+    def test_rows_that_are_there_have_their_numbers_again(self):
+        store, numbers = _store("*2", "*3"), {"same": {"*1": 1, "*2": 2, "*3": 3}}
         _read(store, numbers)
-        del store["*2"]
-        store["*9"] = {"uniq-id": "same", "comment": ""}
-        for uid in ("*1", "*3"):
-            store[uid]["uniq-id"] = "same"
+        assert _suffixes(store) == {"*2": "same #2", "*3": "same #3"}
+        assert numbers == {"same": {"*2": 2, "*3": 3}}
 
-        _disambiguate_uniq_ids(store, (), numbers, lambda base: {5})
+    def test_a_single_row_left_has_its_number_again(self):
+        store, numbers = _store("*2"), {"same": {"*1": 1, "*2": 2}}
+        _read(store, numbers)
+        assert _suffixes(store) == {"*2": "same #2"}
 
-        assert _suffixes(store) == {"*1": "same #1", "*3": "same #3", "*9": "same #2"}
+    def test_a_number_saved_for_another_reference_is_dropped(self):
+        """The row is there, but it is not the rule the number was given to."""
+        store, numbers = _store("*1", "*2"), {"other": {"*1": 5, "*2": 6}}
+        _read(store, numbers)
+        assert _suffixes(store) == {"*1": "same #1", "*2": "same #2"}
+        assert numbers == {"same": {"*1": 1, "*2": 2}}
 
-    def test_a_single_rule_is_never_numbered_from_the_registry(self):
-        store = _store("*1")
-        assert _disambiguate_uniq_ids(store, (), {}, lambda base: {2}) == []
-        assert store["*1"]["uniq-id"] == "same"
+    def test_a_row_that_is_gone_is_dropped_and_its_number_is_free(self):
+        store, numbers = _store("*2", "*9"), {"same": {"*1": 1, "*2": 2}}
+        _read(store, numbers)
+        assert _suffixes(store) == {"*2": "same #2", "*9": "same #1"}
+
+    def test_a_row_alone_with_nothing_saved_for_it_gets_no_number(self):
+        store, numbers = _store("*7"), {"same": {"*1": 1, "*2": 2}}
+        _read(store, numbers)
+        assert _suffixes(store) == {"*7": "same"}
+        assert numbers == {}
 
 
 def _switches(hass, store):
@@ -350,15 +337,57 @@ class TestAcrossARestart:
         before = _switches(hass, store)
         router.menus[path] = _rules("*2", "*3")
         await router.poll(3)
-        registered = router.entities()
-        assert len(registered) == 2
+        ids = router.registry_ids()
+        assert len(ids) == 2
 
         router = await restart(router)
 
         assert _switches(hass, store) == {"*2": before["*2"], "*3": before["*3"]}
-        assert router.entities() == registered
+        assert router.registry_ids() == ids
         await _switch(hass, before["*3"]).async_turn_off()
         assert router.writes() == [(path, ".id", "*3", "disabled", True)]
+
+    @both_stores
+    async def test_a_restart_while_the_removed_rule_is_still_on_its_grace(self, hass, store):
+        """The registry still holds all three entities then; only the saved numbers tell who is who."""
+        path = MENUS[store]
+        router = await start(hass, {path: _rules("*1", "*2", "*3")})
+        before = _switches(hass, store)
+        ids = router.registry_ids()
+        router.menus[path] = _rules("*2", "*3")
+        await router.poll()
+
+        router = await restart(router)
+
+        assert _switches(hass, store) == {"*2": before["*2"], "*3": before["*3"]}
+        assert {entity_id: router.registry_ids()[entity_id] for entity_id in (before["*2"], before["*3"])} == {entity_id: ids[entity_id] for entity_id in (before["*2"], before["*3"])}
+        assert router.registry.async_get(before["*1"]) is None
+        for rule_id in ("*2", "*3"):
+            await _switch(hass, before[rule_id]).async_turn_off()
+        assert router.writes() == [(path, ".id", "*2", "disabled", True), (path, ".id", "*3", "disabled", True)]
+
+    @both_stores
+    async def test_a_rule_removed_while_home_assistant_was_down(self, hass, store):
+        path = MENUS[store]
+        router = await start(hass, {path: _rules("*1", "*2", "*3")})
+        before = _switches(hass, store)
+        router.menus[path] = _rules("*2", "*3")
+
+        router = await restart(router)
+
+        assert _switches(hass, store) == {"*2": before["*2"], "*3": before["*3"]}
+
+    @both_stores
+    async def test_rules_listed_in_another_order_after_the_restart(self, hass, store):
+        path = MENUS[store]
+        router = await start(hass, {path: _rules("*1", "*2", "*3")})
+        before, ids = _switches(hass, store), router.registry_ids()
+        router.menus[path] = _rules("*3", "*1", "*2")
+
+        router = await restart(router)
+
+        assert _switches(hass, store) == before
+        assert router.registry_ids() == ids
 
     @both_stores
     async def test_nothing_changes_when_nothing_changed(self, hass, store):
@@ -376,31 +405,79 @@ class TestAcrossARestart:
         assert router.registry_ids() == ids
 
     @both_stores
-    async def test_the_last_rule_of_a_group_keeps_its_switch(self, hass, store):
-        """It went back to the plain reference while Home Assistant ran, so the restart finds it there."""
+    async def test_the_last_rule_of_a_group_keeps_its_number_and_its_switch(self, hass, store):
         path = MENUS[store]
         router = await start(hass, {path: _rules("*1", "*2")})
         kept = _switches(hass, store)["*2"]
         router.menus[path] = _rules("*2")
         await router.poll(3)
+        ids = router.registry_ids()
+        assert list(ids) == [kept]
 
         router = await restart(router)
 
         assert _switches(hass, store) == {"*2": kept}
-        assert list(router.entities().values()) == [kept]
+        assert router.registry_ids() == ids
 
-    async def test_only_the_first_read_of_a_store_looks_at_the_registry(self, hass):
-        router = await start(hass, {MENUS["filter"]: [{".id": "*1", **RULE}]})
-        # A leftover entry that looks like number 5 of this rule.
-        reference = router.coordinator.ds["filter"]["*1"]["uniq-id"]
-        plain = next(iter(router.entities()))
-        router.registry.async_get_or_create("switch", DOMAIN, f"{ENTRY_ID}-{plain}_5", config_entry=router.entry, disabled_by=None)
 
-        router.menus[MENUS["filter"]] = _rules("*1", "*2")
-        await router.poll()
+class TestWhatIsSaved:
+    async def test_the_numbers_are_saved_by_store_reference_and_routeros_id(self, hass, hass_storage):
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        reference = router.coordinator.ds["filter"]["*1"]["legacy-uniq-id"]
 
-        assert router.coordinator.ds["filter"]["*1"]["uniq-id"] == f"{reference} #1"
-        assert router.coordinator.ds["filter"]["*2"]["uniq-id"] == f"{reference} #2"
+        router = await restart(router)
+
+        assert hass_storage[f"{DOMAIN}.rule_numbers.{ENTRY_ID}"]["data"] == {"filter": {reference: {"*1": 1, "*2": 2}}}
+
+    async def test_nothing_is_written_without_identical_rules(self, hass, hass_storage):
+        router = await start(hass, {MENUS["filter"]: [{".id": "*1", **RULE, "comment": "one"}]})
+        await restart(router)
+        assert f"{DOMAIN}.rule_numbers.{ENTRY_ID}" not in hass_storage
+
+    @pytest.mark.parametrize(
+        "saved", [None, "text", [1, 2], {"filter": "text"}, {"filter": {"x": "text"}}, {"filter": {"x": {"*1": "one"}}}, {"filter": {"x": {"*1": 0}}}, {"filter": {"x": {"*1": True}}}, {"nonsense": {"x": {"*1": 1}}}]
+    )
+    async def test_a_file_that_makes_no_sense_is_ignored(self, hass, hass_storage, saved):
+        hass_storage[f"{DOMAIN}.rule_numbers.{ENTRY_ID}"] = {"version": 1, "minor_version": 1, "key": f"{DOMAIN}.rule_numbers.{ENTRY_ID}", "data": saved}
+
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+
+        assert sorted(router.coordinator.ds["filter"][uid]["uniq-id"][-2:] for uid in ("*1", "*2")) == ["#1", "#2"]
+        assert router.coordinator.last_update_success
+
+    async def test_a_file_that_cannot_be_read_falls_back_to_the_order_on_the_router(self, hass):
+        unreadable = MagicMock()
+        unreadable.async_load = AsyncMock(side_effect=OSError("unreadable"))
+        with patch.object(MikrotikCoordinator, "rule_numbers_store", return_value=unreadable):
+            router = await start(hass, {MENUS["filter"]: _rules("*5", "*6")})
+
+        assert router.coordinator.last_update_success
+        assert [router.coordinator.ds["filter"][uid]["uniq-id"][-2:] for uid in ("*5", "*6")] == ["#1", "#2"]
+
+    async def test_numbers_saved_for_rows_that_hold_other_rules_now_are_not_used(self, hass, hass_storage):
+        """The ids are there again after a reset of the router, with other rules behind them."""
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2", "*3")})
+        router.menus[MENUS["filter"]] = _rules("*2", "*3")
+        await router.poll(3)
+        router.menus[MENUS["filter"]] = [{".id": "*2", **RULE, "dst-port": "80"}, {".id": "*3", **RULE, "dst-port": "80"}]
+
+        router = await restart(router)
+
+        assert [router.coordinator.ds["filter"][uid]["uniq-id"][-2:] for uid in ("*2", "*3")] == ["#1", "#2"]
+
+    async def test_removing_the_entry_removes_the_file(self, hass, hass_storage):
+        from custom_components.mikrotik_extended import async_remove_entry
+
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        await restart(router)
+        assert f"{DOMAIN}.rule_numbers.{ENTRY_ID}" in hass_storage
+
+        api = MagicMock()
+        api.connect.return_value = False
+        with patch("custom_components.mikrotik_extended.MikrotikAPI", return_value=api):
+            await async_remove_entry(hass, router.entry)
+
+        assert f"{DOMAIN}.rule_numbers.{ENTRY_ID}" not in hass_storage
 
 
 def _issue(hass):
@@ -438,20 +515,26 @@ class TestRepairIssue:
         # And the switches the user had are the ones that stay.
         assert router.entities() == {"filter-first": before["*1"], "filter-second": before["*2"]}
 
-    async def test_it_goes_with_the_last_duplicate(self, hass):
-        """The rule that is left needs no number, and its entity goes back to the plain id with it."""
+    async def test_it_stays_while_one_rule_still_carries_a_number(self, hass):
+        """The rule keeps its number, so what the issue says still holds for it."""
         router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
-        kept = _switches(hass, "filter")["*2"]
 
         router.menus[MENUS["filter"]] = _rules("*2")
-        await router.poll(2)
+        await router.poll(4)
         assert _issue(hass) is not None
 
+        router.menus[MENUS["filter"]] = _rules("*2", comment="only one")
         await router.poll()
         assert _issue(hass) is None
-        assert list(router.entities().values()) == [kept]
-        assert not next(iter(router.entities())).endswith("_2")
-        assert router.state(kept) == "on"
+
+    async def test_numbers_saved_for_a_menu_that_is_not_read_raise_nothing(self, hass):
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        router.menus[MENUS["filter"]] = []
+        router.hass.config_entries.async_update_entry(router.entry, options={**router.entry.options, "sensor_filter": False})
+
+        await restart(router)
+
+        assert _issue(hass) is None
 
     async def test_it_goes_when_the_rules_are_gone(self, hass):
         router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})

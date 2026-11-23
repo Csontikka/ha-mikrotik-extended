@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME, CONF_VERIFY_SSL
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PASSWORD, CONF_PORT, CONF_SSL, CONF_USERNAME, CONF_VERIFY_SSL, EVENT_HOMEASSISTANT_FINAL_WRITE
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
@@ -120,7 +120,10 @@ async def start(hass, menus: dict, platforms=("switch",), options: dict | None =
 
 
 async def restart(router: Router) -> Router:
-    """Home Assistant restarts: the registries stay, the integration begins again."""
+    """Home Assistant restarts: the registries and what was saved stay, the integration begins again."""
+    # Home Assistant writes pending saves out when it stops.
+    router.hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+    await router.hass.async_block_till_done()
     await router.hass.config_entries.async_unload_platforms(router.entry, router.platforms)
     # What the platforms registered to be undone on unload, their listener
     # for new rows among it. Left connected, the old listener would see no

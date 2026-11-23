@@ -439,3 +439,64 @@ class TestEntityNotInHomeAssistant:
         assert isinstance(switch, MikrotikEntity)
         assert switch.available is False
         switch.async_write_ha_state.assert_called_once()
+
+
+class TestThreeReadsOnEveryPath:
+    async def test_a_list_member_moved_to_another_list(self, hass):
+        """The reader drops the old pair at once; the entity still gets its three reads."""
+        path, rows, _ = STORES["interface_list_member"]
+        router = await start(hass, {path: list(rows)})
+        (moved,) = [entity_id for entity_id in router.registry_ids() if _entity(hass, entity_id)._data["interface"] == "bridge"]
+
+        router.menus[path] = [{**rows[0], "list": "WAN"}, rows[1]]
+        await router.poll()
+        assert "bridge" not in " ".join(key for key in router.coordinator.ds["interface_list_member"] if key.startswith("LAN "))
+        assert router.state(moved) == "unavailable"
+        assert len(router.registry_ids()) == 3
+        with pytest.raises(HomeAssistantError):
+            await _entity(hass, moved).async_turn_off()
+
+        await router.poll()
+        assert router.registry.async_get(moved) is not None
+        await router.poll()
+        assert router.registry.async_get(moved) is None
+        assert len(router.registry_ids()) == 2
+        assert router.writes() == []
+
+    async def test_a_member_moved_back_in_time_keeps_its_entity(self, hass):
+        path, rows, _ = STORES["interface_list_member"]
+        router = await start(hass, {path: list(rows)})
+        before = router.registry_ids()
+        (moved,) = [entity_id for entity_id in before if _entity(hass, entity_id)._data["interface"] == "bridge"]
+
+        router.menus[path] = [{**rows[0], "list": "WAN"}, rows[1]]
+        await router.poll(2)
+        router.menus[path] = list(rows)
+        await router.poll(4)
+
+        assert router.registry_ids()[moved] == before[moved]
+        assert router.state(moved) == "on"
+
+    def test_a_cycle_that_failed_is_not_a_read_without_the_row(self, hass):
+        description = next(d for d in SENSOR_TYPES if d.key == "filter")
+        coordinator = MagicMock()
+        coordinator.config_entry.data = {"name": "Mikrotik"}
+        coordinator._get_stale_counters = MagicMock(return_value={})
+        coordinator.data = {"filter": {"*1": {".id": "*1", "uniq-id": "drop telnet", "legacy-uniq-id": "sig", "name": "x", "comment": "drop telnet", "enabled": True}}}
+        switch = MikrotikFilterSwitch(coordinator, description, "*1")
+        switch.hass = hass
+        switch.async_write_ha_state = MagicMock()
+        switch._async_remove_gone = MagicMock()
+        coordinator.data = {"filter": {}}
+
+        coordinator.last_update_success = False
+        for _ in range(5):
+            switch._handle_coordinator_update()
+        switch._async_remove_gone.assert_not_called()
+
+        coordinator.last_update_success = True
+        for _ in range(2):
+            switch._handle_coordinator_update()
+        switch._async_remove_gone.assert_not_called()
+        switch._handle_coordinator_update()
+        switch._async_remove_gone.assert_called_once()
