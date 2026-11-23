@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import ipaddress
 import logging
 import re
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Network
@@ -37,6 +39,7 @@ from homeassistant.helpers.issue_registry import (
     async_create_issue,
     async_delete_issue,
 )
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
 from homeassistant.util.dt import utcnow
@@ -176,7 +179,7 @@ def _prefer_comment_uniq_id(store: dict, stale_uids=()) -> None:
             vals["uniq-id"] = comment
 
 
-def _disambiguate_uniq_ids(store: dict, stale_uids=(), numbers: dict | None = None, registered=None) -> list[str]:
+def _disambiguate_uniq_ids(store: dict, stale_uids=(), numbers: dict | None = None) -> list[str]:
     """Give colliding uniq-id values a stable suffix; return the collided bases.
 
     The comment is used when it tells the entries apart, otherwise a number.
@@ -188,21 +191,12 @@ def _disambiguate_uniq_ids(store: dict, stale_uids=(), numbers: dict | None = No
     nothing about a rule beyond the order in which it was first seen. What
     can be done is to keep it from moving: ``numbers`` holds, per colliding
     reference, which row was given which number, and is passed in again on
-    every read. A row keeps its number while another rule shares its
-    reference; a new identical rule gets the lowest number no rule on the
-    router holds; a rule that leaves frees its number. The order of the
-    rules on the router no longer decides anything, so removing one rule
-    does not hand its entity to the next. The last rule of a group goes back
-    to the plain reference, which is what it would be given after a restart
-    anyway. Without ``numbers`` the rows are numbered in store order.
-
-    ``registered`` is for the first read after a start, when nothing is
-    remembered: called with a reference, it returns the numbers Home
-    Assistant already holds entities for. Those are handed out first, in
-    order. Rules numbered 2 and 3 before the restart, the first one having
-    been removed, are 2 and 3 again instead of 1 and 2, and each entity stays
-    with its rule as long as the router still lists the rules in the same
-    order.
+    every read. A row keeps its number for as long as it lives, also when it
+    is the only one left; a new identical rule gets the lowest number no rule
+    on the router holds; a rule that leaves frees its number. The order of
+    the rules on the router no longer decides anything, so removing one rule
+    does not hand its entity to the next. Without ``numbers`` the rows are
+    numbered in store order, which is what a first read does.
 
     Rows in ``stale_uids`` are no longer on the router and only survive on the
     pruning grace period. They must not take part in disambiguation: a rule
@@ -222,14 +216,13 @@ def _disambiguate_uniq_ids(store: dict, stale_uids=(), numbers: dict | None = No
         seen.setdefault(str(vals.get("uniq-id", uid)), []).append(uid)
 
     # Forget rows that left the store, and rows that no longer share the
-    # reference because they were given a comment of their own. A group that
-    # is down to one rule, with no row on the grace next to it, is no group.
+    # reference because they were given a comment of their own.
     for base in list(numbers):
         held = numbers[base]
         for uid in list(held):
             if uid not in store or (uid not in stale_uids and uid not in seen.get(base, ())):
                 del held[uid]
-        if not held or (len(held) == 1 and list(held) == seen.get(base)):
+        if not held:
             del numbers[base]
 
     collided = []
@@ -243,13 +236,11 @@ def _disambiguate_uniq_ids(store: dict, stale_uids=(), numbers: dict | None = No
             for uid, comment in zip(uids, comments, strict=False):
                 store[uid]["uniq-id"] = f"{base} ({comment})"
             continue
-        preferred = sorted(registered(base)) if registered is not None and base not in numbers else []
         held = numbers.setdefault(base, {})
         taken = {held[uid] for uid in uids if uid in held}
         for uid in uids:
             if uid not in held:
-                preferred = [index for index in preferred if index not in taken]
-                number = preferred[0] if preferred else next(index for index in count(1) if index not in taken)
+                number = next(index for index in count(1) if index not in taken)
                 # Held until now by a row on the pruning grace, if by any.
                 for other in [other for other, index in held.items() if index == number]:
                     del held[other]
@@ -1056,9 +1047,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # The numbers given to identical rules, per store; see
         # _disambiguate_uniq_ids.
         self._rule_numbers: dict[str, dict] = {}
-        # The unique ids of the switches the registry held when this run
-        # began; see _note_registered_switches.
-        self._registered_switches: frozenset[str] | None = None
+        self._rule_numbers_saved: dict[str, dict] = {}
+        self._rule_numbers_loaded = False
+        self._rule_numbers_file = self.rule_numbers_store(hass, config_entry.entry_id)
         # The reference and the contents every rule was last seen with, per
         # store and row; see
         # _follow_rule_references.
@@ -1130,32 +1121,29 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         The reference is the comment where there is one and the rule contents
         otherwise, so it changes when a comment is added, removed or edited,
-        and when identical rules gain or lose their number. The row is still
-        the same row, under the same RouterOS id, and the entity object stays
-        bound to it; only the unique id the registry holds would no longer
-        match, and a second entity would be registered for the rule while the
-        first stayed until the next start. So the registry entry is moved to
-        the new unique id, and entity id, name and area stay as they are.
+        and when identical rules gain a number. The row is still the same
+        row, and the entity object stays bound to it; only the unique id the
+        registry holds would no longer match, and a second entity would be
+        registered for the rule while the first stayed until the next start.
+        So the registry entry is moved to the new unique id, and entity id,
+        name and area stay as they are.
 
-        The RouterOS id alone is not taken as proof. A configuration that is
-        reset and loaded again hands out the same ids to other rules, and
-        following those would put every entity on a rule it was never made
-        for. The contents have to be the same as before. Where they are not,
-        the row holds another rule now, and its entity is let go of; see
-        _release_rule_entity.
-
-        A move waits while the new unique id belongs to another entry, for
-        example to the entity of a deleted rule that is still on its pruning
-        grace, and is tried again on every cycle. An entry that the entity of
-        another row is registered under is never touched.
+        Only the case that leaves no doubt is handled: the same RouterOS id,
+        the same contents apart from the comment, an entry registered under
+        the old unique id that is this row's, a new unique id that no entry
+        holds and no other rule on the router maps to, and an old one that
+        no other rule has taken. Everything else is left exactly as it was
+        before this existed, a second entity until the next start: rules
+        that trade or pass on their comments, a unique id that is taken,
+        contents that changed as well. A switch that is not moved cannot end
+        up on another rule; one that is moved on a guess could.
         """
         registry = er.async_get(self.hass)
         for key in self._COMMENT_KEYED_RULES:
             stale = self._get_stale_counters(key)
             known = self._rule_references.get(key, {})
             now: dict[str, tuple[str, str]] = {}
-            pending: dict[str, tuple[str, str]] = {}
-            released: dict[str, str] = {}
+            changed: list[str] = []
             for uid, vals in self.ds.get(key, {}).items():
                 seen = (str(vals.get("uniq-id", "")), self._rule_contents(key, vals))
                 # A row on the pruning grace is not refreshed, so there is
@@ -1165,40 +1153,40 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                     now[uid] = known.get(uid, seen)
                     continue
                 now[uid] = seen
-                if uid not in known:
-                    continue
-                old_uid, new_uid = self._rule_unique_id(key, known[uid][0]), self._rule_unique_id(key, seen[0])
-                if old_uid == new_uid:
-                    continue
-                if not self._rule_entity_is_of_row(registry, key, uid, old_uid, known):
-                    continue
-                if known[uid][1] != seen[1]:
-                    released[uid] = old_uid
-                    continue
-                pending[uid] = (old_uid, new_uid)
-
-            # The moves go first: a rule that keeps its entity is not a row
-            # in need of one. What the releases then free, a move that had
-            # to wait may take.
-            self._move_rule_entities(registry, pending)
-            for uid, old_uid in released.items():
-                self._release_rule_entity(registry, key, uid, old_uid, known, released)
-            waiting = self._move_rule_entities(registry, pending)
-            for uid in waiting:
-                now[uid] = known[uid]
+                if uid in known and known[uid][1] == seen[1] and self._rule_unique_id(key, known[uid][0]) != self._rule_unique_id(key, seen[0]):
+                    changed.append(uid)
             self._rule_references[key] = now
+            if not changed:
+                continue
 
-    # What a registry entry is called while it steps aside for another one.
-    # It cannot be the unique id of a rule: the last part of those is a slug,
-    # and a slug holds no hyphen.
-    _PARKED = "-moving"
+            # How many rules map to each unique id in this read, and how
+            # many went by each one before.
+            wanted = Counter(self._rule_unique_id(key, reference) for uid, (reference, _contents) in now.items() if uid not in stale)
+            held = Counter(self._rule_unique_id(key, reference) for reference, _contents in known.values())
+            # Decided for all rows against the registry as it stands, then
+            # carried out, so that no move depends on another.
+            moves = []
+            for uid in changed:
+                old_uid, new_uid = self._rule_unique_id(key, known[uid][0]), self._rule_unique_id(key, now[uid][0])
+                if wanted[new_uid] != 1 or wanted[old_uid] or held[old_uid] != 1:
+                    continue
+                entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
+                if entity_id is None or registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid) is not None:
+                    continue
+                if self._entity_row(entity_id) not in (None, uid):
+                    continue
+                moves.append((entity_id, new_uid))
+            for entity_id, new_uid in moves:
+                registry.async_update_entity(entity_id, new_unique_id=new_uid)
+                _LOGGER.debug("Mikrotik %s moved %s along with its rule to %s", self.host, entity_id, new_uid)
 
     @staticmethod
     def _rule_contents(key: str, vals: dict) -> str:
         """What a rule does, without its comment.
 
         The reference a rule had before comments were used is that for every
-        store but the routing rules, where it begins with the comment.
+        store but the routing rules, where it begins with the comment. That
+        string stays as it is, unique ids were made of it.
         """
         if key == "routing_rules":
             return ",".join(str(vals.get(field, "")) for field in ("action", "src-address", "dst-address", "routing-mark", "interface"))
@@ -1208,116 +1196,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """The unique id of the switch of a rule with this reference."""
         return f"{self.config_entry.entry_id}-{key}-{slugify(reference.lower())}"
 
-    def _rule_entity_is_of_row(self, registry, key: str, uid: str, unique_id: str, known: dict) -> bool:
-        """True when the entry registered under ``unique_id`` is the entity of this row."""
-        entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, unique_id)
-        if entity_id is None:
-            return False
-        bound = self._entity_row(entity_id)
-        if bound is not None:
-            # Two references can read alike as a unique id, and then only
-            # one of the rows got the entity.
-            return bound == uid
-        # A disabled entity has no object to ask. When another row went by
-        # the same unique id, whose entry this is cannot be told.
-        return not any(other != uid and self._rule_unique_id(key, reference) == unique_id for other, (reference, _contents) in known.items())
-
-    def _release_rule_entity(self, registry, key: str, uid: str, unique_id: str, known: dict, released: dict) -> None:
-        """Take the entity registered under ``unique_id`` off a row that holds another rule now.
-
-        When the rule it was made for is on the router under another id, as
-        every rule is after a configuration was loaded again, only the entity
-        object goes: the registry entry stays, and the platform hands it to
-        that row in the same cycle, with its entity id, name and area. That
-        row must be without an entity of its own: one that is new, or one
-        whose entity is being taken off it as well. A row that keeps its
-        entity through a change of comment is not given a second one.
-
-        Otherwise the row is a rule without a comment that was edited, a
-        queue without a comment that was renamed, or a rule that took the
-        place of a removed one. That has always counted as a new rule with a
-        new entity, and the old entity goes with its registry entry, instead
-        of staying next to the new one until the next start. An entity the
-        user disabled is left alone, as everywhere else.
-        """
-        entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, unique_id)
-        if entity_id is None or registry.async_get(entity_id).disabled:
-            return
-        stale = self._get_stale_counters(key)
-        for other, vals in self.ds.get(key, {}).items():
-            if other == uid or other in stale or self._rule_unique_id(key, str(vals.get("uniq-id", ""))) != unique_id:
-                continue
-            if other in known and other not in released:
-                continue
-            for platform in ep.async_get_platforms(self.hass, DOMAIN):
-                entity = platform.entities.get(entity_id)
-                if entity is not None:
-                    # Done before the platform looks at the rows, which is
-                    # next in this cycle.
-                    self.hass.async_create_task(entity.async_remove(), eager_start=True)
-            return
-        _LOGGER.debug("Mikrotik %s removes %s, its row holds another rule now", self.host, entity_id)
-        registry.async_remove(entity_id)
-
-    def _move_rule_entities(self, registry, pending: dict[str, tuple[str, str]]) -> list[str]:
-        """Move registry entries from their old unique id to the new one; return the rows still waiting."""
-        parked: dict[str, str] = {}
-        while pending:
-            moved = False
-            for uid, (old_uid, new_uid) in list(pending.items()):
-                if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid) is not None:
-                    continue
-                entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
-                registry.async_update_entity(entity_id, new_unique_id=new_uid)
-                _LOGGER.debug("Mikrotik %s moved %s along with its rule to %s", self.host, entity_id, new_uid)
-                del pending[uid]
-                moved = True
-            if moved:
-                continue
-            # One move frees the unique id the next one waits for, so the
-            # loop above settles every chain. What it cannot settle is rules
-            # that trade references, each waiting for the other. One of them
-            # steps aside, and the rest, and then itself, find their id free.
-            uid = self._first_in_a_ring(pending)
-            if uid is None or uid in parked:
-                break
-            old_uid, new_uid = pending[uid]
-            aside = f"{old_uid}{self._PARKED}"
-            if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, aside) is not None:
-                break
-            registry.async_update_entity(registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid), new_unique_id=aside)
-            parked[uid] = old_uid
-            pending[uid] = (aside, new_uid)
-        # An entry that stepped aside and still waits goes back to where it
-        # was, so that the next cycle finds it under the id it is known by.
-        for uid, old_uid in parked.items():
-            if uid not in pending:
-                continue
-            aside, new_uid = pending[uid]
-            if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid) is None:
-                registry.async_update_entity(registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, aside), new_unique_id=old_uid)
-                pending[uid] = (old_uid, new_uid)
-            else:
-                # Its old id went to another entry meanwhile, which takes
-                # two references that read alike as a unique id. The entity
-                # keeps working on its row; the entry is not followed further.
-                _LOGGER.debug("Mikrotik %s leaves %s waiting for %s", self.host, aside, new_uid)
-        return list(pending)
-
-    @staticmethod
-    def _first_in_a_ring(pending: dict[str, tuple[str, str]]) -> str | None:
-        """A row whose move waits for a row that, in the end, waits for it."""
-        holder = {old_uid: uid for uid, (old_uid, _new_uid) in pending.items()}
-        for first in pending:
-            uid, visited = first, {first}
-            while (uid := holder.get(pending[uid][1])) is not None:
-                if uid == first:
-                    return first
-                if uid in visited:
-                    break
-                visited.add(uid)
-        return None
-
     def _entity_row(self, entity_id: str) -> str | None:
         """The store key the entity behind ``entity_id`` is bound to, None when it is not loaded."""
         for platform in ep.async_get_platforms(self.hass, DOMAIN):
@@ -1326,33 +1204,54 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 return getattr(entity, "_uid", None)
         return None
 
-    def _note_registered_switches(self) -> None:
-        """Remember which switches the registry holds as this run begins.
+    @staticmethod
+    def rule_numbers_store(hass, entry_id: str) -> Store:
+        """Where the numbers of identical rules are kept across restarts, per config entry."""
+        return Store(hass, 1, f"{DOMAIN}.rule_numbers.{entry_id}")
 
-        Read once, in the event loop, before the first rules are read: the
-        readers run in a worker thread and must not go to the registry.
+    async def _async_load_rule_numbers(self) -> None:
+        """Bring back the numbers identical rules had before the restart.
+
+        Kept by RouterOS id, which a rule keeps while Home Assistant is down.
+        A number is only used again for a row that is on the router with the
+        reference the number was given under; _disambiguate_uniq_ids drops
+        the rest on the first read. Without the file, or with one that cannot
+        be read, the rules are numbered in the order the router lists them,
+        as they always were.
         """
-        if self._registered_switches is not None:
+        if self._rule_numbers_loaded:
             return
-        registry = er.async_get(self.hass)
-        self._registered_switches = frozenset(entry.unique_id for entry in er.async_entries_for_config_entry(registry, self.config_entry.entry_id) if entry.domain == SWITCH_DOMAIN)
+        self._rule_numbers_loaded = True
+        try:
+            saved = await self._rule_numbers_file.async_load()
+        except Exception as error:  # a damaged file must not stop the integration
+            _LOGGER.warning("Mikrotik %s could not read the numbers of identical rules, numbering them anew: %s", self.host, error)
+            return
+        if not isinstance(saved, dict):
+            return
+        for key in self._RULE_MENUS:
+            groups = saved.get(key)
+            if not isinstance(groups, dict):
+                continue
+            numbers = {}
+            for base, held in groups.items():
+                if isinstance(held, dict) and all(isinstance(uid, str) and isinstance(number, int) and not isinstance(number, bool) and number > 0 for uid, number in held.items()):
+                    numbers[str(base)] = dict(held)
+            if numbers:
+                self._rule_numbers[key] = numbers
+        self._rule_numbers_saved = copy.deepcopy(self._rule_numbers)
+
+    def _save_rule_numbers(self) -> None:
+        """Write the numbers out when they changed."""
+        snapshot = copy.deepcopy({key: numbers for key, numbers in self._rule_numbers.items() if numbers})
+        if snapshot == self._rule_numbers_saved:
+            return
+        self._rule_numbers_saved = snapshot
+        self._rule_numbers_file.async_delay_save(lambda: snapshot, 5)
 
     def _number_identical_rules(self, key: str) -> list[str]:
-        """Number the rules of a store that share a reference; return those references.
-
-        The first read of a store after a start has nothing remembered, and
-        is given the numbers the registry already holds entities for.
-        """
-        registered = None
-        if key not in self._rule_numbers and self._registered_switches:
-            prefix = f"{self.config_entry.entry_id}-{key}-"
-            known = self._registered_switches
-
-            def registered(base: str) -> set[int]:
-                start = f"{prefix}{slugify(base.lower())}_"
-                return {int(unique_id[len(start) :]) for unique_id in known if unique_id.startswith(start) and unique_id[len(start) :].isdecimal()} - {0}
-
-        return _disambiguate_uniq_ids(self.ds[key], self._get_stale_counters(key), self._rule_numbers.setdefault(key, {}), registered)
+        """Number the rules of a store that share a reference; return those references."""
+        return _disambiguate_uniq_ids(self.ds[key], self._get_stale_counters(key), self._rule_numbers.setdefault(key, {}))
 
     DUPLICATE_RULES_ISSUE_ID = "duplicate_rules"
 
@@ -1370,15 +1269,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     def _check_duplicate_rules(self) -> None:
         """Tell the user while rules exist that only a number keeps apart.
 
-        The number holds while Home Assistant runs. A restart numbers the
-        rules again in the order the router lists them, and nothing can be
-        done about that from here: the rules are identical. Distinct comments
-        can, and that is the user's to do.
+        The number is kept by the RouterOS id of the rule, which is all
+        there is to go by: the rules are identical. A router that hands out
+        new ids, after a reset for one, leaves nothing to tell them apart.
+        Distinct comments do, and that is the user's to do.
         """
         menus = []
         for store, menu in self._RULE_MENUS.items():
             stale = self._get_stale_counters(store)
-            if any(uid not in stale for held in self._rule_numbers.get(store, {}).values() for uid in held):
+            rows = self.ds.get(store, {})
+            if any(uid in rows and uid not in stale for held in self._rule_numbers.get(store, {}).values() for uid in held):
                 menus.append(menu)
         issue_id = self._issue_id(self.DUPLICATE_RULES_ISSUE_ID)
         if not menus:
@@ -1746,7 +1646,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Update Mikrotik data"""
         _cycle_start = datetime.now()
         _LOGGER.debug("Mikrotik %s starting data update cycle", self.host)
-        self._note_registered_switches()
+        await self._async_load_rule_numbers()
         # Fetch resource once per cycle, up front, so it is fresh every cycle
         # and already populated before get_system_routerboard (which reads its
         # board-name) runs inside the hardware-info block below.
@@ -1966,6 +1866,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._migrate_rule_unique_ids()
         self._follow_rule_references()
         self._check_duplicate_rules()
+        self._save_rule_numbers()
         self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
         return self.ds
