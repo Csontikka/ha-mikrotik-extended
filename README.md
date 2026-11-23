@@ -130,7 +130,7 @@ With the option **Interface list member switches** on, every member of an interf
 
 - A switch is named after its list and interface, for example *LAN ether5*, and shows the list, the interface and the comment as attributes. All of them live on one device, *Interface Lists*.
 - A member is known by its list and interface, so one that is removed and added again on the router keeps its entity, and so does one whose comment changes. A member moved to another list, or whose interface or list is renamed on the router, is a new member with a new entity.
-- A switch whose member is no longer on the router goes unavailable and changes nothing, and it works again when the same member comes back. If Home Assistant is restarted while the member is away, its entity is removed like any other whose object is gone, and the member gets a fresh one when it returns.
+- A switch whose member is no longer on the router goes unavailable and changes nothing. If the same member comes back within a few polls, the switch works again; after that its entity is removed like any other whose object is gone, and the member gets a fresh one when it returns.
 - The members the router adds by itself (dynamic ones) get no switch.
 - Members are not added or removed from Home Assistant, only switched.
 
@@ -165,7 +165,9 @@ Detailed rule information available per entity (chain, action, protocol, address
 
 ![Firewall Filter Details](docs/assets/images/screenshots/firewall_filter_attributes.png)
 
-> **Give your rules a comment.** When a rule has a comment, the integration identifies its entity by that comment, so editing the rule on the router (changing a port, an address or an interface) keeps the same entity and your automations keep working. Rules without a comment are identified by their contents instead, which means editing such a rule replaces its entity. The same applies to simple queues.
+> **Give your rules a comment.** When a rule has a comment, the integration identifies its entity by that comment, so editing the rule on the router (changing a port, an address or an interface) keeps the same entity and your automations keep working. Rules without a comment are identified by their contents instead, which means that such a rule edited while Home Assistant is not running comes back as a new entity. The same applies to simple queues. While Home Assistant is running, the entity stays with its rule through any edit, also when a comment is added, changed or removed.
+>
+> **Give identical rules different comments.** Rules that are exactly alike, or that share a comment, can only be told apart by a number that Home Assistant gives them. The number stays with its rule while Home Assistant runs, and across a restart as long as the router still lists those rules in the same order, but nothing on the router ties it to one rule, so it can end up on another. Home Assistant shows a repair issue naming the menus while such rules exist; it goes away once each rule has a comment of its own.
 
 ### Device Tracking
 
