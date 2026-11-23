@@ -257,6 +257,10 @@
       "title": "Autorisations API insuffisantes pour {host}",
       "description": "L'utilisateur RouterOS **{username}** sur le routeur **{host}** manque les autorisations suivantes : **{missing}**.\n\nCertaines fonctionnalités de l'intégration ne fonctionneront pas (interrupteurs, bouton de redémarrage, configuration automatique du Kid Control). Pour corriger cela, ajoutez les politiques manquantes au groupe de l'utilisateur sur le routeur :\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Règles sur {host} impossibles à distinguer",
+      "description": "Le routeur **{host}** contient dans **{menus}** des règles identiques ou portant le même commentaire. Home Assistant ne peut distinguer leurs interrupteurs que par un numéro, qui suit l'ordre dans lequel les règles ont été vues pour la première fois.\n\nLe numéro est conservé tant que Home Assistant fonctionne. Après un redémarrage, ou lorsqu'une des règles est supprimée ou recréée, un interrupteur peut se retrouver à commander une autre règle qu'auparavant.\n\nDonnez à chacune de ces règles un commentaire qui lui est propre sur le routeur. Les interrupteurs restent alors attachés à leurs règles et ce message disparaît."
+    },
     "encoding_entity_ids": {
       "title": "Les identifiants d'entités contiennent encore du texte illisible ({host})",
       "fix_flow": {

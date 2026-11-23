@@ -257,6 +257,10 @@
       "title": "Elégtelen API-jogosultságok: {host}",
       "description": "A(z) **{host}** routeren a(z) **{username}** RouterOS felhasználónak hiányzó jogosultságai vannak: **{missing}**.\n\nNéhány integrációs funkció nem fog működni (kapcsolók, újraindítás gomb, Kid Control automatikus beállítás). A javításhoz adj hozzá a hiányzó jogosultságokat a felhasználó csoportjához a routeren:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Megkülönböztethetetlen szabályok: {host}",
+      "description": "A(z) **{host}** routeren a(z) **{menus}** menüben olyan szabályok vannak, amelyek teljesen egyformák, vagy ugyanaz a megjegyzésük. A Home Assistant a kapcsolóikat csak egy sorszámmal tudja megkülönböztetni, amely azt a sorrendet követi, ahogy a szabályokat először látta.\n\nA sorszám megmarad, amíg a Home Assistant fut. Újraindítás után, vagy ha valamelyik szabályt törlik vagy újra létrehozzák, egy kapcsoló más szabályt vezérelhet, mint korábban.\n\nAdj a routeren mindegyik ilyen szabálynak saját megjegyzést. A kapcsolók ezután a saját szabályuknál maradnak, és ez az üzenet eltűnik."
+    },
     "encoding_entity_ids": {
       "title": "Az entitásazonosítók olvashatatlan szöveget tartalmaznak ({host})",
       "fix_flow": {

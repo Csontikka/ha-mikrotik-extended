@@ -257,6 +257,10 @@
       "title": "Nedostatečná oprávnění API pro {host}",
       "description": "Uživatel RouterOS **{username}** na routeru **{host}** postrádá následující oprávnění: **{missing}**.\n\nNěkteré funkce integrace nebudou fungovat (přepínače, tlačítko restartu, automatické nastavení Kid Control). Chcete-li to opravit, přidejte chybějící zásady do skupiny uživatele na routeru:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Pravidla na {host}, která nelze rozlišit",
+      "description": "Router **{host}** má v **{menus}** pravidla, která jsou shodná nebo mají stejný komentář. Home Assistant dokáže jejich přepínače rozlišit jen číslem, které odpovídá pořadí, v jakém pravidla poprvé uviděl.\n\nČíslo zůstává stejné, dokud Home Assistant běží. Po restartu, nebo když je některé z pravidel odstraněno či znovu přidáno, může přepínač ovládat jiné pravidlo než dříve.\n\nDejte každému z těchto pravidel na routeru vlastní komentář. Přepínače pak zůstanou u svých pravidel a tato zpráva zmizí."
+    },
     "encoding_entity_ids": {
       "title": "ID entit stále obsahují nečitelný text ({host})",
       "fix_flow": {

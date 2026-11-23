@@ -257,6 +257,10 @@
       "title": "Quyền API không đủ cho {host}",
       "description": "Người dùng RouterOS **{username}** trên bộ định tuyến **{host}** thiếu các quyền sau: **{missing}**.\n\nMột số tính năng tích hợp sẽ không hoạt động (công tắc, nút khởi động lại, thiết lập tự động Kid Control). Để khắc phục, hãy thêm các chính sách còn thiếu vào nhóm người dùng trên bộ định tuyến:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Các quy tắc trên {host} không thể phân biệt được",
+      "description": "Bộ định tuyến **{host}** có trong **{menus}** các quy tắc giống hệt nhau hoặc có cùng một ghi chú. Home Assistant chỉ có thể phân biệt công tắc của chúng bằng một con số, theo thứ tự các quy tắc được nhìn thấy lần đầu.\n\nCon số được giữ nguyên trong khi Home Assistant đang chạy. Sau khi khởi động lại, hoặc khi một trong các quy tắc bị xóa hay được thêm lại, một công tắc có thể điều khiển một quy tắc khác với trước đó.\n\nHãy đặt cho mỗi quy tắc này một ghi chú riêng trên bộ định tuyến. Khi đó các công tắc sẽ gắn với đúng quy tắc của mình và thông báo này sẽ biến mất."
+    },
     "encoding_entity_ids": {
       "title": "ID thực thể vẫn chứa văn bản không đọc được ({host})",
       "fix_flow": {

@@ -257,6 +257,10 @@
       "title": "{host} の API 権限が不足しています",
       "description": "RouterOS ユーザー **{username}** がルーター **{host}** で次の権限を持っていません: **{missing}**。\n\n一部のインテグレーション機能が動作しません（スイッチ、再起動ボタン、Kid Control 自動設定）。修正するには、ルーターのユーザーグループに不足しているポリシーを追加してください:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "{host} に区別できないルールがあります",
+      "description": "ルーター **{host}** の **{menus}** に、内容が同一のルール、または同じコメントを持つルールがあります。Home Assistant はこれらのスイッチを、ルールを最初に見つけた順に付けた番号でしか区別できません。\n\n番号は Home Assistant の動作中は変わりません。再起動した後や、いずれかのルールが削除または再作成された後は、スイッチが以前とは別のルールを操作することがあります。\n\nルーター上で、これらのルールそれぞれに固有のコメントを付けてください。そうすればスイッチは自分のルールに結び付いたままになり、このメッセージは消えます。"
+    },
     "encoding_entity_ids": {
       "title": "エンティティIDに読み取れない文字が残っています ({host})",
       "fix_flow": {

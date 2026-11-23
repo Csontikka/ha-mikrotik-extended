@@ -257,6 +257,10 @@
       "title": "Nedostatočné oprávnenia API pre {host}",
       "description": "Používateľ RouterOS **{username}** na smerovači **{host}** nemá nasledujúce oprávnenia: **{missing}**.\n\nNiektoré funkcie integrácie nebudú fungovať (prepínače, tlačidlo reštartu, automatické nastavenie Kid Control). Ak to chcete opraviť, pridajte chýbajúce zásady do skupiny používateľa na smerovači:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Pravidlá na {host}, ktoré sa nedajú rozlíšiť",
+      "description": "Smerovač **{host}** má v **{menus}** pravidlá, ktoré sú zhodné alebo majú rovnaký komentár. Home Assistant dokáže ich prepínače rozlíšiť len číslom, ktoré zodpovedá poradiu, v akom pravidlá prvýkrát uvidel.\n\nČíslo zostáva rovnaké, kým Home Assistant beží. Po reštarte, alebo keď je niektoré z pravidiel odstránené či znova pridané, môže prepínač ovládať iné pravidlo než predtým.\n\nDajte každému z týchto pravidiel na smerovači vlastný komentár. Prepínače potom zostanú pri svojich pravidlách a táto správa zmizne."
+    },
     "encoding_entity_ids": {
       "title": "ID entít stále obsahujú nečitateľný text ({host})",
       "fix_flow": {

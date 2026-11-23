@@ -257,6 +257,10 @@
       "title": "Nepietiekamas API atļaujas {host}",
       "description": "RouterOS lietotājam **{username}** maršrutētājā **{host}** trūkst šādas atļaujas: **{missing}**.\n\nDažas integrācijas funkcijas nedarbosies (slēdži, pārstartēšanas poga, Kid Control automātiskā iestatīšana). Lai to novērstu, pievienojiet trūkstošās politikas lietotāja grupai maršrutētājā:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Kārtulas maršrutētājā {host}, kuras nevar atšķirt",
+      "description": "Maršrutētājā **{host}** izvēlnē **{menus}** ir kārtulas, kas ir vienādas vai kurām ir viens un tas pats komentārs. Home Assistant to slēdžus var atšķirt tikai pēc numura, kas atbilst secībai, kādā kārtulas tika ieraudzītas pirmo reizi.\n\nNumurs saglabājas, kamēr Home Assistant darbojas. Pēc pārstartēšanas, vai kad kāda no kārtulām ir noņemta vai pievienota no jauna, slēdzis var vadīt citu kārtulu nekā iepriekš.\n\nPiešķiriet katrai no šīm kārtulām maršrutētājā savu komentāru. Tad slēdži paliek pie savām kārtulām un šis ziņojums pazūd."
+    },
     "encoding_entity_ids": {
       "title": "Entītiju ID joprojām satur nesalasāmu tekstu ({host})",
       "fix_flow": {

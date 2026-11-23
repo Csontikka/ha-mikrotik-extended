@@ -257,6 +257,10 @@
       "title": "Ófullnægjandi API-heimildir fyrir {host}",
       "description": "RouterOS notandinn **{username}** á beini **{host}** vantar eftirfarandi heimildir: **{missing}**.\n\nNokkrar samþættingaraðgerðir munu ekki virka (rofar, endurræsingarhnappurinn, sjálfvirk uppsetning Kid Control). Til að laga þetta skaltu bæta við heimildunum sem vantar í notendahópinn á beininum:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Reglur á {host} sem ekki er hægt að greina í sundur",
+      "description": "Beinirinn **{host}** er með reglur í **{menus}** sem eru eins eða hafa sömu athugasemd. Home Assistant getur aðeins greint rofa þeirra í sundur með númeri sem fylgir röðinni sem reglurnar sáust fyrst í.\n\nNúmerið helst á meðan Home Assistant er í gangi. Eftir endurræsingu, eða þegar einni reglunni er eytt eða henni bætt við aftur, getur rofi stjórnað annarri reglu en áður.\n\nGefðu hverri þessara reglna sína eigin athugasemd á beininum. Þá halda rofarnir sig við sínar reglur og þessi skilaboð hverfa."
+    },
     "encoding_entity_ids": {
       "title": "Auðkenni eininga innihalda enn ólæsilegan texta ({host})",
       "fix_flow": {

@@ -257,6 +257,10 @@
       "title": "Insufficient API permissions for {host}",
       "description": "The RouterOS user **{username}** on router **{host}** is missing the following permissions: **{missing}**.\n\nSome integration features will not work (switches, reboot button, Kid Control auto-setup). To fix this, add the missing policies to the user's group on the router:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Rules on {host} that cannot be told apart",
+      "description": "The router **{host}** has rules in **{menus}** that are identical, or that share the same comment. Home Assistant can only keep their switches apart by a number, which follows the order in which the rules were first seen.\n\nThe number is kept while Home Assistant runs. After a restart, or after one of the rules has been removed or added again, a switch can end up on a different rule than before.\n\nGive each of these rules a comment of its own on the router. The switches then stay with their rules, and this message goes away."
+    },
     "encoding_entity_ids": {
       "title": "Entity IDs still contain misdecoded text ({host})",
       "fix_flow": {

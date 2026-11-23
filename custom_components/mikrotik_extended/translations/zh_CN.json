@@ -257,6 +257,10 @@
       "title": "{host} 的 API 权限不足",
       "description": "RouterOS 用户 **{username}** 在路由器 **{host}** 上缺少以下权限：**{missing}**。\n\n部分集成功能将无法使用（开关、重启按钮、Kid Control 自动设置）。要修复此问题，请在路由器上将缺少的策略添加到用户组：\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "{host} 上存在无法区分的规则",
+      "description": "路由器 **{host}** 的 **{menus}** 中有内容完全相同或注释相同的规则。Home Assistant 只能用一个编号来区分它们的开关，编号按首次发现这些规则的顺序分配。\n\n在 Home Assistant 运行期间编号保持不变。重启之后，或者其中某条规则被删除或重新添加之后，开关控制的可能就不是原来那条规则了。\n\n请在路由器上为这些规则分别设置各自的注释。这样开关就会一直对应各自的规则，此提示也会消失。"
+    },
     "encoding_entity_ids": {
       "title": "实体 ID 仍包含无法识别的文本 ({host})",
       "fix_flow": {

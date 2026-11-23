@@ -257,6 +257,10 @@
       "title": "Unzureichende API-Berechtigungen für {host}",
       "description": "Dem RouterOS-Benutzer **{username}** auf Router **{host}** fehlen folgende Berechtigungen: **{missing}**.\n\nEinige Integrationsfunktionen funktionieren nicht (Schalter, Neustart-Schaltfläche, Kid Control Auto-Setup). Um dies zu beheben, füge die fehlenden Richtlinien zur Benutzergruppe auf dem Router hinzu:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Regeln auf {host}, die sich nicht unterscheiden lassen",
+      "description": "Der Router **{host}** hat in **{menus}** Regeln, die identisch sind oder denselben Kommentar tragen. Home Assistant kann ihre Schalter nur durch eine Nummer auseinanderhalten, die der Reihenfolge folgt, in der die Regeln zuerst gesehen wurden.\n\nDie Nummer bleibt erhalten, solange Home Assistant läuft. Nach einem Neustart, oder wenn eine der Regeln entfernt oder neu angelegt wurde, kann ein Schalter eine andere Regel steuern als zuvor.\n\nGib jeder dieser Regeln auf dem Router einen eigenen Kommentar. Die Schalter bleiben dann bei ihren Regeln, und diese Meldung verschwindet."
+    },
     "encoding_entity_ids": {
       "title": "Entitäts-IDs enthalten weiterhin unlesbaren Text ({host})",
       "fix_flow": {

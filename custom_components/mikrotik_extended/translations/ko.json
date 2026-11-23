@@ -257,6 +257,10 @@
       "title": "{host}에 대한 API 권한 부족",
       "description": "RouterOS 사용자 **{username}**이(가) 라우터 **{host}**에서 다음 권한이 없습니다: **{missing}**.\n\n일부 통합 기능이 작동하지 않습니다(스위치, 재시작 버튼, Kid Control 자동 설정). 이를 수정하려면 라우터의 사용자 그룹에 누락된 정책을 추가하세요:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "{host}에 구별할 수 없는 규칙이 있습니다",
+      "description": "라우터 **{host}**의 **{menus}**에 내용이 동일하거나 같은 코멘트를 가진 규칙이 있습니다. Home Assistant는 이 규칙들의 스위치를 규칙을 처음 발견한 순서에 따라 붙인 번호로만 구별할 수 있습니다.\n\n번호는 Home Assistant가 실행되는 동안 유지됩니다. 재시작한 뒤에는, 또는 규칙 중 하나가 삭제되거나 다시 추가된 뒤에는 스위치가 이전과 다른 규칙을 제어하게 될 수 있습니다.\n\n라우터에서 이 규칙들 각각에 고유한 코멘트를 지정하세요. 그러면 스위치가 자기 규칙에 계속 연결되고 이 메시지는 사라집니다."
+    },
     "encoding_entity_ids": {
       "title": "엔터티 ID에 읽을 수 없는 텍스트가 남아 있습니다 ({host})",
       "fix_flow": {

@@ -257,6 +257,10 @@
       "title": "Utilstrekkelige API-tillatelser for {host}",
       "description": "RouterOS-brukeren **{username}** på ruteren **{host}** mangler følgende tillatelser: **{missing}**.\n\nNoen integrasjonsfunksjoner vil ikke fungere (brytere, omstart-knapp, automatisk Kid Control-oppsett). For å fikse dette, legg til de manglende retningslinjene i brukergruppen på ruteren:\n\n/user/group/set [find name=YOUR_GROUP] policy=read,write,api,reboot,policy,test,sensitive"
     },
+    "duplicate_rules": {
+      "title": "Regler på {host} som ikke kan skilles fra hverandre",
+      "description": "Ruteren **{host}** har regler i **{menus}** som er identiske eller har samme kommentar. Home Assistant kan bare skille bryterne deres med et nummer, som følger rekkefølgen reglene først ble sett i.\n\nNummeret beholdes så lenge Home Assistant kjører. Etter en omstart, eller når en av reglene er fjernet eller lagt til på nytt, kan en bryter ende opp med å styre en annen regel enn før.\n\nGi hver av disse reglene sin egen kommentar på ruteren. Da blir bryterne hos reglene sine, og denne meldingen forsvinner."
+    },
     "encoding_entity_ids": {
       "title": "Enhets-ID-er inneholder fortsatt uleselig tekst ({host})",
       "fix_flow": {
