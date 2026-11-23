@@ -471,6 +471,21 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         """Return True while the router can be read and still has the row."""
         return super().available and not self._row_is_gone()
 
+    def _row_with_unique_id(self, unique_id: str) -> bool:
+        """True when a row on the router, one no entity stands for yet, is due ``unique_id``."""
+        path = self.entity_description.data_path
+        reference = self.entity_description.data_reference
+        get_counters = getattr(self.coordinator, "_get_stale_counters", None)
+        stale = get_counters(path) if get_counters else {}
+        claimed = {getattr(other, "_uid", None) for other in self.platform.entities.values() if other is not self and getattr(other, "entity_description", None) is self.entity_description}
+        prefix = f"{self._config_entry.entry_id}-{self.entity_description.key}-"
+        for uid, vals in (self.coordinator.data.get(path) or {}).items():
+            if uid in stale or uid in claimed:
+                continue
+            if f"{prefix}{slugify(str(vals.get(reference, '')).lower())}" == unique_id:
+                return True
+        return False
+
     @callback
     def _async_remove_gone(self) -> None:
         """Take the entity out of Home Assistant: its row has left the router for good.
@@ -487,7 +502,14 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
             return
         registry = er.async_get(self.hass)
         entry = registry.async_get(self.entity_id)
-        if entry is None:
+        if entry is None or self._row_with_unique_id(entry.unique_id):
+            # Another row is due the unique id this entity is registered
+            # under: a WireGuard peer added again with its key, a rule
+            # re-created under its comment with other contents. The entity
+            # object goes, the registry entry stays, and the platform gives
+            # it to that row on the next cycle, which is also what a restart
+            # would do. The entity id, the name and the area the user set
+            # are kept that way.
             self.hass.async_create_task(self.async_remove())
             return
         _LOGGER.debug("Removing %s, it is gone from the router", self.entity_id)
