@@ -1155,8 +1155,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             known = self._rule_references.get(key, {})
             now: dict[str, tuple[str, str]] = {}
             pending: dict[str, tuple[str, str]] = {}
+            released: dict[str, str] = {}
             for uid, vals in self.ds.get(key, {}).items():
-                seen = (str(vals.get("uniq-id", "")), str(vals.get("legacy-uniq-id", "")))
+                seen = (str(vals.get("uniq-id", "")), self._rule_contents(key, vals))
                 # A row on the pruning grace is not refreshed, so there is
                 # nothing to follow; what is known of it is kept in case the
                 # next read brings it back.
@@ -1172,10 +1173,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 if not self._rule_entity_is_of_row(registry, key, uid, old_uid, known):
                     continue
                 if known[uid][1] != seen[1]:
-                    self._release_rule_entity(registry, key, uid, old_uid)
+                    released[uid] = old_uid
                     continue
                 pending[uid] = (old_uid, new_uid)
 
+            # The moves go first: a rule that keeps its entity is not a row
+            # in need of one. What the releases then free, a move that had
+            # to wait may take.
+            self._move_rule_entities(registry, pending)
+            for uid, old_uid in released.items():
+                self._release_rule_entity(registry, key, uid, old_uid, known, released)
             waiting = self._move_rule_entities(registry, pending)
             for uid in waiting:
                 now[uid] = known[uid]
@@ -1185,6 +1192,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
     # It cannot be the unique id of a rule: the last part of those is a slug,
     # and a slug holds no hyphen.
     _PARKED = "-moving"
+
+    @staticmethod
+    def _rule_contents(key: str, vals: dict) -> str:
+        """What a rule does, without its comment.
+
+        The reference a rule had before comments were used is that for every
+        store but the routing rules, where it begins with the comment.
+        """
+        if key == "routing_rules":
+            return ",".join(str(vals.get(field, "")) for field in ("action", "src-address", "dst-address", "routing-mark", "interface"))
+        return str(vals.get("legacy-uniq-id", ""))
 
     def _rule_unique_id(self, key: str, reference: str) -> str:
         """The unique id of the switch of a rule with this reference."""
@@ -1204,13 +1222,16 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         # the same unique id, whose entry this is cannot be told.
         return not any(other != uid and self._rule_unique_id(key, reference) == unique_id for other, (reference, _contents) in known.items())
 
-    def _release_rule_entity(self, registry, key: str, uid: str, unique_id: str) -> None:
+    def _release_rule_entity(self, registry, key: str, uid: str, unique_id: str, known: dict, released: dict) -> None:
         """Take the entity registered under ``unique_id`` off a row that holds another rule now.
 
         When the rule it was made for is on the router under another id, as
         every rule is after a configuration was loaded again, only the entity
         object goes: the registry entry stays, and the platform hands it to
-        that row in the same cycle, with its entity id, name and area.
+        that row in the same cycle, with its entity id, name and area. That
+        row must be without an entity of its own: one that is new, or one
+        whose entity is being taken off it as well. A row that keeps its
+        entity through a change of comment is not given a second one.
 
         Otherwise the row is a rule without a comment that was edited, a
         queue without a comment that was renamed, or a rule that took the
@@ -1220,11 +1241,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         user disabled is left alone, as everywhere else.
         """
         entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, unique_id)
-        if registry.async_get(entity_id).disabled:
+        if entity_id is None or registry.async_get(entity_id).disabled:
             return
         stale = self._get_stale_counters(key)
         for other, vals in self.ds.get(key, {}).items():
             if other == uid or other in stale or self._rule_unique_id(key, str(vals.get("uniq-id", ""))) != unique_id:
+                continue
+            if other in known and other not in released:
                 continue
             for platform in ep.async_get_platforms(self.hass, DOMAIN):
                 entity = platform.entities.get(entity_id)
@@ -1238,6 +1261,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _move_rule_entities(self, registry, pending: dict[str, tuple[str, str]]) -> list[str]:
         """Move registry entries from their old unique id to the new one; return the rows still waiting."""
+        parked: dict[str, str] = {}
         while pending:
             moved = False
             for uid, (old_uid, new_uid) in list(pending.items()):
@@ -1255,11 +1279,29 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             # that trade references, each waiting for the other. One of them
             # steps aside, and the rest, and then itself, find their id free.
             uid = self._first_in_a_ring(pending)
-            if uid is None:
+            if uid is None or uid in parked:
                 break
             old_uid, new_uid = pending[uid]
-            registry.async_update_entity(registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid), new_unique_id=f"{old_uid}{self._PARKED}")
-            pending[uid] = (f"{old_uid}{self._PARKED}", new_uid)
+            aside = f"{old_uid}{self._PARKED}"
+            if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, aside) is not None:
+                break
+            registry.async_update_entity(registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid), new_unique_id=aside)
+            parked[uid] = old_uid
+            pending[uid] = (aside, new_uid)
+        # An entry that stepped aside and still waits goes back to where it
+        # was, so that the next cycle finds it under the id it is known by.
+        for uid, old_uid in parked.items():
+            if uid not in pending:
+                continue
+            aside, new_uid = pending[uid]
+            if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid) is None:
+                registry.async_update_entity(registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, aside), new_unique_id=old_uid)
+                pending[uid] = (old_uid, new_uid)
+            else:
+                # Its old id went to another entry meanwhile, which takes
+                # two references that read alike as a unique id. The entity
+                # keeps working on its row; the entry is not followed further.
+                _LOGGER.debug("Mikrotik %s leaves %s waiting for %s", self.host, aside, new_uid)
         return list(pending)
 
     @staticmethod
