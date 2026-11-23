@@ -531,7 +531,7 @@ This integration is available in the [HACS](https://hacs.xyz/) default store.
 - API user with permissions: `read, write, api, reboot, policy, test, sensitive`
   > All permissions are recommended. Without `write`, switches and Kid Control auto-setup won't work. Without `reboot`, the reboot button is unavailable.
   >
-  > **A read-only account works too.** With only `read` and `api` the sensors are still filled in, among them the RouterOS version, health, WireGuard peers, wireless clients and the update entities, which then show the installed and the latest version without offering to install. What is left out is what needs more: switches, buttons and selects need `write`, checking for a new RouterOS version needs `write` and `policy`, installing an update and the reboot need `reboot`, and pinging tracked hosts needs `test`, which is only asked for when host tracking is on. A repair issue lists the policies the account is missing, one per router.
+  > **A read-only account works too.** With only `read` and `api` the sensors are still filled in, among them the RouterOS version, health, WireGuard peers, wireless clients and the update entities, which then show the installed version, and the latest one as of the last update check made on the router, without offering to install. What is left out is what needs more: switches, buttons and selects need `write`, checking for a new RouterOS version needs `write` and `policy`, installing an update needs `write`, `policy` and `reboot`, the reboot button needs `reboot`, and pinging tracked hosts needs `test`, which is only asked for when host tracking is on. A repair issue lists the policies the account is missing, one per router.
 
 ## Configuration
 
