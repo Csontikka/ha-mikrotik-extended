@@ -64,7 +64,7 @@ _LOGGER = getLogger(__name__)
 # confirm the match. WireGuard peers are deliberately absent: the public key
 # is not unique across interfaces, so a match there could bind a switch to a
 # different peer.
-REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "raw", "queue", "ipv6_filter", "ipv6_raw", "ipv6_nat", "ipv6_mangle", "interface_list_member"})
+REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "raw", "queue", "ipv6_filter", "ipv6_raw", "ipv6_nat", "ipv6_mangle"})
 
 _FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Raw", "Routing Rules", "IPv6 Filter", "IPv6 Raw", "IPv6 NAT", "IPv6 Mangle"}
 _IFACE_TYPE_CATEGORY = {

@@ -11,9 +11,11 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from .const import DOMAIN
 from .entity import MikrotikEntity, async_add_entities, raise_no_write_access, raise_write_failed
 from .helper import format_attribute
 from .switch_types import (
@@ -66,6 +68,7 @@ async def async_setup_entry(
         "MikrotikRoutingRulesSwitch": MikrotikRoutingRulesSwitch,
         "MikrotikFilterSwitch": MikrotikFilterSwitch,
         "MikrotikRawSwitch": MikrotikRawSwitch,
+        "MikrotikInterfaceListMemberSwitch": MikrotikInterfaceListMemberSwitch,
         "MikrotikQueueSwitch": MikrotikQueueSwitch,
         "MikrotikKidcontrolPauseSwitch": MikrotikKidcontrolPauseSwitch,
         "MikrotikWireguardPeerSwitch": MikrotikWireguardPeerSwitch,
@@ -363,6 +366,49 @@ class MikrotikFilterSwitch(MikrotikSwitch):
         mod_param = self.entity_description.data_switch_parameter
         await self._write(path, param, value, mod_param, True)
         await self.coordinator.async_refresh()
+
+
+# ---------------------------
+#   MikrotikInterfaceListMemberSwitch
+# ---------------------------
+class MikrotikInterfaceListMemberSwitch(MikrotikFilterSwitch):
+    """Representation of an interface list member switch.
+
+    Toggled like a Filter rule, by its RouterOS id. The entity is bound to
+    one list and interface pair. Once that member is gone from the router
+    the id the entity last saw may belong to another member, so the switch
+    goes unavailable and writes nothing.
+    """
+
+    def _member_is_live(self) -> bool:
+        path = self.entity_description.data_path
+        if self._uid not in (self.coordinator.data.get(path) or {}):
+            return False
+        get_counters = getattr(self.coordinator, "_get_stale_counters", None)
+        return self._uid not in (get_counters(path) if get_counters else {})
+
+    @property
+    def available(self) -> bool:
+        """Return True while the member is on the router."""
+        return super().available and self._member_is_live()
+
+    def _refuse_when_gone(self) -> None:
+        if not self._member_is_live():
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="write_failed",
+                translation_placeholders={"host": self.coordinator.host, "target": self.name},
+            )
+
+    async def async_turn_on(self) -> None:
+        """Turn on the switch."""
+        self._refuse_when_gone()
+        await super().async_turn_on()
+
+    async def async_turn_off(self) -> None:
+        """Turn off the switch."""
+        self._refuse_when_gone()
+        await super().async_turn_off()
 
 
 # ---------------------------

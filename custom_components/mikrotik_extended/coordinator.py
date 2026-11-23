@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import logging
 import re
@@ -970,7 +971,6 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self.filter_removed = {}
         self.raw_removed = {}
         self.ipv6_firewall_removed: set[tuple[str, str]] = set()
-        self.interface_list_clashes: set[str] = set()
         self._routes_restored = False
         self._routes_read = False
         self._routes_replaced: set[str] = set()
@@ -1713,6 +1713,13 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                 if field not in entry:
                     continue
                 raw = entry[field]
+                # Already decoded in this cycle, by the reader of the store:
+                # the text is what the kept original decodes to. Decoding it
+                # again would treat readable text as bytes of the fallback
+                # codepage and damage it.
+                kept = entry.get(f"{field}{RAW_SUFFIX}")
+                if kept is not None and raw == self._decode_text(kept):
+                    continue
                 decoded = self._decode_text(raw)
                 entry[field] = decoded
                 if isinstance(raw, str) and raw != decoded:
@@ -3021,20 +3028,39 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Get the members of the interface lists from Mikrotik.
 
         A member is one interface in one list, and the router holds each pair
-        at most once, so the pair is what a member is known by. Its RouterOS
-        id changes when the member is removed and added again; the pair does
-        not, and the entity follows it.
+        at most once, so the pair is what a member is: the store is keyed by
+        it. The RouterOS id of a member changes when it is removed and added
+        again, and stays when the member is moved to another list; the key
+        follows the pair in both cases, so an entity never ends up on a
+        member it was not created for.
+
+        The key ends in a short hash of the exact pair. The entity id is a
+        slug of the key, and a slug alone cannot keep pairs apart: "LAN guest"
+        with "wifi" reads like "LAN" with "guest wifi", "WAN" like "wan". With
+        the hash every pair has an id of its own, the same whichever other
+        members exist. It is taken from the names as the router sends them,
+        so the text encoding option does not change it either.
         """
         store = "interface_list_member"
         rows = self.api.query("/interface/list/member")
         if rows is None:
             return
+        members = []
+        for row in rows:
+            # A name that looks like a number or a flag arrives as one.
+            list_name, interface = str(row.get("list", "")), str(row.get("interface", ""))
+            if not list_name or not interface:
+                continue
+            pair = hashlib.sha1(f"{list_name}\x00{interface}".encode("utf-8", "surrogateescape"), usedforsecurity=False).hexdigest()[:8]
+            members.append({**row, "list": list_name, "interface": interface, "member": f"{list_name} {interface} {pair}"})
+
         stale = self._get_stale_counters(store)
         self.ds[store] = parse_api(
             data=self.ds[store],
-            source=rows,
-            key=".id",
+            source=members,
+            key="member",
             vals=[
+                {"name": "member"},
                 {"name": ".id"},
                 {"name": "list"},
                 {"name": "interface"},
@@ -3046,37 +3072,21 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             prune_stale=True,
             stale_counters=stale,
         )
-        for member in self.ds[store].values():
+
+        # A member that is gone stays for a few reads, in case the read was
+        # incomplete. When its RouterOS id has moved on to a live member, it
+        # was moved to another list, and the old pair is gone for certain.
+        live_ids = {member[".id"] for key, member in self.ds[store].items() if key not in stale}
+        for key in [key for key in stale if key in self.ds[store] and self.ds[store][key][".id"] in live_ids]:
+            del self.ds[store][key]
+            del stale[key]
+
+        for key, member in self.ds[store].items():
             member["comment"] = str(member["comment"])
+            member["uniq-id"] = key
         self._decode_store(store)
-
-        live = {uid: member for uid, member in self.ds[store].items() if uid not in stale}
-        for member in live.values():
+        for member in self.ds[store].values():
             member["name"] = f"{member['list']} {member['interface']}"
-            member["uniq-id"] = member["name"]
-            # What confirms that a member found again under a new RouterOS
-            # id is the same one: the exact pair, which no other member has.
-            member["legacy-uniq-id"] = f"{member['list']}/{member['interface']}"
-
-        # The entity id is a slug of the reference, and two pairs can read
-        # the same once the separators are gone: "LAN guest" + "wifi" and
-        # "LAN" + "guest wifi". Those spell out which part is the list, so
-        # each keeps an entity, whichever of them the router lists first.
-        by_slug: dict[str, list[dict]] = {}
-        for member in live.values():
-            by_slug.setdefault(slugify(member["uniq-id"].lower()), []).append(member)
-        for slug, members in by_slug.items():
-            if len(members) < 2:
-                continue
-            for member in members:
-                member["uniq-id"] = f"{member['name']} in list {member['list']}"
-            if slug not in self.interface_list_clashes:
-                self.interface_list_clashes.add(slug)
-                _LOGGER.info(
-                    "Mikrotik %s interface list members %s read alike as an entity id, the list was added to tell them apart.",
-                    self.host,
-                    ", ".join(sorted(member["legacy-uniq-id"] for member in members)),
-                )
 
     # ---------------------------
     #   get_route

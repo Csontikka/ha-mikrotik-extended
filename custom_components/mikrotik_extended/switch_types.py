@@ -486,7 +486,7 @@ SENSOR_TYPES: tuple[MikrotikSwitchEntityDescription, ...] = (
         enable_on_option=CONF_SENSOR_IPV6_FIREWALL,
     ),
     # A member of an interface list is toggled like a firewall rule, by its
-    # RouterOS id on its own menu, so the Filter switch serves it as well.
+    # RouterOS id on its own menu.
     MikrotikSwitchEntityDescription(
         key="interface_list_member",
         name="",
@@ -503,7 +503,7 @@ SENSOR_TYPES: tuple[MikrotikSwitchEntityDescription, ...] = (
         data_uid="uniq-id",
         data_reference="uniq-id",
         data_attributes_list=DEVICE_ATTRIBUTES_INTERFACE_LIST_MEMBER,
-        func="MikrotikFilterSwitch",
+        func="MikrotikInterfaceListMemberSwitch",
         enable_on_option=CONF_SENSOR_INTERFACE_LISTS,
     ),
     MikrotikSwitchEntityDescription(

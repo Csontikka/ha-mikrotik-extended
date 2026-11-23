@@ -6227,6 +6227,34 @@ class TestDecodeText:
         assert coord.ds["dns"]["d1"]["comment"] == "café"
         assert coord.ds["client_traffic"]["01"]["host-name"] == "кухня"
 
+    @pytest.mark.parametrize("encoding", ["ISO-8859-1", "Windows-1251", "KOI8-R", "UTF-8"])
+    def test_decoding_a_store_twice_in_a_cycle_leaves_the_text_alone(self, hass, encoding):
+        """A reader decodes its store, and the end of the cycle decodes every store again.
+
+        Text that came as UTF-8 is readable after the first pass. Read as
+        bytes of the fallback codepage a second time, "é" became something
+        else, and the kept original was dropped.
+        """
+        raw = "Vendég szabály".encode().decode("latin-1")
+        coord = _make_coordinator(hass, options={"text_encoding": encoding})
+        coord.ds["filter"] = {"r1": {"comment": raw}}
+        coord._decode_store("filter")
+        coord._decode_text_fields()
+        assert coord.ds["filter"]["r1"] == {"comment": "Vendég szabály", "comment-raw": raw}
+
+    def test_a_fresh_value_is_decoded_although_an_original_is_kept(self, hass):
+        """The next read brings the bytes again; the original kept from the last cycle must not stop the decoding."""
+        raw = "Vendég".encode().decode("latin-1")
+        coord = _make_coordinator(hass, options={"text_encoding": "Windows-1251"})
+        coord.ds["filter"] = {"r1": {"comment": raw, "comment-raw": raw}}
+        coord._decode_store("filter")
+        assert coord.ds["filter"]["r1"]["comment"] == "Vendég"
+
+        other = "Új".encode().decode("latin-1")
+        coord.ds["filter"]["r1"]["comment"] = other
+        coord._decode_store("filter")
+        assert coord.ds["filter"]["r1"] == {"comment": "Új", "comment-raw": other}
+
     def test_decode_text_fields_missing_store_safe(self, hass):
         coord = _make_coordinator(hass)
         coord.ds.pop("dhcp", None)

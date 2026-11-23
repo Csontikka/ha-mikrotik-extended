@@ -114,6 +114,7 @@ async def test_async_setup_entry_dispatcher(hass):
         "MikrotikRoutingRulesSwitch",
         "MikrotikFilterSwitch",
         "MikrotikRawSwitch",
+        "MikrotikInterfaceListMemberSwitch",
         "MikrotikQueueSwitch",
         "MikrotikKidcontrolPauseSwitch",
         "MikrotikWireguardPeerSwitch",
