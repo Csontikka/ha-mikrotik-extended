@@ -366,11 +366,14 @@ class TestAcrossARestart:
         router = await start(hass, {path: _rules("*1", "*2", "*3")})
         before, registered = _switches(hass, store), router.entities()
 
+        ids = router.registry_ids()
         router = await restart(router)
         await router.poll(2)
 
         assert _switches(hass, store) == before
         assert router.entities() == registered
+        # Nothing was registered anew on the way.
+        assert router.registry_ids() == ids
 
     @both_stores
     async def test_the_last_rule_of_a_group_keeps_its_switch(self, hass, store):

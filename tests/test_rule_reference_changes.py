@@ -108,20 +108,46 @@ class TestTheCommentChanges:
         assert router.entities() == {f"{store}-no_telnet": rule, f"{store}-allow_lan": other}
 
     @both_stores
-    async def test_a_rule_without_a_comment_is_edited(self, hass, store):
-        """Its reference is its contents, so an edit changes it like a new comment would."""
+    async def test_a_rule_without_a_comment_that_is_edited_is_a_new_rule(self, hass, store):
+        """Its contents are all that is known of it. The old entity goes at once, not at the next start."""
         router, path, (rule, other) = await _router(hass, store, BARE, OTHER)
-        area_id = _customise(hass, router, rule)
-        before = router.entities()
+        before = router.registry_ids()
 
         router.menus[path] = [{**BARE, "dst-port": "2323"}, OTHER]
+        await router.poll()
+
+        after = router.registry_ids()
+        assert len(after) == 2
+        assert after[other] == before[other]
+        assert before[rule] not in after.values()
+        (new,) = [entity_id for entity_id, entry_id in after.items() if entry_id not in before.values()]
+        assert _entity(hass, new)._uid == "*1"
+        assert router.state(new) == "on"
+        await router.poll(2)
+        assert router.registry_ids() == after
+
+    @both_stores
+    async def test_a_commented_rule_that_is_edited_stays_what_it_is(self, hass, store):
+        router, path, _ = await _router(hass, store, {**BARE, "comment": "drop telnet"}, OTHER)
+        before = router.registry_ids()
+
+        router.menus[path] = [{**BARE, "comment": "drop telnet", "dst-port": "2323"}, OTHER]
         await router.poll(2)
 
-        after = router.entities()
-        assert sorted(after.values()) == sorted(before.values())
-        assert set(after) != set(before)
-        _assert_customised(router, rule, area_id)
-        assert router.state(rule) == "on"
+        assert router.registry_ids() == before
+
+    @both_stores
+    async def test_a_comment_and_the_contents_changed_at_once_is_a_new_rule(self, hass, store):
+        """Nothing is left to say it is the same rule; the RouterOS id alone is not trusted."""
+        router, path, (rule, other) = await _router(hass, store, {**BARE, "comment": "drop telnet"}, OTHER)
+        before = router.registry_ids()
+
+        router.menus[path] = [{**BARE, "comment": "no telnet", "dst-port": "2323"}, OTHER]
+        await router.poll()
+
+        assert router.registry.async_get(rule) is None
+        assert set(router.entities()) == {f"{store}-no_telnet", f"{store}-allow_lan"}
+        assert router.registry_ids()[other] == before[other]
 
     @both_stores
     async def test_a_comment_that_only_changes_case_or_punctuation_moves_nothing(self, hass, store):
@@ -227,20 +253,88 @@ class TestTheNewUniqueIdIsTaken:
 
     @both_stores
     async def test_two_rules_that_trade_comments_keep_their_entities(self, hass, store):
-        """Neither unique id is free, so nothing moves and nothing is added.
-
-        Each switch still controls the rule it always did.
-        """
+        """Each waits for the unique id the other holds; one steps aside so both can move."""
         first = {**BARE, "comment": "telnet"}
         second = {**OTHER, "comment": "lan"}
         router, path, (one, two) = await _router(hass, store, first, second)
+        before = router.registry_ids()
 
         router.menus[path] = [{**first, "comment": "lan"}, {**second, "comment": "telnet"}]
-        await router.poll(3)
+        await router.poll()
 
-        assert router.entities() == {f"{store}-telnet": one, f"{store}-lan": two}
+        assert router.entities() == {f"{store}-lan": one, f"{store}-telnet": two}
+        assert router.registry_ids() == before
+        assert (_entity(hass, one)._uid, _entity(hass, two)._uid) == ("*1", "*2")
         await _entity(hass, one).async_turn_off()
         assert router.writes() == [(path, ".id", "*1", "disabled", True)]
+        await router.poll(2)
+        assert router.entities() == {f"{store}-lan": one, f"{store}-telnet": two}
+
+    @both_stores
+    async def test_three_rules_that_pass_their_comments_round(self, hass, store):
+        rows = [{**BARE, "comment": "one"}, {**OTHER, "comment": "two"}, {".id": "*3", "chain": "output", "action": "accept", "comment": "three", "disabled": False}]
+        router, path, (one, two, three) = await _router(hass, store, *rows)
+        before = router.registry_ids()
+
+        router.menus[path] = [{**rows[0], "comment": "two"}, {**rows[1], "comment": "three"}, {**rows[2], "comment": "one"}]
+        await router.poll()
+
+        assert router.entities() == {f"{store}-two": one, f"{store}-three": two, f"{store}-one": three}
+        assert router.registry_ids() == before
+
+    @both_stores
+    async def test_a_chain_that_ends_at_a_taken_id_leaves_nothing_half_moved(self, hass, store):
+        rows = [{**BARE, "comment": "one"}, {**OTHER, "comment": "two"}, {".id": "*3", "chain": "output", "action": "accept", "comment": "three", "disabled": False}]
+        router, path, (one, two, three) = await _router(hass, store, *rows)
+        router.registry.async_update_entity(three, disabled_by=er.RegistryEntryDisabler.USER)
+        await hass.async_block_till_done()
+
+        # The first takes the comment of the second, the second that of the third, which is deleted but disabled.
+        router.menus[path] = [{**rows[0], "comment": "two"}, {**rows[1], "comment": "three"}]
+        await router.poll(4)
+
+        assert router.entities() == {f"{store}-one": one, f"{store}-two": two, f"{store}-three": three}
+        assert (_entity(hass, one)._uid, _entity(hass, two)._uid) == ("*1", "*2")
+
+
+class TestTheSameIdsForOtherRules:
+    """A configuration that is reset and loaded again numbers its rules from the start."""
+
+    @both_stores
+    async def test_rules_that_come_back_under_each_others_ids(self, hass, store):
+        first = {**BARE, "comment": "telnet"}
+        second = {**OTHER, "comment": "lan"}
+        router, path, (telnet, lan) = await _router(hass, store, first, second)
+        area_id = _customise(hass, router, telnet)
+        before = router.registry_ids()
+
+        router.menus[path] = [{**second, ".id": "*1"}, {**first, ".id": "*2"}]
+        await router.poll()
+
+        # Each entity is still the entity of its rule, which now has the other id.
+        assert router.entities() == {f"{store}-telnet": telnet, f"{store}-lan": lan}
+        assert router.registry_ids() == before
+        _assert_customised(router, telnet, area_id)
+        assert (_entity(hass, telnet)._uid, _entity(hass, lan)._uid) == ("*2", "*1")
+        assert router.state(telnet) == "on"
+        await _entity(hass, telnet).async_turn_off()
+        assert router.writes() == [(path, ".id", "*2", "disabled", True)]
+
+    @both_stores
+    async def test_rules_pushed_down_by_a_new_one(self, hass, store):
+        first = {**BARE, "comment": "telnet"}
+        second = {**OTHER, "comment": "lan"}
+        router, path, (telnet, lan) = await _router(hass, store, first, second)
+        before = router.registry_ids()
+
+        router.menus[path] = [{".id": "*1", "chain": "output", "action": "accept", "comment": "new", "disabled": False}, {**first, ".id": "*2"}, {**second, ".id": "*3"}]
+        await router.poll(2)
+
+        after = router.registry_ids()
+        assert {entity_id: after[entity_id] for entity_id in before} == before
+        assert set(router.entities()) == {f"{store}-new", f"{store}-telnet", f"{store}-lan"}
+        assert (_entity(hass, telnet)._uid, _entity(hass, lan)._uid) == ("*2", "*3")
+        assert _entity(hass, router.entity_id("switch", store, "new"))._uid == "*1"
 
 
 class TestAnEntryOfAnotherRow:
@@ -278,16 +372,27 @@ class TestAnEntryOfAnotherRow:
 
 
 class TestQueues:
-    async def test_a_renamed_queue_keeps_its_entity(self, hass):
+    async def test_a_renamed_queue_with_a_comment_keeps_its_entity(self, hass):
+        router = await start(hass, {QUEUES: [{".id": "*1", "name": "kids", "comment": "children", **QUEUE}]})
+        before = router.registry_ids()
+
+        router.menus[QUEUES] = [{".id": "*1", "name": "the kids", "comment": "children", **QUEUE}]
+        await router.poll(2)
+
+        assert router.registry_ids() == before
+        assert set(router.entities()) == {"queue-children"}
+
+    async def test_a_renamed_queue_without_a_comment_is_a_new_queue(self, hass):
+        """The name is all that is known of it. Its old entity goes at once, not at the next start."""
         router = await start(hass, {QUEUES: [{".id": "*1", "name": "kids", **QUEUE}]})
-        entity_id = router.entity_id("switch", "queue", "kids")
-        area_id = _customise(hass, router, entity_id)
+        before = router.registry_ids()
 
         router.menus[QUEUES] = [{".id": "*1", "name": "children", **QUEUE}]
         await router.poll(2)
 
-        assert router.entities() == {"queue-children": entity_id}
-        _assert_customised(router, entity_id, area_id)
+        after = router.registry_ids()
+        assert set(router.entities()) == {"queue-children"}
+        assert not set(after.values()) & set(before.values())
 
     async def test_a_queue_that_loses_its_comment_goes_by_its_name_again(self, hass):
         """Without waiting for a restart, which used to change the id and drop the entity."""
@@ -314,15 +419,15 @@ class TestQueues:
 class TestWhatIsRemembered:
     async def test_the_first_cycle_only_takes_note(self, hass):
         router = await start(hass, {MENUS["filter"]: [{**BARE, "comment": "drop telnet"}, OTHER]})
-        assert router.coordinator._rule_references["filter"] == {"*1": "drop telnet", "*2": "allow lan"}
+        assert {uid: reference for uid, (reference, _contents) in router.coordinator._rule_references["filter"].items()} == {"*1": "drop telnet", "*2": "allow lan"}
 
     async def test_a_row_that_left_the_store_is_forgotten(self, hass):
         router = await start(hass, {MENUS["filter"]: [{**BARE, "comment": "drop telnet"}, OTHER]})
         router.menus[MENUS["filter"]] = [OTHER]
         await router.poll(2)
-        assert router.coordinator._rule_references["filter"]["*1"] == "drop telnet"
+        assert router.coordinator._rule_references["filter"]["*1"][0] == "drop telnet"
         await router.poll()
-        assert router.coordinator._rule_references["filter"] == {"*2": "allow lan"}
+        assert list(router.coordinator._rule_references["filter"]) == ["*2"]
 
     async def test_an_entry_of_another_config_entry_is_never_touched(self, hass):
         router = await start(hass, {MENUS["filter"]: [{**BARE, "comment": "drop telnet"}]})
