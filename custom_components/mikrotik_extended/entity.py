@@ -70,10 +70,15 @@ REBIND_DATA_PATHS = frozenset({"nat", "mangle", "routing_rules", "filter", "raw"
 # that has left the menu is gone for good: the firewall and routing rules,
 # the simple queues, the netwatch probes, the WireGuard peers and the
 # interface list members. An entity there is unavailable from the first read
-# without its row, and removed once the row has left the store. Stores with
+# without its row, and removed once the row has left the store and three
+# reads have passed without it. Stores with
 # removal rules of their own (interfaces, hosts, routes, the LTE modem) and
 # stores whose rows come and go in normal operation (addresses, containers
 # during an upgrade, script variables) are deliberately not listed.
+# How many reads in a row an entity's row has to be missing before the
+# entity is removed; the same number the stores keep a missing row for.
+READS_BEFORE_REMOVAL = 3
+
 ROW_BOUND_DATA_PATHS = REBIND_DATA_PATHS | {"netwatch", "wireguard_peers", "interface_list_member"}
 
 _FIREWALL_GROUPS = {"NAT", "Mangle", "Filter", "Raw", "Routing Rules", "IPv6 Filter", "IPv6 Raw", "IPv6 NAT", "IPv6 Mangle"}
@@ -412,6 +417,7 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
         self._config_entry = self.coordinator.config_entry
         self._attr_extra_state_attributes = {ATTR_ATTRIBUTION: ATTRIBUTION}
         self._uid = uid
+        self._reads_without_row = 0
         self._data = coordinator.data[self.entity_description.data_path]
         if self._uid:
             self._data = coordinator.data[self.entity_description.data_path][self._uid]
@@ -436,10 +442,25 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
                 new_uid = self._replacement_uid(path_data, stale)
                 if new_uid is not None:
                     self._uid = new_uid
-                elif self._uid not in path_data:
-                    if self.entity_description.data_path in ROW_BOUND_DATA_PATHS:
-                        self._async_remove_gone()
-                    return
+                else:
+                    # A cycle that failed read nothing, so it is no read
+                    # without the row either.
+                    if self.coordinator.last_update_success:
+                        self._reads_without_row += 1
+                    if self._uid not in path_data:
+                        if self.entity_description.data_path in ROW_BOUND_DATA_PATHS:
+                            # Most rows are only dropped from the store after
+                            # three reads. One that a reader drops at once,
+                            # a list member moved to another list, is given
+                            # the same three reads here before the entity
+                            # and what the user set on it are removed.
+                            if self._reads_without_row >= READS_BEFORE_REMOVAL:
+                                self._async_remove_gone()
+                            else:
+                                self.async_write_ha_state()
+                        return
+            if self._uid in path_data and self._uid not in stale:
+                self._reads_without_row = 0
             self._data = path_data[self._uid]
         else:
             self._data = path_data
