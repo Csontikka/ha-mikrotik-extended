@@ -3373,26 +3373,24 @@ class TestMiscSensorGetters:
             "q1": {
                 ".id": "*q1",
                 "name": "q1",
-                "uniq-id": "dupe",
                 "max-limit": "1000/2000",
                 "rate": "100/200",
                 "limit-at": "50/100",
                 "burst-limit": "10/20",
                 "burst-threshold": "5/10",
                 "burst-time": "1s/2s",
-                "comment": "",
+                "comment": "dupe",
             },
             "q2": {
                 ".id": "*q2",
                 "name": "q2",
-                "uniq-id": "dupe",
                 "max-limit": "1000/2000",
                 "rate": "100/200",
                 "limit-at": "50/100",
                 "burst-limit": "10/20",
                 "burst-threshold": "5/10",
                 "burst-time": "1s/2s",
-                "comment": "",
+                "comment": "dupe",
             },
         }
         with patch(
@@ -3402,7 +3400,7 @@ class TestMiscSensorGetters:
             coord.get_queue()
 
         assert coord.ds["queue"]["q1"]["upload-max-limit"] == "1000 bps"
-        # dedup applied (both have same uniq-id)
+        # Two queues under one comment share a reference, so both get a number.
         assert coord.ds["queue"]["q1"]["uniq-id"] == "dupe #1"
         assert "dupe" in coord.queue_removed
 

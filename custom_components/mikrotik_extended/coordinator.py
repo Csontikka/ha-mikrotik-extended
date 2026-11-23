@@ -3895,8 +3895,17 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             stale_counters=self._get_stale_counters("queue"),
         )
 
+        stale = self._get_stale_counters("queue")
         for uid, vals in self.ds["queue"].items():
             _split_queue_fields(self.ds["queue"][uid], vals)
+            # The reference starts out as the queue name on every read, as it
+            # does from the contents for a firewall rule, and the comment then
+            # takes over where there is one. Kept from the first read, it
+            # would still be the old comment after the comment was removed,
+            # until a restart changed it and the entity with it. A row the
+            # read did not bring keeps what it had.
+            if uid not in stale:
+                vals["uniq-id"] = vals["name"]
 
         self._dedupe_queue_uniq_ids()
 
