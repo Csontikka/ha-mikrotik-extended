@@ -990,6 +990,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         self.async_mac_lookup = AsyncMacLookup()
         self.accessrights_reported = False
+        self._kid_control_profile_reported = False
         self._legacy_issues_deleted = False
 
         self.last_hwinfo_update = datetime(1970, 1, 1)
@@ -4454,6 +4455,21 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
         existing = self.api.query(PATH_IP_KID_CONTROL) or []
         if any(p.get("name") == self._HA_MONITORING_PROFILE for p in existing):
+            return
+
+        # The router refuses the add without the write policy. Asking again
+        # on every update would only fill the log, so say once what is
+        # missing and how to create the profile by hand; it is picked up as
+        # soon as it exists.
+        if not self._has_access("write"):
+            if not self._kid_control_profile_reported:
+                self._kid_control_profile_reported = True
+                _LOGGER.warning(
+                    "Mikrotik %s: Client traffic sensors need the kid-control profile '%s', and the account has no write policy to create it. Create it on the router: /ip/kid-control/add name=%s mon=0s-1d tue=0s-1d wed=0s-1d thu=0s-1d fri=0s-1d sat=0s-1d sun=0s-1d",
+                    self.host,
+                    self._HA_MONITORING_PROFILE,
+                    self._HA_MONITORING_PROFILE,
+                )
             return
 
         success = self.api.execute(
