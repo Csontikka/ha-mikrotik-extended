@@ -9,6 +9,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Network
+from itertools import count
 from time import monotonic
 
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
@@ -175,38 +176,75 @@ def _prefer_comment_uniq_id(store: dict, stale_uids=()) -> None:
             vals["uniq-id"] = comment
 
 
-def _disambiguate_uniq_ids(store: dict, stale_uids=()) -> list[str]:
+def _disambiguate_uniq_ids(store: dict, stale_uids=(), numbers: dict | None = None) -> list[str]:
     """Give colliding uniq-id values a stable suffix; return the collided bases.
 
-    The comment is used when it tells the entries apart, otherwise a positional
-    index. The RouterOS list id is deliberately not used: it changes whenever an
-    entry is removed and re-added, which would register a new entity instead of
-    updating the existing one.
+    The comment is used when it tells the entries apart, otherwise a number.
+    The RouterOS list id is deliberately not used: it changes whenever an
+    entry is removed and re-added, which would register a new entity instead
+    of updating the existing one.
+
+    Nothing on the router tells identical rules apart, so the number says
+    nothing about a rule beyond the order in which it was first seen. What
+    can be done is to keep it from moving: ``numbers`` holds, per colliding
+    reference, which row was given which number, and is passed in again on
+    every read. A row keeps its number for as long as it lives, also when it
+    is the only one left; a new identical rule gets the lowest number no rule
+    on the router holds; a rule that leaves frees its number. The order of
+    the rules on the router no longer decides anything, so removing one rule
+    does not hand its entity to the next. Without ``numbers`` the rows are
+    numbered in store order, which is what a first read does.
 
     Rows in ``stale_uids`` are no longer on the router and only survive on the
     pruning grace period. They must not take part in disambiguation: a rule
     re-created with the same comment briefly overlaps its own dead row, and
     suffixing both would mint throwaway entities and strand the original one
-    (its stored uniq-id would never match a live row again).
+    (its stored uniq-id would never match a live row again). The number of
+    such a row is free for a new identical rule, which is how the entity of a
+    re-created rule finds its successor; when no rule takes it, the row has
+    it back should a later read bring the row again.
     """
+    if numbers is None:
+        numbers = {}
     seen: dict[str, list[str]] = {}
     for uid, vals in store.items():
         if uid in stale_uids:
             continue
         seen.setdefault(str(vals.get("uniq-id", uid)), []).append(uid)
 
+    # Forget rows that left the store, and rows that no longer share the
+    # reference because they were given a comment of their own.
+    for base in list(numbers):
+        held = numbers[base]
+        for uid in list(held):
+            if uid not in store or (uid not in stale_uids and uid not in seen.get(base, ())):
+                del held[uid]
+        if not held:
+            del numbers[base]
+
     collided = []
     for base, uids in seen.items():
-        if len(uids) < 2:
+        held = numbers.get(base, {})
+        if len(uids) < 2 and not any(uid in held for uid in uids):
             continue
-        collided.append(base)
+        if len(uids) > 1:
+            collided.append(base)
         comments = [str(store[uid].get("comment", "")).strip() for uid in uids]
-        if all(comments) and len(set(comments)) == len(comments):
+        if len(uids) > 1 and all(comments) and len(set(comments)) == len(comments):
             for uid, comment in zip(uids, comments, strict=False):
                 store[uid]["uniq-id"] = f"{base} ({comment})"
-        else:
-            for index, uid in enumerate(uids, start=1):
-                store[uid]["uniq-id"] = f"{base} #{index}"
+            continue
+        held = numbers.setdefault(base, {})
+        taken = {held[uid] for uid in uids if uid in held}
+        for uid in uids:
+            if uid not in held:
+                number = next(index for index in count(1) if index not in taken)
+                # Held until now by a row on the pruning grace, if by any.
+                for other in [other for other, index in held.items() if index == number]:
+                    del held[other]
+                held[uid] = number
+                taken.add(number)
+            store[uid]["uniq-id"] = f"{base} #{held[uid]}"
     return collided
 
 
@@ -1004,6 +1042,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._traffic_read_at = None
         self.rebootcheck = 0
         self._rule_uids_migrated = False
+        # The numbers given to identical rules, per store; see
+        # _disambiguate_uniq_ids.
+        self._rule_numbers: dict[str, dict] = {}
         # The reference every rule was last seen under, per store and row; see
         # _follow_rule_references.
         self._rule_references: dict[str, dict[str, str]] = {}
@@ -1155,6 +1196,10 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
             if entity is not None:
                 return getattr(entity, "_uid", None)
         return None
+
+    def _get_rule_numbers(self, key: str) -> dict:
+        """Get or create the numbers given to the identical rules of a store."""
+        return self._rule_numbers.setdefault(key, {})
 
     def _get_stale_counters(self, key: str) -> dict:
         """Get or create stale counter dict for a data path."""
@@ -2471,7 +2516,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("nat")
         _prefer_comment_uniq_id(self.ds["nat"], self._get_stale_counters("nat"))
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["nat"], self._get_stale_counters("nat")):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["nat"], self._get_stale_counters("nat"), self._get_rule_numbers("nat")):
             if tmp_name not in self.nat_removed:
                 self.nat_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -2560,7 +2605,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("mangle")
         _prefer_comment_uniq_id(self.ds["mangle"], self._get_stale_counters("mangle"))
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"], self._get_stale_counters("mangle")):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["mangle"], self._get_stale_counters("mangle"), self._get_rule_numbers("mangle")):
             if tmp_name not in self.mangle_removed:
                 self.mangle_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -2640,7 +2685,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("routing_rules")
         _prefer_comment_uniq_id(self.ds["routing_rules"], self._get_stale_counters("routing_rules"))
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"], self._get_stale_counters("routing_rules")):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["routing_rules"], self._get_stale_counters("routing_rules"), self._get_rule_numbers("routing_rules")):
             if tmp_name not in self.routing_rules_removed:
                 self.routing_rules_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -2933,7 +2978,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("filter")
         _prefer_comment_uniq_id(self.ds["filter"], self._get_stale_counters("filter"))
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["filter"], self._get_stale_counters("filter")):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["filter"], self._get_stale_counters("filter"), self._get_rule_numbers("filter")):
             if tmp_name not in self.filter_removed:
                 self.filter_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -3047,7 +3092,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store("raw")
         _prefer_comment_uniq_id(self.ds["raw"], self._get_stale_counters("raw"))
 
-        for tmp_name in _disambiguate_uniq_ids(self.ds["raw"], self._get_stale_counters("raw")):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["raw"], self._get_stale_counters("raw"), self._get_rule_numbers("raw")):
             if tmp_name not in self.raw_removed:
                 self.raw_removed[tmp_name] = 1
                 _LOGGER.info(
@@ -3103,7 +3148,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_store(store)
         _prefer_comment_uniq_id(self.ds[store], stale)
 
-        for base in _disambiguate_uniq_ids(self.ds[store], stale):
+        for base in _disambiguate_uniq_ids(self.ds[store], stale, self._get_rule_numbers(store)):
             if (store, base) not in self.ipv6_firewall_removed:
                 self.ipv6_firewall_removed.add((store, base))
                 _LOGGER.info(
@@ -3913,7 +3958,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         """Add a stable suffix to uniq-id when multiple queues share a name."""
         self._decode_store("queue")
         _prefer_comment_uniq_id(self.ds["queue"], self._get_stale_counters("queue"))
-        for tmp_name in _disambiguate_uniq_ids(self.ds["queue"], self._get_stale_counters("queue")):
+        for tmp_name in _disambiguate_uniq_ids(self.ds["queue"], self._get_stale_counters("queue"), self._get_rule_numbers("queue")):
             if tmp_name not in self.queue_removed:
                 self.queue_removed[tmp_name] = 1
                 _LOGGER.info(
