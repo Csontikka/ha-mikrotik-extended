@@ -46,6 +46,15 @@ async def async_setup_entry(
     await async_add_entities(hass, config_entry, dispatcher)
 
 
+def _install_allowed(coordinator: MikrotikCoordinator) -> bool:
+    """Return True when the account may install updates and reboot.
+
+    A read-only account still sees the installed and the latest version,
+    which RouterOS hands out with the read policy alone.
+    """
+    return all(policy in coordinator.ds["access"] for policy in ("write", "policy", "reboot"))
+
+
 # ---------------------------
 #   MikrotikRouterOSUpdate
 # ---------------------------
@@ -61,10 +70,14 @@ class MikrotikRouterOSUpdate(MikrotikEntity, UpdateEntity):
         """Set up device update entity."""
         super().__init__(coordinator, entity_description, uid)
 
-        self._attr_supported_features = UpdateEntityFeature.INSTALL
-        self._attr_supported_features |= UpdateEntityFeature.BACKUP
-        self._attr_supported_features |= UpdateEntityFeature.RELEASE_NOTES
         self._attr_title = self.entity_description.title
+
+    @property
+    def supported_features(self) -> UpdateEntityFeature:
+        """Offer install only to an account the router lets install."""
+        if _install_allowed(self.coordinator):
+            return UpdateEntityFeature.INSTALL | UpdateEntityFeature.BACKUP | UpdateEntityFeature.RELEASE_NOTES
+        return UpdateEntityFeature.RELEASE_NOTES
 
     @property
     def is_on(self) -> bool:
@@ -155,8 +168,14 @@ class MikrotikRouterBoardFWUpdate(MikrotikEntity, UpdateEntity):
         """Set up device update entity."""
         super().__init__(coordinator, entity_description, uid)
 
-        self._attr_supported_features = UpdateEntityFeature.INSTALL
         self._attr_title = self.entity_description.title
+
+    @property
+    def supported_features(self) -> UpdateEntityFeature:
+        """Offer install only to an account the router lets install."""
+        if _install_allowed(self.coordinator):
+            return UpdateEntityFeature.INSTALL
+        return UpdateEntityFeature(0)
 
     @property
     def is_on(self) -> bool:
