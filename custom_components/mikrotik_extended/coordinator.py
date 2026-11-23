@@ -27,6 +27,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_platform as ep
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -1003,6 +1004,9 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._traffic_read_at = None
         self.rebootcheck = 0
         self._rule_uids_migrated = False
+        # The reference every rule was last seen under, per store and row; see
+        # _follow_rule_references.
+        self._rule_references: dict[str, dict[str, str]] = {}
 
     # Entity keys whose reference moved from the rule contents to the comment.
     _COMMENT_KEYED_RULES = ("nat", "mangle", "routing_rules", "filter", "raw", "queue", *_IPV6_FIREWALL_MENUS)
@@ -1064,6 +1068,93 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
                         entity_id,
                     )
                     break
+
+    def _follow_rule_references(self) -> None:
+        """Keep a rule's entity when the rule's reference changes while Home Assistant runs.
+
+        The reference is the comment where there is one and the rule contents
+        otherwise, so it changes when a comment is added, removed or edited,
+        when a queue is renamed, and when identical rules gain or lose their
+        number. The row is still the same row, under the same RouterOS id,
+        and the entity object stays bound to it; only the unique id the
+        registry holds would no longer match, and a second entity would be
+        registered for the rule while the first stayed until the next start.
+        So the registry entry is moved to the new unique id, and entity id,
+        name and area stay as they are.
+
+        A move waits while the new unique id belongs to another entry, for
+        example to the entity of a deleted rule that is still on its pruning
+        grace, and is tried again on every cycle. An entry that the entity of
+        another row is registered under is never moved.
+        """
+        registry = er.async_get(self.hass)
+        for key in self._COMMENT_KEYED_RULES:
+            stale = self._get_stale_counters(key)
+            known = self._rule_references.get(key, {})
+            now: dict[str, str] = {}
+            pending: dict[str, tuple[str, str]] = {}
+            for uid, vals in self.ds.get(key, {}).items():
+                reference = str(vals.get("uniq-id", ""))
+                # A row on the pruning grace is not refreshed, so there is
+                # nothing to follow; what is known of it is kept in case the
+                # next read brings it back.
+                if uid in stale:
+                    now[uid] = known.get(uid, reference)
+                    continue
+                now[uid] = reference
+                if uid in known and slugify(known[uid].lower()) != slugify(reference.lower()):
+                    pending[uid] = (known[uid], reference)
+
+            # One move can free the unique id another one waits for.
+            moved = True
+            while pending and moved:
+                moved = False
+                for uid, (old, new) in list(pending.items()):
+                    outcome = self._move_rule_entity(registry, key, uid, old, new, known)
+                    if outcome is None:
+                        continue
+                    del pending[uid]
+                    moved = moved or outcome
+            for uid, (old, _new) in pending.items():
+                now[uid] = old
+            self._rule_references[key] = now
+
+    def _move_rule_entity(self, registry, key: str, uid: str, old: str, new: str, known: dict) -> bool | None:
+        """Move the entry registered for ``old`` to ``new``.
+
+        True when it was moved, False when there is nothing to move, None
+        when the new unique id is taken for now.
+        """
+        entry_id = self.config_entry.entry_id
+        old_uid = f"{entry_id}-{key}-{slugify(old.lower())}"
+        new_uid = f"{entry_id}-{key}-{slugify(new.lower())}"
+        entity_id = registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, old_uid)
+        if entity_id is None:
+            return False
+        bound = self._entity_row(entity_id)
+        if bound is not None and bound != uid:
+            # Registered for another row: two references can read alike as
+            # a unique id, and only one of the rows got the entity.
+            return False
+        if bound is None:
+            # A disabled entity has no object to ask. When another row went
+            # by the same unique id, whose entry this is cannot be told.
+            wanted = slugify(old.lower())
+            if any(other != uid and slugify(reference.lower()) == wanted for other, reference in known.items()):
+                return False
+        if registry.async_get_entity_id(SWITCH_DOMAIN, DOMAIN, new_uid) is not None:
+            return None
+        registry.async_update_entity(entity_id, new_unique_id=new_uid)
+        _LOGGER.debug("Mikrotik %s moved %s along with its rule, which is now '%s'", self.host, entity_id, new)
+        return True
+
+    def _entity_row(self, entity_id: str) -> str | None:
+        """The store key the entity behind ``entity_id`` is bound to, None when it is not loaded."""
+        for platform in ep.async_get_platforms(self.hass, DOMAIN):
+            entity = platform.entities.get(entity_id)
+            if entity is not None:
+                return getattr(entity, "_uid", None)
+        return None
 
     def _get_stale_counters(self, key: str) -> dict:
         """Get or create stale counter dict for a data path."""
@@ -1634,6 +1725,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._decode_text_fields()
         self._check_encoding_entity_ids()
         self._migrate_rule_unique_ids()
+        self._follow_rule_references()
         self._refresh_core_device_sw_version()
         async_dispatcher_send(self.hass, f"update_sensors_{self.config_entry.entry_id}", self)
         return self.ds
