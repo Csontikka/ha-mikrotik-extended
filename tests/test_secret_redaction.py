@@ -357,3 +357,23 @@ async def test_a_debug_cycle_leaves_no_secret_in_the_buffer(hass):
     assert "raw response" in captured and "Processing entry" in captured
     assert _no_marker(captured)
     assert _no_marker("\n".join(result["logs"]))
+
+
+async def test_diagnostics_survive_a_log_line_written_while_they_are_made(hass):
+    """The API threads log while the download is put together."""
+    from custom_components.mikrotik_extended import _LOG_BUFFER
+
+    _LOG_BUFFER.clear()
+    _LOG_BUFFER.extend(f"line {n}" for n in range(5))
+    real = LogRedactor.redact
+
+    def redact_and_log(self, line):
+        _LOG_BUFFER.append("written meanwhile")
+        return real(self, line)
+
+    try:
+        with patch.object(LogRedactor, "redact", redact_and_log):
+            result = await async_get_config_entry_diagnostics(hass, _entry({}))
+    finally:
+        _LOG_BUFFER.clear()
+    assert result["logs"] == [f"line {n}" for n in range(5)]

@@ -40,6 +40,10 @@ async def async_get_config_entry_diagnostics(_hass: HomeAssistant, config_entry:
     # log structure and per-dump correlation intact. A fresh salt per download
     # means the same device is not trackable across separate diagnostics dumps.
     redactor = LogRedactor(secrets.token_bytes(16))
+    # Taken in one go: the API threads keep logging while the lines are
+    # masked, and a buffer that grows under the loop below ends the download
+    # with an error instead of a file.
+    lines = tuple(_LOG_BUFFER)
 
     return {
         "entry": {
@@ -50,5 +54,5 @@ async def async_get_config_entry_diagnostics(_hass: HomeAssistant, config_entry:
         },
         "data": redactor.redact_data(async_redact_data(_without_secrets(data_coordinator.data), TO_REDACT)),
         "tracker": redactor.redact_data(async_redact_data(tracker_coordinator.data, TO_REDACT)),
-        "logs": [redactor.redact(line) for line in _LOG_BUFFER],
+        "logs": [redactor.redact(line) for line in lines],
     }
