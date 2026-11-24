@@ -10,6 +10,11 @@ replaced, and a short hash that is stable within a single diagnostics dump is
 appended. The same address therefore carries the same tag across lines
 (you can still tell "this is the same device"), but the value cannot be
 recovered and the tag differs between dumps (a fresh salt per download).
+
+Secrets are a different matter. A password, a preshared key or the text of a
+script is never shown in part and never tagged: a tag is a hash of the value,
+and a weak password can be guessed back from one. Those values are replaced
+whole, here and already where the raw API response is written to the log.
 """
 
 from __future__ import annotations
@@ -40,6 +45,76 @@ _KEYED_RE = re.compile(r"('(?:" + "|".join(re.escape(k) for k in _KEYED) + r")'\
 # The API library turns an all-digit value into a number, so an IMEI or an
 # ICCID shows up without quotes in a repr.
 _KEYED_BARE_RE = re.compile(r"('(?:" + "|".join(re.escape(k) for k in _KEYED) + r")'\s*:\s*)(\d+)()")
+
+
+# What takes the place of a secret, in the log and in a diagnostics download.
+SECRET_MASK = "**REDACTED**"
+
+# Fields that hold a secret in every menu. Read from RouterOS 7.25.1: a PPP
+# secret sends "password", a WireGuard peer "preshared-key" and "private-key",
+# and scripts kept inside another object ("on-event" of a scheduler, the up
+# and down script of a netwatch probe) are sent in full, to any account that
+# may read the menu.
+_SECRET_FIELDS = frozenset(
+    {
+        "password",
+        "passphrase",
+        "secret",
+        "preshared-key",
+        "pre-shared-key",
+        "private-key",
+        "on-event",
+        "up-script",
+        "down-script",
+        "test-script",
+        "lease-script",
+    }
+)
+# The same kind of field under a longer name: "security.passphrase" of a wifi
+# interface, "wpa2-pre-shared-key", "authentication-password", "ipsec-secret".
+_SECRET_SUFFIXES = ("password", "passphrase", "-secret", "preshared-key", "pre-shared-key", "private-key")
+# Names too common to hide everywhere: "source" also says where a host was
+# seen, "value" is a health reading. They are secret in one menu only.
+_SECRET_FIELDS_BY_PATH = {
+    "/system/script": frozenset({"source"}),
+    "/system/script/environment": frozenset({"value"}),
+    "/ip/dhcp-client": frozenset({"script"}),
+}
+
+
+def is_secret_field(name, path: str | None = None) -> bool:
+    """Tell whether a field of an API row holds a secret, in the menu it was read from."""
+    name = str(name).lower()
+    if name in _SECRET_FIELDS or name.endswith(_SECRET_SUFFIXES):
+        return True
+    return path is not None and name in _SECRET_FIELDS_BY_PATH.get(path, ())
+
+
+def mask_secrets(rows, path: str | None = None):
+    """Return API rows fit for a log line: every secret value replaced.
+
+    The rows themselves are left alone, a row is only copied when it holds a
+    secret. An empty value stays empty, so the log still tells a set password
+    from none.
+    """
+    if isinstance(rows, dict):
+        if not any(value not in ("", None) and is_secret_field(key, path) for key, value in rows.items()):
+            return rows
+        return {key: SECRET_MASK if value not in ("", None) and is_secret_field(key, path) else value for key, value in rows.items()}
+    if isinstance(rows, (list, tuple)):
+        return [mask_secrets(row, path) for row in rows]
+    return rows
+
+
+# A 'key': value pair of a Python repr, the value being a quoted text (with
+# either quote, escapes and line breaks included) or a bare number or word.
+_PAIR_RE = re.compile(
+    r"""(?P<lead>(?P<kq>['"])(?P<key>[^'"\\]{1,64})(?P=kq)\s*:\s*)"""
+    r"""(?P<value>'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^\s,}\]]+)""",
+    re.DOTALL,
+)
+# The menu a raw response was read from, as mikrotikapi words the line.
+_QUERY_PATH_RE = re.compile(r"API query (/\S+) raw response")
 
 
 class LogRedactor:
@@ -82,7 +157,28 @@ class LogRedactor:
         masked = "…" if len(value) <= 4 else f"{value[:2]}...{value[-2:]}"
         return f"{m.group(1)}{masked}#{self._tag(value)}{m.group(3)}"
 
+    @staticmethod
+    def _secrets(line: str) -> str:
+        """Replace the value of every secret field in a line that holds a repr of API rows.
+
+        The raw response is masked before it is logged; this is the second
+        net, for a line that reached the buffer some other way.
+        """
+        if "':" not in line and '":' not in line:
+            return line
+        found = _QUERY_PATH_RE.search(line)
+        path = found.group(1) if found else None
+
+        def swap(m: re.Match) -> str:
+            value = m.group("value")
+            if value in ("''", '""', "None") or not is_secret_field(m.group("key"), path):
+                return m.group(0)
+            return f"{m.group('lead')}'{SECRET_MASK}'"
+
+        return _PAIR_RE.sub(swap, line)
+
     def redact(self, line: str) -> str:
+        line = self._secrets(line)
         # MAC before IPv6 (both use colons); the placeholders contain non-hex
         # "x" so already-masked spans are not re-matched afterwards.
         line = _MAC_RE.sub(self._mac, line)
