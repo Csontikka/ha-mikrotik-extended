@@ -26,6 +26,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_SSL, C
 
 from .const import DEFAULT_VERIFY_SSL, DOMAIN, PLATFORMS
 from .coordinator import MikrotikCoordinator, MikrotikData, MikrotikTrackerCoordinator
+from .log_redaction import mask_secrets, mask_store
 from .mikrotikapi import MikrotikAPI
 
 SCRIPT_SCHEMA = vol.Schema({vol.Required("router"): cv.string, vol.Required("script"): cv.string})
@@ -152,11 +153,14 @@ def _make_api_test(hass: HomeAssistant):
             try:
                 if use_coordinator_data:
                     data = coordinator.data.get(path) if coordinator.data else None
-                    formatted = _format_coordinator_data(data, limit)
+                    # The answer is meant for an issue, like a diagnostics
+                    # download, and leaves out the same secrets.
+                    formatted = _format_coordinator_data(mask_store(path, data), limit)
                     results[router_host] = formatted if formatted is not None else {"error": f"No coordinator data for path '{path}'"}
                 else:
                     raw = await hass.async_add_executor_job(coordinator.api.query, path)
-                    results[router_host] = _format_raw_api_result(raw, limit)
+                    menu = "/" + path.strip("/ ")
+                    results[router_host] = _format_raw_api_result(mask_secrets(raw, menu), limit)
             except Exception as exc:
                 results[router_host] = {"error": str(exc)}
 
