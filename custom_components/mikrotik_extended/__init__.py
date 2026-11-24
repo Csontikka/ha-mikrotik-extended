@@ -10,7 +10,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant, SupportsResponse
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, ServiceValidationError
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, ServiceValidationError, Unauthorized, UnknownUser
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry
 from homeassistant.helpers import entity_registry as er
@@ -139,9 +139,29 @@ def _make_send_magic_packet(hass: HomeAssistant):
     return async_send_magic_packet
 
 
+async def _require_admin(hass: HomeAssistant, call) -> None:
+    """Turn the call away unless an administrator made it, or nobody did.
+
+    The rule Home Assistant applies to its own admin services: a call with no
+    user behind it comes from an automation or a script, which only an
+    administrator can write, and passes. The helper that registers such a
+    service drops whatever the service returns, in every version supported
+    here, so a service that answers has to check by itself.
+    """
+    if not call.context.user_id:
+        return
+    user = await hass.auth.async_get_user(call.context.user_id)
+    if user is None:
+        raise UnknownUser(context=call.context)
+    if not user.is_admin:
+        raise Unauthorized(context=call.context)
+
+
 def _make_api_test(hass: HomeAssistant):
     async def async_api_test(call):
         """Test a raw Mikrotik API call and return the response."""
+        # It reads any menu of the router, so it is for administrators only.
+        await _require_admin(hass, call)
         path = call.data["path"]
         limit = call.data.get("limit", 10)
         host_filter = call.data.get("host")
