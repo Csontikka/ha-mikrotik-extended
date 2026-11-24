@@ -17,8 +17,22 @@ from .const import (
     DEFAULT_ENCODING,
     DEFAULT_LOGIN_METHOD,
 )
+from .log_redaction import mask_secrets
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class QueryRows(list):
+    """The rows of one menu, which remember the menu they were read from.
+
+    Whether a field is a secret can depend on the menu: "value" is one in the
+    script environment and a plain reading everywhere else. The parser logs
+    the rows it is given at debug level, and needs the menu to know what to
+    leave out.
+    """
+
+    path: str | None = None
+
 
 SCRIPT_ENVIRONMENT_PATH = "/system/script/environment"
 
@@ -295,9 +309,13 @@ class MikrotikAPI:
         a hard error, which tears the connection down quietly for the caller's retry.
         """
         try:
-            response = list(response)
-            _LOGGER.debug("API query %s returned %d entries", path, len(response) if response else 0)
-            _LOGGER.debug("API query %s raw response: %s", path, response)
+            response = QueryRows(response)
+            response.path = path
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug("API query %s returned %d entries", path, len(response))
+                # Passwords, keys and script texts stay out of the log: it
+                # ends up in home-assistant.log and in diagnostics downloads.
+                _LOGGER.debug("API query %s raw response: %s", path, mask_secrets(response, path))
             return response, False
         except Exception as e:
             if path == "/system/health" and "no such command prefix" in str(e):
