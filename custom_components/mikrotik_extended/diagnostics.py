@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 
 from . import _LOG_BUFFER
 from .const import TO_REDACT
-from .log_redaction import SECRET_MASK, LogRedactor
+from .log_redaction import LogRedactor, mask_store
 
 
 def _without_secrets(data: dict[str, Any]) -> dict[str, Any]:
@@ -19,15 +19,12 @@ def _without_secrets(data: dict[str, Any]) -> dict[str, Any]:
 
     A global variable of the router often holds a token or a password that a
     script needs. The sensor shows it to the owner of the router; a download
-    that gets attached to a public issue must not. The store is keyed by the
-    variable name, so "value" can be replaced here without touching any other
-    store that has a field of that name.
+    that gets attached to a public issue must not. Only that store is looked
+    at: "value" is a plain reading in every other one.
     """
     variables = data.get("environment")
-    if not isinstance(variables, dict):
-        return data
-    masked = {name: {**row, "value": SECRET_MASK} if isinstance(row, dict) and row.get("value") not in ("", None) else row for name, row in variables.items()}
-    return {**data, "environment": masked}
+    masked = mask_store("environment", variables)
+    return data if masked is variables else {**data, "environment": masked}
 
 
 async def async_get_config_entry_diagnostics(_hass: HomeAssistant, config_entry: ConfigEntry) -> dict[str, Any]:  # NOSONAR — HA contract requires async

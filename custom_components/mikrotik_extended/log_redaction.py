@@ -108,6 +108,29 @@ def mask_secrets(rows, path: str | None = None):
     return rows
 
 
+def mask_store(name: str, rows):
+    """Return one store of the coordinator fit to be handed out: its secrets replaced.
+
+    A store is what the entities read, so it holds what the sensors show, and
+    for the script environment that is the value of every global variable.
+    The owner of the router sees those in Home Assistant; a diagnostics
+    download or the answer of the api_test service gets pasted into issues.
+    The store is not changed, and a store without a secret is returned as it is.
+    """
+    if not isinstance(rows, dict):
+        return rows
+    path = "/system/script/environment" if name == "environment" else None
+    if not any(isinstance(row, dict) for row in rows.values()):
+        # a store that is one row itself, like the resource readings
+        return mask_secrets(rows, None)
+
+    def masked(row):
+        return mask_secrets(row, path) if isinstance(row, dict) else row
+
+    out = {key: masked(row) for key, row in rows.items()}
+    return rows if all(out[key] is rows[key] for key in rows) else out
+
+
 # A 'key': value pair of a Python repr, the value being a quoted text (with
 # either quote, escapes and line breaks included) or a bare number or word.
 _PAIR_RE = re.compile(
