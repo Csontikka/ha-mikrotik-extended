@@ -312,7 +312,7 @@ The file stays on the device: RouterOS does not expose file contents over its AP
             interface: "bridge"
   ```
 
-- **API Test** (`mikrotik_extended.api_test`): diagnostic action for raw RouterOS API queries or coordinator data inspection. Use in **Developer Tools -> Actions** with "Return response" enabled.
+- **API Test** (`mikrotik_extended.api_test`): diagnostic action for raw RouterOS API queries or coordinator data inspection. Use in **Developer Tools -> Actions** with "Return response" enabled. Only an administrator may call it, an automation or a script may as well. Passwords, keys and script texts are left out of the answer, as they are from the debug log and from a diagnostics download.
 
   **Parameters:** `path` (required), `limit` (optional, default 10), `host` (optional), `coordinator_data`* (optional).
 
