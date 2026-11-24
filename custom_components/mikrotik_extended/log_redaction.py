@@ -63,6 +63,8 @@ _SECRET_FIELDS = frozenset(
         "preshared-key",
         "pre-shared-key",
         "private-key",
+        # The SIM PIN of an LTE interface.
+        "pin",
         "on-event",
         "up-script",
         "down-script",
