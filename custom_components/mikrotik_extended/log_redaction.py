@@ -115,8 +115,9 @@ _PAIR_RE = re.compile(
     r"""(?P<value>'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^\s,}\]]+)""",
     re.DOTALL,
 )
-# The menu a raw response was read from, as mikrotikapi words the line.
-_QUERY_PATH_RE = re.compile(r"API query (/\S+) raw response")
+# The menu the rows of a line were read from, as mikrotikapi words its raw
+# response line and the parser the lines of the rows it works through.
+_QUERY_PATH_RE = re.compile(r"(?:API query (/\S+) raw response|Processing (?:source|entry) from (/\S+): )")
 
 
 class LogRedactor:
@@ -169,7 +170,7 @@ class LogRedactor:
         if "':" not in line and '":' not in line:
             return line
         found = _QUERY_PATH_RE.search(line)
-        path = found.group(1) if found else None
+        path = (found.group(1) or found.group(2)) if found else None
 
         def swap(m: re.Match) -> str:
             value = m.group("value")

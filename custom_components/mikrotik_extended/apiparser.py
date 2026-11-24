@@ -164,8 +164,11 @@ def parse_api(
     # The menu the rows came from, when the API layer read them: it decides
     # which fields are secrets and must not be written to the log.
     path = getattr(source, "path", None)
+    # The menu is named in the line as well: whoever masks the line once more
+    # (the diagnostics download does) can then tell its secrets too.
+    origin = f"from {path}: " if path else ""
     if debug:
-        _LOGGER.debug("Processing source %s", async_redact_data(mask_secrets(source, path), TO_REDACT))
+        _LOGGER.debug("Processing source %s%s", origin, async_redact_data(mask_secrets(source, path), TO_REDACT))
 
     seen_uids = set()
     keymap = generate_keymap(data, key_search)
@@ -181,7 +184,7 @@ def parse_api(
             continue
 
         if debug:
-            _LOGGER.debug("Processing entry %s", async_redact_data(mask_secrets(entry, path), TO_REDACT))
+            _LOGGER.debug("Processing entry %s%s", origin, async_redact_data(mask_secrets(entry, path), TO_REDACT))
 
         _apply_entry_fills(data, entry, uid, vals, ensure_vals, val_proc)
 
