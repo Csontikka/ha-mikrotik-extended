@@ -1050,6 +1050,7 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         self._rule_numbers_saved: dict[str, dict] = {}
         self._rule_numbers_loaded = False
         self._rule_numbers_unwritten = False
+        self._rule_numbers_closed = False
         self._rule_numbers_file = self.rule_numbers_store(hass, config_entry.entry_id)
         # The reference and the contents every rule was last seen with, per
         # store and row; see
@@ -1248,6 +1249,11 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
 
     def _save_rule_numbers(self) -> None:
         """Write the numbers out when they changed."""
+        if self._rule_numbers_closed:
+            # A read that was under way when the entry was unloaded. Saving
+            # now would bring back the file a removed entry just deleted, or
+            # write over the one a reloaded entry has since written.
+            return
         snapshot = copy.deepcopy({key: numbers for key, numbers in self._rule_numbers.items() if numbers})
         if snapshot == self._rule_numbers_saved:
             return
@@ -1261,9 +1267,15 @@ class MikrotikCoordinator(DataUpdateCoordinator[None]):
         A save that is still waiting would otherwise be written after the
         entry is gone, and bring back the file its removal had just deleted.
         """
-        if self._rule_numbers_unwritten:
-            self._rule_numbers_unwritten = False
+        self._rule_numbers_closed = True
+        if not self._rule_numbers_unwritten:
+            return
+        try:
             await self._rule_numbers_file.async_save(self._rule_numbers_saved)
+        except Exception as error:  # a full disk must not keep the entry from unloading
+            _LOGGER.warning("Mikrotik %s could not save the numbers of identical rules: %s", self.host, error)
+            return
+        self._rule_numbers_unwritten = False
 
     def _number_identical_rules(self, key: str) -> list[str]:
         """Number the rules of a store that share a reference; return those references."""

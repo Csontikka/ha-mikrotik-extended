@@ -500,6 +500,40 @@ class TestWhatIsSaved:
 
         assert key not in hass_storage
 
+    async def test_a_read_that_ends_after_the_unload_saves_nothing(self, hass, hass_storage):
+        """A cycle under way during the unload must not bring the removed file back."""
+        from custom_components.mikrotik_extended import async_remove_entry, async_unload_entry
+
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        key = f"{DOMAIN}.rule_numbers.{ENTRY_ID}"
+        coordinator = router.entry.runtime_data.data_coordinator
+        coordinator.api.close = MagicMock()
+        assert await async_unload_entry(hass, router.entry)
+        api = MagicMock()
+        api.connect.return_value = False
+        with patch("custom_components.mikrotik_extended.MikrotikAPI", return_value=api):
+            await async_remove_entry(hass, router.entry)
+        assert key not in hass_storage
+
+        coordinator._rule_numbers["filter"]["late"] = {"*8": 1, "*9": 2}
+        coordinator._save_rule_numbers()
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+        await hass.async_block_till_done()
+
+        assert key not in hass_storage
+
+    async def test_a_save_that_fails_does_not_stop_the_unload(self, hass, hass_storage):
+        from custom_components.mikrotik_extended import async_unload_entry
+
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        coordinator = router.entry.runtime_data.data_coordinator
+        coordinator.api.close = MagicMock()
+
+        with patch.object(coordinator._rule_numbers_file, "async_save", side_effect=OSError("disk full")):
+            assert await async_unload_entry(hass, router.entry)
+
+        assert coordinator._rule_numbers_unwritten is True
+
     async def test_removing_the_entry_removes_the_file(self, hass, hass_storage):
         from custom_components.mikrotik_extended import async_remove_entry
 
