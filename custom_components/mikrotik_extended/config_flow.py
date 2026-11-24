@@ -273,6 +273,18 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
         if not (changed and entry.update_listeners):
             self.hass.config_entries.async_schedule_reload(entry.entry_id)
 
+    async def _test_connection(self, api: MikrotikAPI) -> bool:
+        """Try the account once, and hang up again whatever the answer was.
+
+        The form only needs to know whether the router lets the account in.
+        The entry opens its own connections when it loads, so the one made
+        here is closed at once and not left to be cleaned up some time later.
+        """
+        try:
+            return await self.hass.async_add_executor_job(api.connect)
+        finally:
+            await self.hass.async_add_executor_job(api.close)
+
     async def async_step_import(self, user_input=None):
         """Occurs when a previously entry setup fails and is re-initiated."""
         return await self.async_step_user(user_input)
@@ -295,7 +307,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 use_ssl=reauth_entry.data.get(CONF_SSL, False),
                 ssl_verify=reauth_entry.data.get(CONF_VERIFY_SSL, False),
             )
-            if not await self.hass.async_add_executor_job(api.connect):
+            if not await self._test_connection(api):
                 errors[CONF_PASSWORD] = api.error
             else:
                 self._update_entry_and_reload(
@@ -429,7 +441,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 use_ssl=user_input[CONF_SSL],
                 ssl_verify=user_input[CONF_VERIFY_SSL],
             )
-            if not await self.hass.async_add_executor_job(api.connect):
+            if not await self._test_connection(api):
                 errors[CONF_HOST] = api.error
 
             # Save instance
@@ -570,7 +582,7 @@ class MikrotikControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                 use_ssl=user_input[CONF_SSL],
                 ssl_verify=user_input[CONF_VERIFY_SSL],
             )
-            if not await self.hass.async_add_executor_job(api.connect):
+            if not await self._test_connection(api):
                 errors[CONF_HOST] = api.error
 
             if not errors:
