@@ -181,3 +181,40 @@ async def test_api_test_keeps_plain_readings_of_a_store(hass):
 async def test_api_test_still_reports_a_failed_query(hass):
     result, _ = await _call(hass, False, "/ppp/secret", query=None)
     assert "error" in result
+
+
+class TestFieldsOfMenusOnlyApiTestReads:
+    """The api_test service reads any menu, so the rules cannot stop at the menus the integration polls."""
+
+    @pytest.mark.parametrize(
+        "name",
+        ["on-up", "on-down", "on-login", "on-logout", "on-master", "on-backup", "auth-key", "enc-key", "tcp-md5-key", "static-key-0", "static-key-3", "management-protection-key", "secrets", "On-Up", "AUTH-KEY"],
+    )
+    def test_scripts_and_keys_are_secret_in_every_menu(self, name):
+        assert is_secret_field(name)
+
+    @pytest.mark.parametrize("name", ["public-key", "client-public-key", "key", "keepalive", "one", "keys", "monkey"])
+    def test_what_only_looks_like_one_is_not(self, name):
+        assert not is_secret_field(name)
+
+    def test_a_key_of_its_own_menu_only(self):
+        assert is_secret_field("key", "/system/ntp/key")
+        assert is_secret_field("value", "/container/envs")
+        assert not is_secret_field("value", "/system/health")
+
+    @pytest.mark.parametrize("path", ["/System/Script", "/system//script", "system/script", "/system/script/", " /system/script "])
+    def test_the_menu_is_known_however_it_is_written(self, path):
+        assert mask_secrets([{"name": "s", "source": "CANARY"}], path) == [{"name": "s", "source": SECRET_MASK}]
+
+
+class TestStoreOfMixedShape:
+    def test_a_secret_beside_rows_is_masked_too(self):
+        store = {"password": "CANARY", "row": {"name": "n", "private-key": "CANARY"}, "count": 2}
+
+        assert mask_store("x", store) == {"password": SECRET_MASK, "row": {"name": "n", "private-key": SECRET_MASK}, "count": 2}
+        assert store["password"] == "CANARY"
+
+    def test_a_store_without_a_secret_is_returned_as_it_is(self):
+        store = {"a": {"name": "n"}, "count": 2}
+
+        assert mask_store("x", store) is store

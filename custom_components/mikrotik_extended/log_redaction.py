@@ -65,6 +65,8 @@ _SECRET_FIELDS = frozenset(
         "private-key",
         # The SIM PIN of an LTE interface.
         "pin",
+        # The shared secrets of RoMON.
+        "secrets",
         "on-event",
         "up-script",
         "down-script",
@@ -75,13 +77,25 @@ _SECRET_FIELDS = frozenset(
 # The same kind of field under a longer name: "security.passphrase" of a wifi
 # interface, "wpa2-pre-shared-key", "authentication-password", "ipsec-secret".
 _SECRET_SUFFIXES = ("password", "passphrase", "-secret", "preshared-key", "pre-shared-key", "private-key")
+# Any other key: "auth-key" and "enc-key" of an IPsec SA, "tcp-md5-key" of a
+# BGP connection, "static-key-0" of a wireless security profile. The
+# integration reads none of these menus, the api_test service reads whatever
+# it is asked for. A public key is not a secret.
+_KEY_FIELD_RE = re.compile(r"(?:^|-)key(?:-\d+)?$")
 # Names too common to hide everywhere: "source" also says where a host was
 # seen, "value" is a health reading. They are secret in one menu only.
 _SECRET_FIELDS_BY_PATH = {
     "/system/script": frozenset({"source"}),
     "/system/script/environment": frozenset({"value"}),
     "/ip/dhcp-client": frozenset({"script"}),
+    "/container/envs": frozenset({"value"}),
+    "/system/ntp/key": frozenset({"key"}),
 }
+
+
+def _menu(path: str) -> str:
+    """A menu path as the table above spells it, however the caller wrote it."""
+    return "/" + "/".join(part for part in path.strip().lower().split("/") if part)
 
 
 def is_secret_field(name, path: str | None = None) -> bool:
@@ -89,7 +103,13 @@ def is_secret_field(name, path: str | None = None) -> bool:
     name = str(name).lower()
     if name in _SECRET_FIELDS or name.endswith(_SECRET_SUFFIXES):
         return True
-    return path is not None and name in _SECRET_FIELDS_BY_PATH.get(path, ())
+    # A script kept inside another object: "on-up" of a PPP profile,
+    # "on-login" of a hotspot user profile, "on-master" of a VRRP interface.
+    if name.startswith("on-"):
+        return True
+    if name != "key" and not name.endswith("public-key") and _KEY_FIELD_RE.search(name):
+        return True
+    return path is not None and name in _SECRET_FIELDS_BY_PATH.get(_menu(path), ())
 
 
 def mask_secrets(rows, path: str | None = None):
@@ -120,14 +140,15 @@ def mask_store(name: str, rows):
     if not isinstance(rows, dict):
         return rows
     path = "/system/script/environment" if name == "environment" else None
-    if not any(isinstance(row, dict) for row in rows.values()):
-        # a store that is one row itself, like the resource readings
-        return mask_secrets(rows, None)
+    # A store is either one row itself, like the resource readings, or rows
+    # by key. Both are covered at once: a value that is not a row is judged
+    # by the name it is kept under.
+    top = mask_secrets(rows, None)
 
-    def masked(row):
-        return mask_secrets(row, path) if isinstance(row, dict) else row
+    def masked(key):
+        return mask_secrets(rows[key], path) if isinstance(rows[key], dict) else top[key]
 
-    out = {key: masked(row) for key, row in rows.items()}
+    out = {key: masked(key) for key in rows}
     return rows if all(out[key] is rows[key] for key in rows) else out
 
 
