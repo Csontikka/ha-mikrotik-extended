@@ -8,6 +8,7 @@ from logging import DEBUG, getLogger
 from homeassistant.components.diagnostics import async_redact_data
 
 from .const import TO_REDACT
+from .log_redaction import mask_secrets
 
 _LOGGER = getLogger(__name__)
 
@@ -160,8 +161,11 @@ def parse_api(
             data = fill_defaults(data, ensure_vals or [])
         return data
 
+    # The menu the rows came from, when the API layer read them: it decides
+    # which fields are secrets and must not be written to the log.
+    path = getattr(source, "path", None)
     if debug:
-        _LOGGER.debug("Processing source %s", async_redact_data(source, TO_REDACT))
+        _LOGGER.debug("Processing source %s", async_redact_data(mask_secrets(source, path), TO_REDACT))
 
     seen_uids = set()
     keymap = generate_keymap(data, key_search)
@@ -177,7 +181,7 @@ def parse_api(
             continue
 
         if debug:
-            _LOGGER.debug("Processing entry %s", async_redact_data(entry, TO_REDACT))
+            _LOGGER.debug("Processing entry %s", async_redact_data(mask_secrets(entry, path), TO_REDACT))
 
         _apply_entry_fills(data, entry, uid, vals, ensure_vals, val_proc)
 
