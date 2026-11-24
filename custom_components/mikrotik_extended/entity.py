@@ -767,8 +767,14 @@ class MikrotikEntity(CoordinatorEntity[_MikrotikCoordinatorT], Entity):
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Return the state attributes."""
-        attributes = super().extra_state_attributes
+        """Return the state attributes.
+
+        Built anew on every read. The base class hands out the one dict the
+        entity keeps, and adding to that left an attribute in place after its
+        field was gone from the router: a host that had left the hotspot was
+        still shown as authorized.
+        """
+        attributes = dict(super().extra_state_attributes or {})
         for variable in self.entity_description.data_attributes_list:
             if variable in self._data:
                 attributes[format_attribute(variable)] = self._data[variable]
