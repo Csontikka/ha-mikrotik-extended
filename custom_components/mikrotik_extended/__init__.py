@@ -443,7 +443,10 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
         coordinator = config_entry.runtime_data.data_coordinator
         if coordinator and coordinator.api:
             await hass.async_add_executor_job(coordinator.api.close)
-        if coordinator:
+        # Only an entry that did unload stops saving. One that Home Assistant
+        # keeps, because a platform would not unload, goes on reading the
+        # router, and has to go on saving what it reads.
+        if coordinator and unload_ok:
             await coordinator.async_write_rule_numbers()
 
     return unload_ok

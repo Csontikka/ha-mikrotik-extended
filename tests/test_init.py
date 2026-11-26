@@ -165,6 +165,22 @@ async def test_unload_entry(hass):
     assert unload_result is True
 
 
+async def test_an_entry_that_would_not_unload_keeps_saving_its_rule_numbers(hass):
+    """The numbers are only closed for an entry that is gone, or none is saved again until a restart."""
+    entry = _make_entry(hass)
+    coordinator = MagicMock()
+    coordinator.async_write_rule_numbers = AsyncMock()
+    entry.runtime_data = SimpleNamespace(data_coordinator=coordinator, tracker_coordinator=MagicMock())
+
+    with patch.object(hass.config_entries, "async_unload_platforms", return_value=False):
+        assert await async_unload_entry(hass, entry) is False
+    coordinator.async_write_rule_numbers.assert_not_awaited()
+
+    with patch.object(hass.config_entries, "async_unload_platforms", return_value=True):
+        assert await async_unload_entry(hass, entry) is True
+    coordinator.async_write_rule_numbers.assert_awaited_once()
+
+
 async def test_unload_entry_no_runtime_data(hass):
     """async_unload_entry works even when runtime_data missing."""
     entry = _make_entry(hass)
