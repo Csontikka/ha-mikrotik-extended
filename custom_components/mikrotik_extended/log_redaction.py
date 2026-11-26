@@ -65,6 +65,7 @@ _SECRET_FIELDS = frozenset(
         "private-key",
         # The SIM PIN of an LTE interface.
         "pin",
+        "psk",
         # The shared secrets of RoMON.
         "secrets",
         "on-event",
@@ -76,7 +77,8 @@ _SECRET_FIELDS = frozenset(
 )
 # The same kind of field under a longer name: "security.passphrase" of a wifi
 # interface, "wpa2-pre-shared-key", "authentication-password", "ipsec-secret".
-_SECRET_SUFFIXES = ("password", "passphrase", "-secret", "preshared-key", "pre-shared-key", "private-key")
+# A PIN under a longer name ("sim-pin", "wps-pin") is one all the same.
+_SECRET_SUFFIXES = ("password", "passphrase", "-secret", "preshared-key", "pre-shared-key", "private-key", "-pin", "-psk")
 # Any other key: "auth-key" and "enc-key" of an IPsec SA, "tcp-md5-key" of a
 # BGP connection, "static-key-0" of a wireless security profile. The
 # integration reads none of these menus, the api_test service reads whatever
@@ -98,8 +100,15 @@ _SECRET_FIELDS_BY_PATH = {
 
 
 def _menu(path: str) -> str:
-    """A menu path as the table above spells it, however the caller wrote it."""
-    return "/" + "/".join(part for part in path.strip().lower().split("/") if part)
+    """A menu path as the table above spells it, however the caller wrote it.
+
+    The console spelling with spaces and a command after the menu name the
+    same menu, so "/system script print" is read as "/system/script".
+    """
+    parts = [part for part in re.split(r"[/\s]+", path.lower()) if part]
+    while parts and parts[-1] in ("print", "getall"):
+        parts.pop()
+    return "/" + "/".join(parts)
 
 
 def is_secret_field(name, path: str | None = None) -> bool:

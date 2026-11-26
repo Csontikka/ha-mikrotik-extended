@@ -48,7 +48,13 @@ def test_the_sim_pin_is_a_secret():
     assert "'name': 'lte1'" in out
 
 
-@pytest.mark.parametrize("name", ["ping", "pin-count", "mapping", "spin"])
+@pytest.mark.parametrize("name", ["sim-pin", "wps-pin", "psk", "wpa-psk", "SIM-PIN"])
+def test_a_pin_or_a_shared_key_under_a_longer_name(name):
+    assert is_secret_field(name)
+    assert mask_secrets({name: 1234, "name": "lte1"}) == {name: SECRET_MASK, "name": "lte1"}
+
+
+@pytest.mark.parametrize("name", ["ping", "pin-count", "mapping", "spin", "pskov", "pins"])
 def test_names_that_only_look_like_the_pin(name):
     assert not is_secret_field(name)
 
@@ -219,7 +225,10 @@ class TestFieldsOfMenusOnlyApiTestReads:
         row = {"name": "CANARY", "authentication-password": "CANARY", "encryption-password": "CANARY", "addresses": "::/0"}
         assert mask_secrets(row, "/snmp/community") == {"name": SECRET_MASK, "authentication-password": SECRET_MASK, "encryption-password": SECRET_MASK, "addresses": "::/0"}
 
-    @pytest.mark.parametrize("path", ["/System/Script", "/system//script", "system/script", "/system/script/", " /system/script "])
+    @pytest.mark.parametrize(
+        "path",
+        ["/System/Script", "/system//script", "system/script", "/system/script/", " /system/script ", "/system/script/print", "/system script", "system script print", "/system/script/getall"],
+    )
     def test_the_menu_is_known_however_it_is_written(self, path):
         assert mask_secrets([{"name": "s", "source": "CANARY"}], path) == [{"name": "s", "source": SECRET_MASK}]
 
