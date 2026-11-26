@@ -88,8 +88,12 @@ _SECRET_FIELDS_BY_PATH = {
     "/system/script": frozenset({"source"}),
     "/system/script/environment": frozenset({"value"}),
     "/ip/dhcp-client": frozenset({"script"}),
+    "/ipv6/dhcp-client": frozenset({"script"}),
     "/container/envs": frozenset({"value"}),
     "/system/ntp/key": frozenset({"key"}),
+    "/routing/rip/keys": frozenset({"key"}),
+    # A community name is all it takes to read the router over SNMP v1 and v2c.
+    "/snmp/community": frozenset({"name"}),
 }
 
 

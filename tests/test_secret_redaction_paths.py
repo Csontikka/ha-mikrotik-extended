@@ -202,6 +202,23 @@ class TestFieldsOfMenusOnlyApiTestReads:
         assert is_secret_field("value", "/container/envs")
         assert not is_secret_field("value", "/system/health")
 
+    @pytest.mark.parametrize(
+        ("path", "field"),
+        [("/ipv6/dhcp-client", "script"), ("/routing/rip/keys", "key"), ("/snmp/community", "name")],
+    )
+    def test_fields_read_on_a_router_that_are_secret_in_their_menu_only(self, path, field):
+        row = {".id": "*1", field: "CANARY", "comment": "kept"}
+        assert mask_secrets([row], path) == [{".id": "*1", field: SECRET_MASK, "comment": "kept"}]
+        assert not is_secret_field(field)
+        assert not is_secret_field(field, "/interface")
+        out = LogRedactor(b"salt").redact(f"API query {path} raw response: [{row}]")
+        assert "CANARY" not in out
+        assert "'comment': 'kept'" in out
+
+    def test_the_passwords_of_an_snmp_community_go_by_their_name(self):
+        row = {"name": "CANARY", "authentication-password": "CANARY", "encryption-password": "CANARY", "addresses": "::/0"}
+        assert mask_secrets(row, "/snmp/community") == {"name": SECRET_MASK, "authentication-password": SECRET_MASK, "encryption-password": SECRET_MASK, "addresses": "::/0"}
+
     @pytest.mark.parametrize("path", ["/System/Script", "/system//script", "system/script", "/system/script/", " /system/script "])
     def test_the_menu_is_known_however_it_is_written(self, path):
         assert mask_secrets([{"name": "s", "source": "CANARY"}], path) == [{"name": "s", "source": SECRET_MASK}]
