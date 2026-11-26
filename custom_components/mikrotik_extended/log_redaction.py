@@ -106,8 +106,10 @@ def _menu(path: str) -> str:
     same menu, so "/system script print" is read as "/system/script".
     """
     parts = [part for part in re.split(r"[/\s]+", path.lower()) if part]
-    while parts and parts[-1] in ("print", "getall"):
-        parts.pop()
+    for command in ("print", "getall"):
+        if command in parts:
+            # Whatever follows the command, a "where" for one, is no part of the menu.
+            parts = parts[: parts.index(command)]
     return "/" + "/".join(parts)
 
 

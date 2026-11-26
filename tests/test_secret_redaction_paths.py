@@ -227,7 +227,18 @@ class TestFieldsOfMenusOnlyApiTestReads:
 
     @pytest.mark.parametrize(
         "path",
-        ["/System/Script", "/system//script", "system/script", "/system/script/", " /system/script ", "/system/script/print", "/system script", "system script print", "/system/script/getall"],
+        [
+            "/System/Script",
+            "/system//script",
+            "system/script",
+            "/system/script/",
+            " /system/script ",
+            "/system/script/print",
+            "/system script",
+            "system script print",
+            "/system/script/getall",
+            "/system script print where name=x",
+        ],
     )
     def test_the_menu_is_known_however_it_is_written(self, path):
         assert mask_secrets([{"name": "s", "source": "CANARY"}], path) == [{"name": "s", "source": SECRET_MASK}]
