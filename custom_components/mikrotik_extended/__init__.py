@@ -461,7 +461,13 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     # Home Assistant restarts, pointing at a router that is no longer set up.
     for key in (*MikrotikCoordinator._LEGACY_ISSUE_IDS, MikrotikCoordinator.ENCODING_ISSUE_ID, MikrotikCoordinator.DUPLICATE_RULES_ISSUE_ID):
         ir.async_delete_issue(hass, DOMAIN, f"{key}_{config_entry.entry_id}")
-    # So would the numbers kept for its identical rules.
+    # So would the numbers kept for its identical rules. An entry that would
+    # not unload is removed all the same, with its coordinator still reading
+    # the router, so that one is told to save no more first.
+    runtime = getattr(config_entry, "runtime_data", None)
+    coordinator = getattr(runtime, "data_coordinator", None)
+    if coordinator:
+        await coordinator.async_write_rule_numbers()
     await MikrotikCoordinator.rule_numbers_store(hass, config_entry.entry_id).async_remove()
 
     api = MikrotikAPI(

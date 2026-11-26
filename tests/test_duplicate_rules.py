@@ -522,6 +522,35 @@ class TestWhatIsSaved:
 
         assert key not in hass_storage
 
+    async def test_an_entry_that_would_not_unload_is_removed_without_bringing_the_file_back(self, hass, hass_storage):
+        """Home Assistant removes such an entry while its coordinator still reads the router."""
+        from custom_components.mikrotik_extended import async_remove_entry, async_unload_entry
+
+        router = await start(hass, {MENUS["filter"]: _rules("*1", "*2")})
+        key = f"{DOMAIN}.rule_numbers.{ENTRY_ID}"
+        coordinator = router.entry.runtime_data.data_coordinator
+        coordinator.api.close = MagicMock()
+        with patch.object(hass.config_entries, "async_unload_platforms", return_value=False):
+            assert not await async_unload_entry(hass, router.entry)
+
+        # kept, so it goes on saving
+        coordinator._rule_numbers["filter"]["more"] = {"*6": 1, "*7": 2}
+        coordinator._save_rule_numbers()
+        assert coordinator._rule_numbers_unwritten is True
+
+        api = MagicMock()
+        api.connect.return_value = False
+        with patch("custom_components.mikrotik_extended.MikrotikAPI", return_value=api):
+            await async_remove_entry(hass, router.entry)
+        assert key not in hass_storage
+
+        coordinator._rule_numbers["filter"]["late"] = {"*8": 1, "*9": 2}
+        coordinator._save_rule_numbers()
+        hass.bus.async_fire(EVENT_HOMEASSISTANT_FINAL_WRITE)
+        await hass.async_block_till_done()
+
+        assert key not in hass_storage
+
     async def test_a_save_that_fails_does_not_stop_the_unload(self, hass, hass_storage):
         from custom_components.mikrotik_extended import async_unload_entry
 
